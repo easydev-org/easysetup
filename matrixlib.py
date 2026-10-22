@@ -276,6 +276,12 @@ def resolve(name, path=MATRIX):
         want = name[len(prefix):]
         if not want:
             continue
+        # The remainder must LOOK like a version. Without this, `swift-sdk-wasm`
+        # matched the `swift` entry with want="sdk-wasm": a version key of ""
+        # compares equal to everything, so asking for an SDK silently handed
+        # back the compiler. A version always starts with a digit.
+        if not want[0].isdigit():
+            continue
         want_segments = want.split(".")
         have_segments = e["version"].split("+")[0].split(".")
         if len(want_segments) > len(have_segments):
