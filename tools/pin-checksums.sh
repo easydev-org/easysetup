@@ -25,12 +25,20 @@ pin() {
   python3 - "$ASSETS" <<'PY'
 import glob, hashlib, os, re, sys
 
+sys.path.insert(0, ".")
+import matrixlib
+
 assets = sys.argv[1]
+# artifact name -> derived dir, so the digest is written into the block whose
+# `artifact:` matches, without re-deriving the name here.
+by_artifact = {e["artifact"]: e for e in matrixlib.load()}
 text = open("matrix.yml").read()
 pinned = 0
 for path in sorted(glob.glob(os.path.join(assets, "*.tar.xz"))):
     digest = hashlib.sha256(open(path, "rb").read()).hexdigest()
     name = os.path.basename(path)
+    if name not in by_artifact:
+        sys.exit(f"pin-checksums: {name} is not referenced by matrix.yml")
     # Anchor on the artifact name so each setup gets its own digest.
     pattern = re.compile(r'(artifact: ' + re.escape(name) + r'\n\s+sha256: )"[^"]*"')
     text, n = pattern.subn(r'\1"' + digest + '"', text)
