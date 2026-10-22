@@ -1,19 +1,27 @@
 # matrix.yml — the toolchain versions easysetup publishes.
 #
-# ONE ENTRY PER TOOL. There are deliberately no combinations here: a job that
-# needs node AND python asks for two setups, and each installs itself into
-# /opt/setup/<tool>. Combinations are the CONSUMER's business, not ours.
+# ONE ENTRY PER (tool, VERSION). There are deliberately no combinations: a job
+# that needs node AND python installs two setups, and each extracts into its own
+# /opt/setup/<tool>-<major> directory. Combinations are the CONSUMER's business.
 #
-# For every entry this file records:
-#   version    the pinned upstream version (hand-pinned, never "latest")
-#   apt_deps   base packages installed with apt before unpacking. These are the
-#              shared runtime libraries the prebuilt tool needs on debian, and
-#              nothing else - the tool itself is NOT an apt package.
-#   artifact   the release asset carrying a complete /opt/setup/<tool> tree
-#   sha256     checksum of that asset; the installer refuses a mismatch
+# Several versions of the same tool coexist on purpose, so a repository can pin
+# the runtime its lockfile was built against instead of chasing the newest.
+# Each one lands in a versioned directory:
 #
-# A release tag is <tool>-<version>, so the asset for node 22.20.0 lives at
-#   https://github.com/easydev-org/easysetup/releases/download/node-22.20.0/<artifact>
+#   /opt/setup/node-22/bin/node
+#   /opt/setup/node-24/bin/node
+#
+# so installing two does not put them in each other's way.
+#
+# Fields:
+#   id         the name used by install.sh and by a job's `setup:` list
+#   version    hand-pinned upstream version (never "latest")
+#   apt_deps   base packages installed with apt before unpacking - shared
+#              runtime libraries only, never the tool itself
+#   artifact   the release asset carrying a complete tree
+#   sha256     checksum; install.sh refuses to unpack on a mismatch
+#
+# A release tag is <id>-<version>, e.g. releases/download/node-22-22.23.4/...
 
 base:
   # Every setup targets debian trixie on amd64. Anything else is unsupported.
@@ -21,26 +29,113 @@ base:
   arch: amd64
 
 setups:
-  node:
-    version: "22.20.0"
+  # ---------------------------------------------------------------- node ---
+  node-22:
+    tool: node
+    version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils]
-    artifact: node-22.20.0-debian-trixie-amd64.tar.xz
-    sha256: "9bef5e27b3116e41998af1ad59df28823d6604330e4ade744acde1bac68eb51d"            # filled in by the release workflow
+    artifact: node-22.23.4-debian-trixie-amd64.tar.xz
+    sha256: ""
 
-  python:
+  node-24:
+    tool: node
+    version: "24.22.1"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: node-24.22.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  node-26:
+    tool: node
+    version: "26.12.1"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: node-26.12.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -------------------------------------------------------------- python ---
+  python-312:
+    tool: python
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: "b2d5462247f2274378bbe4cbc3578b9f173f4ace2331e3791265619c76fa949f"
+    sha256: ""
 
-  go:
-    version: "1.27.2"
-    apt_deps: [ca-certificates, curl]
-    artifact: go-1.27.2-debian-trixie-amd64.tar.xz
-    sha256: "622dbbba230bca3baab07ec0c250e90579303200452f649bfc627fdd2fa4556c"
+  python-313:
+    tool: python
+    version: "3.13.17"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
+    artifact: python-3.13.17-debian-trixie-amd64.tar.xz
+    sha256: ""
 
-  java:
-    version: "21.0.8+9"
+  python-314:
+    tool: python
+    version: "3.14.9"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
+    artifact: python-3.14.9-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  python-315:
+    tool: python
+    version: "3.15.1"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
+    artifact: python-3.15.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------ go ---
+  go-124:
+    tool: go
+    version: "1.24.13"
     apt_deps: [ca-certificates, curl]
-    artifact: java-21.0.8-9-debian-trixie-amd64.tar.xz
-    sha256: "2151c6b607f58f830db804ccfe52502a029604e08ac5db028c87e26a7afa3596"
+    artifact: go-1.24.13-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  go-125:
+    tool: go
+    version: "1.25.14"
+    apt_deps: [ca-certificates, curl]
+    artifact: go-1.25.14-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  go-126:
+    tool: go
+    version: "1.26.10"
+    apt_deps: [ca-certificates, curl]
+    artifact: go-1.26.10-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  go-127:
+    tool: go
+    version: "1.27.3"
+    apt_deps: [ca-certificates, curl]
+    artifact: go-1.27.3-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------- java ---
+  # Adoptium's semver carries a build suffix ("21.0.12+101.0.LTS"); the "+" is
+  # not safe in an asset name, so it becomes "-" in `artifact`.
+  java-17:
+    tool: java
+    version: "17.0.20+101"
+    apt_deps: [ca-certificates, curl]
+    artifact: java-17.0.20-101-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  java-21:
+    tool: java
+    version: "21.0.12+101"
+    apt_deps: [ca-certificates, curl]
+    artifact: java-21.0.12-101-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  java-25:
+    tool: java
+    version: "25.0.4+101"
+    apt_deps: [ca-certificates, curl]
+    artifact: java-25.0.4-101-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  java-27:
+    tool: java
+    version: "27.0.0+35"
+    apt_deps: [ca-certificates, curl]
+    artifact: java-27.0.0-35-debian-trixie-amd64.tar.xz
+    sha256: ""
