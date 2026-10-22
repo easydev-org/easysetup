@@ -71,6 +71,11 @@ echo "== bump.py rewriting rules =="
 "$PY" tools/test_bump.py | tail -4
 "$PY" tools/test_bump.py >/dev/null || fail=1
 
+echo "== setup name resolution =="
+# `install.sh node-22` must work; `node-2` must NOT silently pick node 22.
+"$PY" tools/test_resolve.py | tail -3
+"$PY" tools/test_resolve.py >/dev/null || fail=1
+
 echo "== pin-checksums.sh edits the matching entry =="
 tmp=$(mktemp -d); mkdir -p "$tmp/assets"
 echo "fake" > "$tmp/assets/$( "$PY" matrixlib.py get "$(echo "$ids" | head -1)" artifact)"
