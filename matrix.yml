@@ -25,22 +25,22 @@ setups:
     version: "22.20.0"
     apt_deps: [ca-certificates, curl, xz-utils]
     artifact: node-22.20.0-debian-trixie-amd64.tar.xz
-    sha256: ""            # filled in by the release workflow
+    sha256: "9bef5e27b3116e41998af1ad59df28823d6604330e4ade744acde1bac68eb51d"            # filled in by the release workflow
 
   python:
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "b2d5462247f2274378bbe4cbc3578b9f173f4ace2331e3791265619c76fa949f"
 
   go:
     version: "1.27.2"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.27.2-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "622dbbba230bca3baab07ec0c250e90579303200452f649bfc627fdd2fa4556c"
 
   java:
     version: "21.0.8+9"
     apt_deps: [ca-certificates, curl]
     artifact: java-21.0.8-9-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "2151c6b607f58f830db804ccfe52502a029604e08ac5db028c87e26a7afa3596"
