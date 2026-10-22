@@ -497,4 +497,4 @@ setups:
     requires: ["java@>=17,<22"]
     apt_deps: [ca-certificates, curl]
     artifact: jenkins-plugin-cli-2.15.0-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "210466497cade4ed0b6345ad798db6b0ed2e8cb1543c75898f0475a5f478c2b3"
