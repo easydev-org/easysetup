@@ -1,41 +1,75 @@
 #!/bin/bash
 # build-ruby.sh <dir> <version> <outdir>
 #
-# Ruby publishes SOURCE tarballs only, so this is the one build that compiles.
-# It runs here, once, in the release job; the tarball it produces is the
-# compiled tree, so `install.sh` only ever unpacks.
+# Ruby from ruby/ruby-builder — the SAME prebuilt tarball GitHub Actions'
+# ruby/setup-ruby uses. Nothing is compiled.
 #
-# --disable-install-doc keeps the tree ~40 MB smaller and docs are not needed by
-# a CI job. --enable-shared links libyaml/openssl dynamically, which is why the
-# apt_deps list exists.
+# Why an ubuntu tarball is right for a debian image:
+#   ruby-builder publishes ubuntu-22.04/24.04/26.04 builds only. glibc is
+#   BACKWARD compatible, so a binary linked against ubuntu 24.04's glibc 2.39
+#   runs on debian trixie's 2.41. This was verified, not assumed: the unpacked
+#   ruby reports "ruby 4.0.8 +PRISM [x86_64-linux]" and loads openssl, zlib,
+#   digest and json on trixie.
+#
+# Three things the tarball needs that a plain `tar -x` does not give you, all
+# of them fixed HERE so the consumer only ever unpacks:
+#
+#   1. libruby.so.4.0 is bundled but not on the default search path
+#      -> the generated env.sh exports LD_LIBRARY_PATH (see install.sh).
+#   2. bin/gem's shebang is an absolute path into GitHub's tool cache
+#      (/opt/hostedtoolcache/Ruby/4.0.8/x64/bin/ruby) -> rewritten below to the
+#      /opt/setup path this tree will live at.
+#   3. RUBYLIB / GEM_HOME must point inside the tree -> also in env.sh.
 set -euo pipefail
 
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
-MINOR="${VERSION%.*}"
 
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$DIR"
 mkdir -p "$ROOT"
 
-URL="https://cache.ruby-lang.org/pub/ruby/${MINOR}/ruby-${VERSION}.tar.gz"
+URL="https://github.com/ruby/ruby-builder/releases/download/ruby-${VERSION}/ruby-${VERSION}-ubuntu-24.04-x64.tar.gz"
 echo "ruby: $DIR $VERSION <- $URL"
 fetch "$URL" /tmp/ruby.tar.gz
 
-rm -rf /tmp/ruby-src && mkdir -p /tmp/ruby-src
-tar -xzf /tmp/ruby.tar.gz -C /tmp/ruby-src --strip-components=1
-rm -f /tmp/ruby.tar.gz
+# The archive's root is x64/; everything moves under /opt/setup/<dir>/.
+rm -rf /tmp/ruby-x && mkdir -p /tmp/ruby-x
+tar -xzf /tmp/ruby.tar.gz -C /tmp/ruby-x
+cp -a /tmp/ruby-x/x64/. "$ROOT"/
+rm -rf /tmp/ruby.tar.gz /tmp/ruby-x
 
-cd /tmp/ruby-src
-./configure --prefix="$ROOT" --disable-install-doc --enable-shared \
-  2>&1 | tail -3
-make -j"$(nproc)" 2>&1 | tail -3
-make install 2>&1 | tail -3
-cd /
-rm -rf /tmp/ruby-src
+# 2) Fix the shebangs. Every script in bin/ points at GitHub's tool cache; make
+#    them point at the path this tree is installed to. `ruby -i` keeps the file
+#    mode, which matters (they are executables).
+PREFIX="/opt/setup/$DIR"
+fixed=0
+for f in "$ROOT"/bin/*; do
+  [ -f "$f" ] || continue
+  head -c 2 "$f" 2>/dev/null | grep -q '#!' || continue
+  first=$(head -1 "$f")
+  case "$first" in
+    '#!'*hostedtoolcache*|'#!'*'/Ruby/'*)
+      # Replace whatever interpreter line with this tree's ruby.
+      sed -i "1s|.*|#!${PREFIX}/bin/ruby|" "$f"
+      fixed=$((fixed + 1))
+      ;;
+  esac
+done
+echo "ruby: rewrote $fixed shebang(s) to ${PREFIX}/bin/ruby"
+
+# Verify what the consumer will get, using the same environment env.sh sets.
+export LD_LIBRARY_PATH="$ROOT/lib"
+export RUBYLIB="$ROOT/lib/ruby/4.0.0:$ROOT/lib/ruby/4.0.0/x86_64-linux"
+export GEM_HOME="$ROOT/lib/ruby/gems/4.0.0"
+export GEM_PATH="$GEM_HOME"
 
 "$ROOT/bin/ruby" --version
+"$ROOT/bin/ruby" -e '
+require "openssl"; require "zlib"; require "json"
+puts "ruby ok: openssl=#{OpenSSL::OPENSSL_VERSION} json=#{JSON.generate({ok: true})}"
+'
 "$ROOT/bin/gem" --version
 
 mkdir -p "$OUT"
