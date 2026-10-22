@@ -6,6 +6,8 @@
 # side by side.
 set -euo pipefail
 
+. "$(dirname "$0")/lib.sh"
+
 ID="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$ID"
@@ -13,7 +15,7 @@ mkdir -p "$ROOT"
 
 URL="https://nodejs.org/dist/v${VERSION}/node-v${VERSION}-linux-x64.tar.xz"
 echo "node: $ID $VERSION <- $URL"
-curl -fsSL --retry 3 --retry-delay 2 -o /tmp/node.tar.xz "$URL"
+fetch "$URL" /tmp/node.tar.xz
 tar -xJf /tmp/node.tar.xz -C "$ROOT" --strip-components=1
 rm -f /tmp/node.tar.xz
 
