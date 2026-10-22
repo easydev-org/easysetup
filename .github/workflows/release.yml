@@ -139,6 +139,13 @@ jobs:
           # expects utf8 filenames. A bare container has no locale at all, so
           # set one: this is a runtime requirement of the tool, not a defect in
           # the tarball, and env.sh exports the same for consumers.
+          #
+          # Setting LANG alone is not enough: C.UTF-8 must EXIST, and a minimal
+          # debian image ships no generated locales, so generate it here.
+          if ! locale -a 2>/dev/null | grep -qi '^C\.utf-8$'; then
+            apt-get install -y -qq --no-install-recommends locales >/dev/null 2>&1 || true
+            localedef -i C -f UTF-8 C.UTF-8 2>/dev/null || true
+          fi
           export LANG=C.UTF-8 LC_ALL=C.UTF-8
           # A setup that `requires` another cannot be exercised alone: elixir
           # shells out to `erl`, luarocks to `lua`. Those dependencies are not
