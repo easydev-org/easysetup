@@ -287,7 +287,11 @@ jobs:
                 bd=$(find "$R" -maxdepth 2 -name '*.artifactbundle' | head -1)
                 [ -n "$bd" ] && [ -f "$bd/info.json" ] || {
                   echo "swift-sdk: no artifactbundle/info.json" >&2; exit 1; }
-                echo "artifactbundle: $(basename "$bd")" ;;
+                # The payload directory is not named after the SDK, so check for
+                # the structure (a directory beside info.json), not a fixed name.
+                pl=$(find "$bd" -maxdepth 1 -mindepth 1 -type d | head -1)
+                [ -n "$pl" ] || { echo "swift-sdk: no payload dir" >&2; exit 1; }
+                echo "artifactbundle: $(basename "$bd") / payload $(basename "$pl")" ;;
               # The build rewrote bin/R's baked-in prefix, so it runs as-is.
               r)      "$B/R" --version | head -1 ;;
               # luarocks is a lua script: its `requires` put lua on PATH above,
