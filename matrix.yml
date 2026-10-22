@@ -240,7 +240,7 @@ setups:
     version: "26.7.2-1"
     apt_deps: [ca-certificates, curl, bzip2, libx11-6, libxext6, libxrender1, libsm6, libice6]
     artifact: conda-26.7.2-1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "863edab05fa6e520f313e458393c3171359cc46746ecb061d918e5193e15c103"
 
   # ------------------------------------------------------------------- R ---
   # Posit's prebuilt R for ubuntu 24.04: a .deb, so the build unpacks it with
