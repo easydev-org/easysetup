@@ -56,6 +56,16 @@ setups:
   - tool: rust-toolchain-x86_64-pc-windows-gnu
     version: "1.99.1"
     requires: [rust-1.99.1]
+  # A comma-separated range with an @: the comma belongs to the Constraint, not
+  # to the YAML list, so it MUST be quoted and the list parser must not split
+  # inside quotes. Getting this wrong turned ["swift@>=6.4,<7"] into two broken
+  # entries ("swift@>=6.4" and "<7") and failed three Swift SDK builds.
+  - tool: swift
+    version: "6.4.1"
+  - tool: swift-sdk-wasm
+    builder: swift-sdk
+    version: "6.4.1"
+    requires: ["swift@>=6.4,<7"]
 ''')
 
 fail = 0
@@ -89,6 +99,10 @@ check("bare tool picks newest", chain_of("luarocks-3.12.2"),
 check("exact requirement still works",
       chain_of("rust-toolchain-x86_64-pc-windows-gnu-1.99.1"),
       ["rust-1.99.1", "rust-toolchain-x86_64-pc-windows-gnu-1.99.1"])
+
+# A quoted, comma-separated range survives the manifest parser intact.
+check("quoted range with a comma stays one requirement",
+      chain_of("swift-sdk-wasm"), ["swift-6.4.1", "swift-sdk-wasm-6.4.1"])
 
 # A range matching nothing must be an ERROR, not a silent skip: otherwise the
 # dependent installs with no runtime at all and fails much later.
