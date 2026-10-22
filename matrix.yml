@@ -339,4 +339,4 @@ setups:
     requires: [lua-5.4.8]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: luarocks-3.12.2-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "779f3b9f1cc54fc7281b34414443646d6170448636a04cdf56cd8c36474023aa"
