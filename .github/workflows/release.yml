@@ -323,9 +323,9 @@ jobs:
                   exit 1
                 fi ;;
               # conan rides on a python setup; the requirement puts it on PATH.
-              conan)  conan --version ;;
+              conan)  "$B/conan" --version ;;
               # a jar plus whatever JRE the java-* requirement installed.
-              jenkins-plugin-cli) jenkins-plugin-cli --version | head -3 ;;
+              jenkins-plugin-cli) "$B/jenkins-plugin-cli" --version | head -3 ;;
               # clang must not merely start: it has to compile and link, which
               # is what proves the pruned tree kept the right pieces and that
               # libstdc++-14-dev supplied the C++ headers.
