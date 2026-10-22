@@ -1,0 +1,174 @@
+name: release
+
+# Cut one GitHub Release per setup in matrix.yml, each carrying a single prebuilt
+# tarball of a complete /opt/setup/<tool> tree.
+#
+# Three stages, and the split matters:
+#
+#   setup   read matrix.yml and fan out one job per setup
+#   build   runs INSIDE debian:trixie - the distro the artefacts target - packs
+#           the tarball and verifies it, then hands the file to the runner
+#   publish runs on the HOST runner, where `gh` and the token exist, creates the
+#           release, uploads the asset and writes its sha256 back into matrix.yml
+#
+# Building on ubuntu-latest instead would produce binaries linked against a
+# different glibc than the consumer's trixie, so the distro is not negotiable.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "single setup to (re)build: node|python|go|java"
+        required: false
+        default: ""
+
+permissions:
+  contents: write        # create releases, upload assets, commit matrix.yml
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.gen.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gen
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/list.json
+          import json, os, yaml
+          only = os.environ.get("ONLY", "").strip()
+          doc = yaml.safe_load(open("matrix.yml"))
+          out = []
+          for name, s in doc["setups"].items():
+              if only and name != only:
+                  continue
+              out.append({
+                  "name": name,
+                  "version": s["version"],
+                  "artifact": s["artifact"],
+              })
+          print(json.dumps({"include": out}))
+          PY
+          echo "list=$(cat /tmp/list.json)" >> "$GITHUB_OUTPUT"
+          python3 -c 'import json;d=json.load(open("/tmp/list.json"));[print(x["name"],x["version"]) for x in d["include"]]'
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.list) }}
+    container:
+      image: debian:trixie
+    steps:
+      - name: build prerequisites
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ca-certificates curl xz-utils python3 tar >/dev/null
+
+      - uses: actions/checkout@v4
+
+      - name: build ${{ matrix.name }} ${{ matrix.version }}
+        run: |
+          set -euo pipefail
+          bash "tools/build-${{ matrix.name }}.sh" "${{ matrix.version }}" /tmp/out
+          ls -lh /tmp/out
+
+      # Verify in a clean directory: unpack, then run the tool by absolute path.
+      # A tarball that unpacks but ships a broken binary must fail HERE, not in
+      # some consumer's CI.
+      - name: verify ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/verify && cd /tmp/verify
+          tar -xJf "/tmp/out/${{ matrix.artifact }}"
+          B="/tmp/verify/opt/setup/${{ matrix.name }}/bin"
+          test -d "$B"
+          case "${{ matrix.name }}" in
+            node)   "$B/node" --version ;;
+            python) "$B/python3" --version ;;
+            go)     "$B/go" version ;;
+            java)   "$B/java" -version 2>&1 | head -1 ;;
+          esac
+
+      # The container's filesystem is thrown away with the job, so the tarball
+      # has to travel to the publish job through the Actions artifact store.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-${{ matrix.name }}
+          path: /tmp/out/${{ matrix.artifact }}
+          retention-days: 1
+
+  publish:
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: setup-*
+          path: /tmp/assets
+          merge-multiple: true
+
+      - name: publish releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ls -l /tmp/assets
+          # One release per tool+version. Delete-and-recreate so a rebuild
+          # replaces the asset instead of piling up duplicates.
+          python3 - <<'PY' > /tmp/releases.txt
+          import yaml
+          doc = yaml.safe_load(open("matrix.yml"))
+          for name, s in doc["setups"].items():
+              print(f'{name}\t{s["version"]}\t{s["artifact"]}')
+          PY
+          while IFS=$'\t' read -r name version artifact; do
+            tag="$name-$version"
+            echo "=== release $tag"
+            gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+            gh release create "$tag" \
+              --title "$name $version (debian-trixie amd64)" \
+              --notes "Prebuilt /opt/setup/$name tree for debian trixie amd64.
+
+          Extract with \`tar -xJf <asset> -C /\`, or let install.sh do it:
+              curl -fsSL https://raw.githubusercontent.com/easydev-org/easysetup/main/install.sh | bash -s -- $name" \
+              "/tmp/assets/$artifact"
+          done < /tmp/releases.txt
+
+      # Pin the checksums into matrix.yml, because install.sh refuses to unpack
+      # an asset it cannot verify.
+      - name: record sha256 in matrix.yml
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, hashlib, os, re
+          text = open("matrix.yml").read()
+          for path in glob.glob("/tmp/assets/*.tar.xz"):
+              digest = hashlib.sha256(open(path, "rb").read()).hexdigest()
+              asset = os.path.basename(path)
+              # Replace the sha256 that follows this artefact's name.
+              pattern = re.compile(
+                  r'(artifact: ' + re.escape(asset) + r'\n\s+sha256: )"[^"]*"')
+              text, n = pattern.subn(r'\1"' + digest + '"', text)
+              print(f"{asset} -> {digest} ({n} replacement)")
+          open("matrix.yml", "w").write(text)
+          PY
+          git diff --stat
+          if git diff --quiet matrix.yml; then
+            echo "matrix.yml unchanged"
+          else
+            git config user.name  "easysetup-bot"
+            git config user.email "easysetup-bot@users.noreply.github.com"
+            git add matrix.yml
+            git commit -m "chore(matrix): pin sha256 for the published assets"
+            git push
+          fi
