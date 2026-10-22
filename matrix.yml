@@ -247,7 +247,7 @@ setups:
   # dpkg-deb -x instead of installing to the host.
   - tool: r
     version: "4.5.2"
-    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4]
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4, libopenblas0-pthread, libcairo2, libglib2.0-0t64, libgomp1, libjpeg62-turbo, libpango-1.0-0, libpangocairo-1.0-0, libpng16-16t64, libtcl8.6, libtiff6, libtk8.6, libx11-6, libxt6t64, libdeflate0, libpaper1, libtirpc3t64]
     artifact: r-4.5.2-debian-trixie-amd64.tar.xz
     sha256: ""
 
@@ -339,4 +339,4 @@ setups:
     requires: [lua-5.4.8]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: luarocks-3.12.2-debian-trixie-amd64.tar.xz
-    sha256: "779f3b9f1cc54fc7281b34414443646d6170448636a04cdf56cd8c36474023aa"
+    sha256: ""
