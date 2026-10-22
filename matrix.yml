@@ -290,7 +290,7 @@ setups:
     requires: [erlang-29.1.2]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: elixir-1.20.4-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "bfa87f8b863a105d197fcf2ac08e2f74e3432b9bffaa129009a0036292c73a06"
 
   # ------------------------------------------------------------------ sbt ---
   # Covers the `ivy` protocol. Needs a JRE, which a java-* setup provides.
