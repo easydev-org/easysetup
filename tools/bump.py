@@ -122,11 +122,11 @@ def track(e):
     return None
 
 
-def artifact_for(tool, version, target=None):
-    # "+" and the target separator are not safe in an asset name.
+def artifact_for(tool, version, components=None):
+    # "+" is not safe in an asset name; components are appended with "-".
     stem = f"{tool}-{version.replace('+', '-')}"
-    if target:
-        stem += f"-{target}"
+    for c in components or []:
+        stem += f"-{c}"
     return f"{stem}-debian-trixie-amd64.tar.xz"
 
 
@@ -138,9 +138,10 @@ def find_bumps():
             print(f"skip {e['dir']}: no version feed for tool '{e['tool']}'",
                   file=sys.stderr)
             continue
-        if e.get("target"):
-            # A cross target follows its host toolchain's version, not its own
-            # line; bumping it independently would desync the pair.
+        if e["components"]:
+            # An entry with components (e.g. a rust cross-compile std) follows
+            # its host toolchain's version; bumping it independently would
+            # desync the pair, so it is bumped only via its host entry.
             continue
         try:
             latest = {"node": newest_node, "python": newest_python,
@@ -169,14 +170,16 @@ def apply_bumps(bumps):
     text = MATRIX.read_text()
     lines = text.splitlines()
 
-    # Walk the list and record each block's [start, end] line span.
+    # Walk the list and record each block's [start, end] line span, plus the
+    # fields needed to rebuild its directory name.
     blocks = []
     cur = None
     for i, line in enumerate(lines):
         if re.match(r"^  - ", line):
             if cur:
                 cur["end"] = i - 1
-            cur = {"start": i, "end": len(lines) - 1, "tool": None, "version": None}
+            cur = {"start": i, "end": len(lines) - 1, "tool": None,
+                   "version": None, "components": []}
             blocks.append(cur)
             m = re.match(r"^  - tool:\s*(\S+)", line)
             if m:
@@ -184,14 +187,26 @@ def apply_bumps(bumps):
             continue
         if cur and re.match(r"^\s+version:", line):
             cur["version"] = re.search(r'"([^"]*)"', line).group(1)
+        if cur and re.match(r"^\s+components:", line):
+            # Inline form `components: [a, b]`; the block form is handled below.
+            m = re.search(r"\[([^\]]*)\]", line)
+            if m:
+                cur["components"] = [x.strip().strip('"')
+                                     for x in m.group(1).split(",") if x.strip()]
+        if cur and re.match(r"^\s+- ", line) and cur.get("components") is not None:
+            # Block form continuation (6-space `- item` under `components:`).
+            cur["components"].append(line.strip()[2:].strip().strip('"'))
     if cur:
         cur["end"] = len(lines) - 1
 
-    # index by <tool>-<version>, which is the derived directory name
+    # index by the derived directory name, components included
     index = {}
     for b in blocks:
         if b["tool"] and b["version"]:
-            index[f'{b["tool"]}-{b["version"]}'] = b
+            d = f'{b["tool"]}-{b["version"]}'
+            for c in b["components"]:
+                d += f'+{c}'
+            index[d] = b
 
     def field_line(b, field):
         for i in range(b["start"], b["end"] + 1):
