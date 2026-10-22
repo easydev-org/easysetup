@@ -49,17 +49,25 @@ fi
 mkdir -p /opt/setup
 installed=""
 
+# Flatten every requested name into an install order, dependencies first, with
+# each setup appearing once. `install.sh elixir-1` therefore installs erlang
+# before elixir, and asking for both does not install erlang twice.
+ALL=""
 for name in "$@"; do
-  # Resolve first: a name may be a prefix of the version (`node-22`), and the
-  # concrete directory is what everything below keys off.
-  id=$(mlib resolve "$name" 2>/dev/null || true)
-  if [ -z "$id" ]; then
-    echo "install.sh: no setup matches '$name'" >&2
+  chain=$(mlib resolve "$name") || {
+    echo "install.sh: cannot resolve '$name'" >&2
     echo "            available: $(mlib list | tr '\n' ' ')" >&2
     exit 2
-  fi
-  [ "$id" = "$name" ] || echo "==> $name -> $id"
+  }
+  for id in $chain; do
+    case " $ALL " in
+      *" $id "*) ;;
+      *) ALL="$ALL $id" ;;
+    esac
+  done
+done
 
+for id in $ALL; do
   tool=$(mlib get "$id" tool)
   version=$(mlib get "$id" version)
   artifact=$(mlib get "$id" artifact)
