@@ -86,6 +86,13 @@ echo "== bump.py rewriting rules =="
 "$PY" tools/test_bump.py | tail -4
 "$PY" tools/test_bump.py >/dev/null || fail=1
 
+echo "== matrix.yml sha256 pins survive an upload =="
+# The pins are computed by CI and live only in the remote matrix.yml; the local
+# copy has them empty. A verbatim upload wiped all of them once, which made
+# install.sh refuse to unpack anything.
+"$PY" tools/test_merge_pins.py | tail -3
+"$PY" tools/test_merge_pins.py >/dev/null || fail=1
+
 echo "== env.sh accumulates across invocations =="
 # The real failure this guards: install.sh is called once per `uses:` step, and
 # generating env.sh from "what this run installed" made each call erase the
