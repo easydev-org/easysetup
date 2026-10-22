@@ -1,27 +1,32 @@
 #!/bin/bash
 # build-rust.sh <dir> <version> <outdir>
 #
-# build-rust.sh <dir> <version> <outdir> [components...]
+# Shared by two DIFFERENT setups, which is why it reads the target out of the
+# directory name instead of taking it as an argument:
 #
-# Builds ONE /opt/setup tree out of the upstream rust components.
+#   rust-1.99.1                              the host toolchain
+#                                            -> rustc + cargo + host rust-std
+#   rust-toolchain-x86_64-pc-windows-gnu-1.99.1
+#                                            a cross-compile std only
+#       the tool name carries the target as `rust-toolchain-<target>`, so
+#       stripping that prefix gives the triple.
 #
-#   no components        rustc + cargo + rust-std for x86_64-unknown-linux-gnu
-#                        -> the host toolchain
-#   components given      rust-std for each named target only
-#                        -> cross-compilation support, installed alongside
-#
-# `components` is the general "optional add-ons for a package" mechanism; for
-# rust the add-ons are target std libraries (x86_64-pc-windows-gnu, ...).
-#
-# rustup is deliberately NOT involved: the components are unpacked directly, so
+# rustup is deliberately NOT involved: components are unpacked directly, so
 # nothing is resolved or fetched at install time.
 set -euo pipefail
 
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
-shift 3
-COMPONENTS=("$@")          # already split on whitespace by the caller
+
+# Derive the cross target from the setup name, if any.
+TOOL="${DIR%-$VERSION}"
+case "$TOOL" in
+  rust-toolchain-*) TARGET="${TOOL#rust-toolchain-}" ;;
+  rust)             TARGET="" ;;
+  *) echo "rust: unexpected setup name '$DIR'" >&2; exit 1 ;;
+esac
+echo "rust: setup=$DIR target=${TARGET:-<host>}"
 
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$DIR"
@@ -49,7 +54,7 @@ install_component() {
   rm -rf "/tmp/rust-${comp}" "/tmp/rust-${comp}.tar.gz"
 }
 
-if [ "${#COMPONENTS[@]}" -eq 0 ]; then
+if [ -z "$TARGET" ]; then
   # Host toolchain: rustc, cargo and the host std. rust-std is what makes
   # `cargo build` work at all for the host triple.
   install_component rustc "$HOST"
@@ -60,19 +65,13 @@ if [ "${#COMPONENTS[@]}" -eq 0 ]; then
   "$ROOT/bin/cargo" --version
   ( cd "$ROOT" && ./bin/rustc --print target-list >/dev/null )
 else
-  # One or more cross targets: only the std for each is needed, and it lands in
-  # the host's lib/rustlib/<target>/ directory of THIS tree.
-  for c in "${COMPONENTS[@]}"; do
-    install_component rust-std "$c"
-  done
+  # A cross target: only the std for it is needed, and it lands in the tree's
+  # lib/rustlib/<target>/ directory.
+  install_component rust-std "$TARGET"
 fi
 
 mkdir -p "$OUT"
-STEM="rust-${VERSION}"
-for c in "${COMPONENTS[@]}"; do
-  STEM="${STEM}-${c}"
-done
-ASSET="$OUT/${STEM}-debian-trixie-amd64.tar.xz"
+ASSET="$OUT/${TOOL}-${VERSION}-debian-trixie-amd64.tar.xz"
 tar -cJf "$ASSET" -C "$STAGE" .
 rm -rf "$STAGE"
 echo "rust: wrote $ASSET"
