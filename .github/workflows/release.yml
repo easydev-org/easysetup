@@ -285,12 +285,17 @@ jobs:
               # payload are present, which is what the compiler needs.
               swift-sdk-*)
                 bd=$(find "$R" -maxdepth 2 -name '*.artifactbundle' | head -1)
-                [ -n "$bd" ] && [ -f "$bd/info.json" ] || {
-                  echo "swift-sdk: no artifactbundle/info.json" >&2; exit 1; }
-                # The payload directory is not named after the SDK, so check for
-                # the structure (a directory beside info.json), not a fixed name.
+                if [ -z "$bd" ] || [ ! -f "$bd/info.json" ]; then
+                  echo "swift-sdk: no artifactbundle/info.json" >&2
+                  exit 1
+                fi
+                # The payload dir is not named after the SDK, so test the
+                # structure (a directory beside info.json), not a fixed name.
                 pl=$(find "$bd" -maxdepth 1 -mindepth 1 -type d | head -1)
-                [ -n "$pl" ] || { echo "swift-sdk: no payload dir" >&2; exit 1; }
+                if [ -z "$pl" ]; then
+                  echo "swift-sdk: no payload dir" >&2
+                  exit 1
+                fi
                 echo "artifactbundle: $(basename "$bd") / payload $(basename "$pl")" ;;
               # The build rewrote bin/R's baked-in prefix, so it runs as-is.
               r)      "$B/R" --version | head -1 ;;
