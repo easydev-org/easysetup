@@ -39,20 +39,39 @@ rm -rf /tmp/php-x && mkdir -p /tmp/php-x
 tar -xJf /tmp/php.tar.xz -C /tmp/php-x
 rm -f /tmp/php.tar.xz
 
-# Re-root: the tree is ./usr, ./etc, ... The consumer's env.sh puts
-# /opt/setup/<dir>/bin on PATH, so usr/bin and usr/sbin are flattened into
-# $ROOT/bin here; the rest of usr/ and etc/ keep their layout under $ROOT.
+# This tarball is debian's FULL php packaging: CLI, php-fpm, the apache2 module
+# and every bundled extension. Taken whole it needs ~40 shared libraries
+# (libnetsnmp, librdkafka, libzmq, libpq, libtidy, ...), which is not what a CI
+# job wants and not something apt_deps should be asked to satisfy.
+#
+# So only the CLI is kept: bin/php*/php-config*/phpize*, the shared libs those
+# need, and the two ini directories the CLI reads. php-fpm and the apache module
+# are dropped along with their extension set - a CI job runs `php script.php`,
+# not a web server.
 mkdir -p "$ROOT/bin"
-if [ -d /tmp/php-x/usr/bin ]; then
-  cp -a /tmp/php-x/usr/bin/. "$ROOT/bin/"
-fi
-if [ -d /tmp/php-x/usr/sbin ]; then
-  cp -a /tmp/php-x/usr/sbin/. "$ROOT/bin/"
-fi
-for d in lib share include; do
-  [ -d "/tmp/php-x/usr/$d" ] && cp -a "/tmp/php-x/usr/$d" "$ROOT/"
+for f in /tmp/php-x/usr/bin/php"${SHORT}" \
+         /tmp/php-x/usr/bin/php-config"${SHORT}" \
+         /tmp/php-x/usr/bin/phpize"${SHORT}"; do
+  [ -e "$f" ] || continue
+  case "$(basename "$f")" in
+    php-fpm*|php-cgi*|phpdbg*) continue ;;   # server/debug SAPI: not needed
+  esac
+  cp -a "$f" "$ROOT/bin/"
 done
-[ -d /tmp/php-x/etc ] && cp -a /tmp/php-x/etc "$ROOT/"
+
+# The CLI's own libraries (it links libphp only when built as a module; the CLI
+# binary is self-contained apart from the extension .so files below).
+[ -d /tmp/php-x/usr/lib/php ] && cp -a /tmp/php-x/usr/lib "$ROOT/"
+
+# Only the ini that configures the CLI.
+mkdir -p "$ROOT/etc/php/${SHORT}/cli"
+if [ -d "/tmp/php-x/etc/php/${SHORT}/cli" ]; then
+  cp -a "/tmp/php-x/etc/php/${SHORT}/cli/." "$ROOT/etc/php/${SHORT}/cli/"
+fi
+if [ -d "/tmp/php-x/etc/php/${SHORT}/mods-available" ]; then
+  mkdir -p "$ROOT/etc/php/${SHORT}/mods-available"
+  cp -a "/tmp/php-x/etc/php/${SHORT}/mods-available/." "$ROOT/etc/php/${SHORT}/mods-available/"
+fi
 rm -rf /tmp/php-x
 
 # The CLI is versioned (bin/php8.5, from debian's packaging). Provide the
