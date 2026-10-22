@@ -32,7 +32,11 @@ fi
 cp -a "$SRC"/. "$ROOT"/
 rm -rf /tmp/r-x
 
-"$ROOT/bin/R" --version | head -1
+# R's launcher hard-codes R_HOME from its build prefix (/opt/R/<version>), which
+# no longer exists once the tree lives under /opt/setup/. R_HOME is the
+# supported override, so it must be exported wherever R is used - including
+# from env.sh, which install.sh writes.
+R_HOME="$ROOT/lib/R" "$ROOT/bin/R" --version | head -1
 
 mkdir -p "$OUT"
 ASSET="$OUT/r-${VERSION}-debian-trixie-amd64.tar.xz"
