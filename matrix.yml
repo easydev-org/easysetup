@@ -388,7 +388,10 @@ setups:
   # relocatable; CMake_ROOT is exported by env.sh so it finds its modules.
   - tool: cmake
     version: "4.4.4"
-    apt_deps: [ca-certificates, curl]
+    # cmake-gui ships in the same tarball and links X11/fontconfig/freetype,
+    # so they belong in apt_deps: the verify step ldd-checks every binary,
+    # and a cmake whose GUI cannot start is a broken tree.
+    apt_deps: [ca-certificates, curl, libxcb1, libfontconfig1, libfreetype6, libx11-6, libxext6, libxrender1]
     artifact: cmake-4.4.4-debian-trixie-amd64.tar.xz
     sha256: ""
 
