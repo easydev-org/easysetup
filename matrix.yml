@@ -33,94 +33,94 @@ setups:
     version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: "81fd1e9a9bae941905cd6ecaa52197d47054c04710953ee5564e51e2c5905af6"
+    sha256: "dc68e2c33d6b50b47235c6e0505780566c355ac1fcd9ea328953948ddb80ec0d"
 
   - tool: node
     version: "24.22.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
-    sha256: "06bfff0d7bd5f6b89e6decb26ffb22295125831ccc9e1b5ddf2343104485ec92"
+    sha256: "c15467c93ef95303630bfc76b235d5ae76a8b88f9b7552d794e0f13cc845bf90"
 
   - tool: node
     version: "26.12.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-26.12.1-debian-trixie-amd64.tar.xz
-    sha256: "902d34debd822621e2f6cb4f9348355f4ec31c1f53d9649d1be1c6e9a70e7a06"
+    sha256: "22b0fdaf75cea0993f44b9be5a803f7e2c702bd2532c846b3dfbedbad856ff35"
 
   # -------------------------------------------------------------- python ---
   - tool: python
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: "60d67f20c8c2e0496dd1391838f244454e80c0c41b816243b6649c282704e25a"
+    sha256: "6e3354e88a353792e74c996205b3a46902e125196b5cdb3396db385fe3b9048c"
 
   - tool: python
     version: "3.13.17"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.13.17-debian-trixie-amd64.tar.xz
-    sha256: "381ecae2b4e27bc3935d7d897d64bd6b03c5dab4e62eb0fe720dfc020824f17a"
+    sha256: "bdc8ad80d78000d97b83b428c57f10f9e38860990cb5270d06a3f6b19fa8ec5c"
 
   - tool: python
     version: "3.14.9"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.14.9-debian-trixie-amd64.tar.xz
-    sha256: "e5c0e4367112677470031d6482a0d2989ae9ecd333e165d31166112b72f5cfb2"
+    sha256: "9bbb25869b3924177577a0c16ae5f1d1c5ce4123883b4e264f144677a5e73d8f"
 
   - tool: python
     version: "3.15.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.15.1-debian-trixie-amd64.tar.xz
-    sha256: "4b7040d2fa1767fbcef4241eed4c7dcadd5ef69775fb8a9927d52d35a67deac2"
+    sha256: "af98bdaf27668f2b31dae7fa37dc6f3a7b964efc2b0a637fafaa35c26d304577"
 
   # ------------------------------------------------------------------ go ---
   - tool: go
     version: "1.24.13"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.24.13-debian-trixie-amd64.tar.xz
-    sha256: "5eb441558a5d8cab13464a308a1c48c5c701a0245ca2e97fe44ebf15e93ec434"
+    sha256: "ddbe1b5afe29f62625759bfab4ddecc2a3b09368ee9d9d35e589b62b6e5f5fe0"
 
   - tool: go
     version: "1.25.14"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.25.14-debian-trixie-amd64.tar.xz
-    sha256: "ea329e06d537fe62713636b4073acedeebf543aa725aa7ebf7d501a27eda58ab"
+    sha256: "91d12792745796baf803e132c2cd6d46d9b2f85310ab0d25c872ab237894bb36"
 
   - tool: go
     version: "1.26.10"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.26.10-debian-trixie-amd64.tar.xz
-    sha256: "318dad45893c06b9fd24dd6b574e9b9f67a87e3b2eb5eae8cb1c1e13a9d2d3e2"
+    sha256: "364406ed8966132f2140a2644e7cef500c368204bd9f18a3485603ca706285a9"
 
   - tool: go
     version: "1.27.3"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.27.3-debian-trixie-amd64.tar.xz
-    sha256: "eb55fcd78b3e59280571f572f3fd682ec8b992434a071d9938365883e43dc005"
+    sha256: "6510198d4228a717170fbdaf326c27c5c2980486a4c0808013a6704d710fbaa9"
 
   # ---------------------------------------------------------------- java ---
   - tool: java
     version: "17.0.20+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-17.0.20-101-debian-trixie-amd64.tar.xz
-    sha256: "0f7eba75ccd66c0c7311fa968af922070c6ae87c7809ea1c277cc4b2fdbb0833"
+    sha256: "e8b66c8d99602c9625359cb4026658270473f3a9d1e8fffaa8ff1d132981ce09"
 
   - tool: java
     version: "21.0.12+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-21.0.12-101-debian-trixie-amd64.tar.xz
-    sha256: "ab65db028ec3ffe2ff867bea53dcdbe82433e56f23133aaa662d1452f7379398"
+    sha256: "f1cc4c222fd374579b43c583e95d3c9ade393e19004b4bfc1012a5fdac0d92ef"
 
   - tool: java
     version: "25.0.4+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-25.0.4-101-debian-trixie-amd64.tar.xz
-    sha256: "21b80101145843a20005e43f546e97a4e274029631b3994b0327fbc2b81808b0"
+    sha256: "28e73f1e4c632ddfd2601c645416e8a06517837c882d71c95d9e8e7ba1cb2b3a"
 
   - tool: java
     version: "27.0.0+35"
     apt_deps: [ca-certificates, curl]
     artifact: java-27.0.0-35-debian-trixie-amd64.tar.xz
-    sha256: "e2d4b30c971e0d8d6752d7d746078c589fdaf7def837f4fe5878a321751bada9"
+    sha256: "3386a6a9dabadbe019879ce94aea5f93976c93645e9169c4ac5f26edae7f77b5"
 
   # --------------------------------------------------------------- maven ---
   # Apache Maven, from the official -bin.tar.gz. Needs a JRE, which is NOT
@@ -167,7 +167,7 @@ setups:
     version: "1.99.1"
     apt_deps: [ca-certificates, curl, gcc, libc6-dev]
     artifact: rust-1.99.1-debian-trixie-amd64.tar.xz
-    sha256: "6c4342aa6a99bbf0076cae34a0280e63840050d3f64c2c63e95b62ff928f1e0e"
+    sha256: "29fe890b1b440bc8512ea34b308e701eee330e4721d1a28abf08aae7a326f572"
 
   # Cross target: Windows GNU. It links with mingw on linux, so this one really
   # produces a .exe from a linux host - that is why it carries the linker's
@@ -208,18 +208,18 @@ setups:
     version: "4.3.1"
     apt_deps: [ca-certificates, curl]
     artifact: helm-4.3.1-debian-trixie-amd64.tar.xz
-    sha256: "78aa5760a7ff576ffe70f746e4952194b8f028f4b5b30fe33c5629013400b80e"
+    sha256: "150c4537f98ec8e4d23de0e17e362d8272dbb66cb35925ff404d8fd9e3b5d89d"
 
   # --------------------------------------------------------------- bazel ---
   - tool: bazel
     version: "9.3.1"
     apt_deps: [ca-certificates, curl, unzip, gcc, libc6-dev, zlib1g, openjdk-21-jre-headless]
     artifact: bazel-9.3.1-debian-trixie-amd64.tar.xz
-    sha256: "35043351e168cef06537b9e89737498e444a1a567e7811575a426ff3f5252fd2"
+    sha256: "eae7108f3086e6f73633caacd16044c7cff5aa476bd62f206912cd4de4c00a66"
 
   # ----------------------------------------------------------------- buf ---
   - tool: buf
     version: "1.75.0"
     apt_deps: [ca-certificates, curl]
     artifact: buf-1.75.0-debian-trixie-amd64.tar.xz
-    sha256: "5e816b59dab3018897e838710e1da94be014bdc63e0c292b6ae45738ef8ae200"
+    sha256: "881a788c3e690e525e3bed4316eb47476bb5bb179dfb76286d0a90e7c21de58a"
