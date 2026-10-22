@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""test_resolve.py — how a setup name is resolved.
+"""test_resolve.py — name resolution and dependency resolution.
 
-The rule being pinned down: a name may be a PREFIX of the version, matched by
-dot-separated segment, and several entries matching means "the newest of those".
+Two separate rules, tested separately:
 
-    node-22          -> node-22.23.4      (only 22.x present)
-    node-22.23       -> node-22.23.4
-    node-22.23.4     -> node-22.23.4      (exact)
-    node-2           -> error             ("2" is not a segment of "22")
-    node-99          -> error
-    rust-1.99.1      -> the HOST entry, never a cross target
+  * a setup name may abbreviate the VERSION (`node-22`), by dot-segment prefix;
+  * a setup may `requires` another, and installing it installs the dependency
+    first, once.
+
+Cross-compile toolchains used to be `+components`; they are now ordinary setups
+whose name carries the target (`rust-toolchain-x86_64-pc-windows-gnu-1.99.1`),
+so a tool name containing dashes must still resolve.
 """
 
 import pathlib
@@ -26,37 +26,34 @@ base:
 setups:
   - tool: node
     version: "22.23.4"
-    artifact: node-22.23.4.tar.xz
-    sha256: ""
   - tool: node
     version: "22.24.0"
-    artifact: node-22.24.0.tar.xz
-    sha256: ""
   - tool: node
     version: "24.22.1"
-    artifact: node-24.22.1.tar.xz
-    sha256: ""
   - tool: java
     version: "21.0.12+101"
-    artifact: java-21.0.12-101.tar.xz
-    sha256: ""
   - tool: rust
     version: "1.99.1"
-    artifact: rust-1.99.1.tar.xz
-    sha256: ""
-  - tool: rust
+  - tool: rust-toolchain-x86_64-pc-windows-gnu
+    builder: rust
     version: "1.99.1"
-    components: [x86_64-pc-windows-gnu]
-    artifact: rust-1.99.1-gnu.tar.xz
-    sha256: ""
-  - tool: python
-    version: "3.12.15"
-    artifact: python-3.12.15.tar.xz
-    sha256: ""
-  - tool: python
-    version: "3.15.1"
-    artifact: python-3.15.1.tar.xz
-    sha256: ""
+    requires: [rust-1.99.1]
+  - tool: erlang
+    version: "29.1.2"
+  - tool: elixir
+    version: "1.20.4"
+    requires: [erlang-29.1.2]
+  - tool: lua
+    version: "5.4.8"
+  - tool: luarocks
+    version: "3.12.2"
+    requires: [lua-5.4.8]
+  - tool: cyclic
+    version: "1.0"
+    requires: [cyclic2-1.0]
+  - tool: cyclic2
+    version: "1.0"
+    requires: [cyclic-1.0]
 """)
 
 fail = 0
@@ -64,63 +61,62 @@ fail = 0
 
 def ok(name, got, want):
     global fail
-    if got == want:
-        print(f"ok   {name} -> {got}")
-    else:
-        print(f"FAIL {name}: got {got!r}, want {want!r}")
+    print(("ok   " if got == want else "FAIL ") + name + f" -> {got}")
+    if got != want:
+        print(f"     want {want!r}")
         fail = 1
 
 
-def err(name):
+def none(name):
     global fail
-    try:
-        r = matrixlib.resolve(name, str(MATRIX))
-    except matrixlib.Ambiguous as e:
-        print(f"FAIL {name}: ambiguous ({e})")
-        fail = 1
-        return
-    if r is None:
-        print(f"ok   {name} -> no match")
-    else:
-        print(f"FAIL {name}: matched {r['dir']}, expected no match")
+    r = matrixlib.resolve(name, str(MATRIX))
+    print(("ok   " if r is None else "FAIL ") + name + " -> " +
+          ("no match" if r is None else r["dir"]))
+    if r is not None:
         fail = 1
 
 
+# --- version prefixes ------------------------------------------------------
 ok("node-22", matrixlib.resolve("node-22", str(MATRIX))["dir"], "node-22.24.0")
 ok("node-22.23", matrixlib.resolve("node-22.23", str(MATRIX))["dir"], "node-22.23.4")
 ok("node-22.23.4", matrixlib.resolve("node-22.23.4", str(MATRIX))["dir"], "node-22.23.4")
-ok("node-24", matrixlib.resolve("node-24", str(MATRIX))["dir"], "node-24.22.1")
 ok("java-21", matrixlib.resolve("java-21", str(MATRIX))["dir"], "java-21.0.12+101")
-ok("java-21.0.12", matrixlib.resolve("java-21.0.12", str(MATRIX))["dir"], "java-21.0.12+101")
 
-# A bare rust version must pick the HOST build, not a component entry.
-ok("rust-1.99.1 picks host",
-   matrixlib.resolve("rust-1.99.1", str(MATRIX))["dir"], "rust-1.99.1")
+# segments, not characters
+none("node-2")
+none("node-99")
 
-# A component is named with @ and only its FULL name is accepted.
-ok("rust-1.99.1@<full component>",
-   matrixlib.resolve("rust-1.99.1@x86_64-pc-windows-gnu", str(MATRIX))["dir"],
-   "rust-1.99.1+x86_64-pc-windows-gnu")
+# --- a tool name may contain dashes ---------------------------------------
+ok("long tool name, version prefix",
+   matrixlib.resolve("rust-toolchain-x86_64-pc-windows-gnu-1.99", str(MATRIX))["dir"],
+   "rust-toolchain-x86_64-pc-windows-gnu-1.99.1")
+ok("long tool name, bare major",
+   matrixlib.resolve("rust-toolchain-x86_64-pc-windows-gnu-1", str(MATRIX))["dir"],
+   "rust-toolchain-x86_64-pc-windows-gnu-1.99.1")
 
-# No partial component matching: these must NOT resolve.
-err("rust-1.99.1@windows-gnu")
-err("rust-1.99.1@x86_64")
-err("rust-1.99.1@gnu")
+# --- requires is followed, dependency first, once -------------------------
+chain = [e["dir"] for e in matrixlib.resolve_chain("elixir-1", str(MATRIX))]
+ok("elixir pulls erlang first", chain, ["erlang-29.1.2", "elixir-1.20.4"])
 
-# The version part of an @-name may still be a prefix.
-ok("rust-1@<full component>",
-   matrixlib.resolve("rust-1@x86_64-pc-windows-gnu", str(MATRIX))["dir"],
-   "rust-1.99.1+x86_64-pc-windows-gnu")
+chain = [e["dir"] for e in matrixlib.resolve_chain("luarocks-3", str(MATRIX))]
+ok("luarocks pulls lua first", chain, ["lua-5.4.8", "luarocks-3.12.2"])
 
-# "2" must not be treated as a prefix of "22" — segments, not strings.
-err("node-2")
-err("node-99")
-err("nope-1")
+chain = [e["dir"] for e in matrixlib.resolve_chain(
+    "rust-toolchain-x86_64-pc-windows-gnu-1", str(MATRIX))]
+ok("cross toolchain pulls host rust",
+   chain, ["rust-1.99.1", "rust-toolchain-x86_64-pc-windows-gnu-1.99.1"])
 
-# A whole-major prefix IS valid: `python-3` means the newest 3.x.
-ok("python-3 -> newest 3.x",
-   matrixlib.resolve("python-3", str(MATRIX))["dir"], "python-3.15.1")
-ok("python-3.12", matrixlib.resolve("python-3.12", str(MATRIX))["dir"], "python-3.12.15")
+# A setup with no requires is just itself.
+chain = [e["dir"] for e in matrixlib.resolve_chain("node-22", str(MATRIX))]
+ok("node has no dependency", chain, ["node-22.24.0"])
+
+# --- a cycle must be refused, not looped ----------------------------------
+try:
+    matrixlib.resolve_chain("cyclic-1", str(MATRIX))
+    print("FAIL cycle not detected")
+    fail = 1
+except ValueError as e:
+    print(f"ok   cycle refused ({e})")
 
 print(f"\ntest_resolve: {'FAILED' if fail else 'ok'}")
 raise SystemExit(1 if fail else 0)
