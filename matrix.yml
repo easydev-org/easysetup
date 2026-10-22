@@ -312,7 +312,7 @@ setups:
     version: "9.12.2"
     apt_deps: [ca-certificates, curl, gcc, g++, libc6-dev, libgmp10, libnuma1, xz-utils, make]
     artifact: ghc-9.12.2-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "c72263c65ccc8fcb54617769df4c11916a2b2d54d75487027e7822fbf87b16a4"
 
   - tool: cabal
     version: "3.12.1.0"
