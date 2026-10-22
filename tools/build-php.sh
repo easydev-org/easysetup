@@ -39,18 +39,27 @@ rm -rf /tmp/php-x && mkdir -p /tmp/php-x
 tar -xJf /tmp/php.tar.xz -C /tmp/php-x
 rm -f /tmp/php.tar.xz
 
-# Re-root: the tree is ./usr, ./etc, ... so copy each top dir under $ROOT.
-for d in usr etc; do
-  [ -d "/tmp/php-x/$d" ] && cp -a "/tmp/php-x/$d" "$ROOT/"
+# Re-root: the tree is ./usr, ./etc, ... The consumer's env.sh puts
+# /opt/setup/<dir>/bin on PATH, so usr/bin and usr/sbin are flattened into
+# $ROOT/bin here; the rest of usr/ and etc/ keep their layout under $ROOT.
+mkdir -p "$ROOT/bin"
+if [ -d /tmp/php-x/usr/bin ]; then
+  cp -a /tmp/php-x/usr/bin/. "$ROOT/bin/"
+fi
+if [ -d /tmp/php-x/usr/sbin ]; then
+  cp -a /tmp/php-x/usr/sbin/. "$ROOT/bin/"
+fi
+for d in lib share include; do
+  [ -d "/tmp/php-x/usr/$d" ] && cp -a "/tmp/php-x/usr/$d" "$ROOT/"
 done
+[ -d /tmp/php-x/etc ] && cp -a /tmp/php-x/etc "$ROOT/"
 rm -rf /tmp/php-x
 
-# The CLI is versioned (usr/bin/php8.5). Provide the unversioned names a build
-# script actually calls, plus phpize/php-config which keep their versioned names
-# in debian and are needed to build extensions.
+# The CLI is versioned (bin/php8.5, from debian's packaging). Provide the
+# unversioned names a build script actually calls.
 ln -sf "php${SHORT}" "$ROOT/bin/php"
-ln -sf "php-config${SHORT}" "$ROOT/bin/php-config"
-ln -sf "phpize${SHORT}" "$ROOT/bin/phpize"
+[ -e "$ROOT/bin/php-config${SHORT}" ] && ln -sf "php-config${SHORT}" "$ROOT/bin/php-config"
+[ -e "$ROOT/bin/phpize${SHORT}" ] && ln -sf "phpize${SHORT}" "$ROOT/bin/phpize"
 
 # php was built for the debian prefix (/usr), so tell it where its ini and
 # extension dir really are now. PHPRC + PHP_INI_SCAN_DIR are the supported way;
@@ -58,7 +67,8 @@ ln -sf "phpize${SHORT}" "$ROOT/bin/phpize"
 export PHPRC="$ROOT/etc/php/${SHORT}/cli"
 export PHP_INI_SCAN_DIR="$ROOT/etc/php/${SHORT}/cli/conf.d:$ROOT/etc/php/${SHORT}/mods-available"
 
-"$ROOT/bin/php" --version | head -1
+"$ROOT/bin/php" --version | head -1 \
+  || { echo "php: --version failed" >&2; exit 1; }
 "$ROOT/bin/php" -r 'echo "openssl=", extension_loaded("openssl") ? "yes" : "NO", " json=", extension_loaded("json") ? "yes" : "NO", "\n";'
 
 mkdir -p "$OUT"
