@@ -1,11 +1,15 @@
 name: refresh
 
-# Check whether any PINNED version in matrix.yml is behind upstream, and open a
-# pull request if so.
+# Point out setups whose pin is behind upstream, and open a pull request that
+# bumps them.
 #
-# It never writes to main: a toolchain bump has to be reviewed like any other
-# change, because it can break a consuming CI pipeline. Pin-by-hand is the rule;
-# this job only points out when a pin is stale.
+# It never writes to main. A toolchain bump changes the runtime every consuming
+# CI pipeline gets, so it has to be reviewed like any other change; pin-by-hand
+# stays the rule and this job only removes the manual "is there a newer one?"
+# check.
+#
+# All the version logic lives in tools/bump.py so it can be run locally
+# (`python3 tools/bump.py --check`) and tested without a runner.
 
 on:
   schedule:
@@ -22,72 +26,62 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Each setup id tracks its OWN release line (node-22 -> newest 22.x,
+      # python-312 -> newest 3.12.x, ...), so several ids for one tool do not
+      # fight each other.
       - name: look for newer upstream versions
         id: check
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json, urllib.request, yaml, sys
-
-          def latest(url, pick):
-              try:
-                  with urllib.request.urlopen(url, timeout=30) as r:
-                      return pick(json.load(r))
-              except Exception as e:
-                  print(f"warn: {url}: {e}", file=sys.stderr)
-                  return None
-
-          doc = yaml.safe_load(open("matrix.yml"))
-          pinned = {}
-          for img in doc["images"]:
-              for k, v in (img.get("tools") or {}).items():
-                  pinned.setdefault(k, v)
-
-          newer = {}
-          # node: the dist index is the authority.
-          n = latest("https://nodejs.org/dist/index.json", lambda d: d[0]["version"].lstrip("v"))
-          if n and "node" in pinned and n != pinned["node"]:
-              newer["node"] = n
-          # go: the download feed lists stable releases first.
-          g = latest("https://go.dev/dl/?mode=json", lambda d: d[0]["version"].removeprefix("go"))
-          if g and "go" in pinned and g != pinned["go"]:
-              newer["go"] = g
-          # java: Adoptium's feature-release feed.
-          j = latest("https://api.adoptium.net/v3/info/available_releases", lambda d: str(d["most_recent_feature_release"]))
-          if j and "java" in pinned and not pinned["java"].startswith(j + "."):
-              newer["java"] = j
-
-          print("pinned:", pinned)
-          print("newer :", newer)
-          with open("/tmp/newer.json", "w") as f:
-              json.dump(newer, f)
-          PY
-          if [ -s /tmp/newer.json ] && [ "$(cat /tmp/newer.json)" != "{}" ]; then
-            echo "stale=1" >> "$GITHUB_OUTPUT"
-          else
+          if python3 tools/bump.py --check; then
             echo "stale=0" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            # 1 = stale pins found; anything else is a real failure.
+            [ "$rc" -eq 1 ] || exit "$rc"
+            echo "stale=1" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: open a pull request with the bumped pins
+      - name: rewrite the stale pins
         if: steps.check.outputs.stale == '1'
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json, re
-          newer = json.load(open("/tmp/newer.json"))
-          text = open("matrix.yml").read()
-          for tool, ver in newer.items():
-              # Rewrite only the pinned value for that tool.
-              text = re.sub(rf'(\n\s+{tool}:\s*")[^"]*(")', rf'\g<1>{ver}\g<2>', text)
-          open("matrix.yml", "w").write(text)
-          print("bumped:", newer)
-          PY
+          python3 tools/bump.py --apply
+          # A bump rewrites version + artifact and clears sha256, so the diff
+          # must be exactly those three lines per bumped setup.
+          git diff -- matrix.yml
+
+      - name: open a pull request with the bumped pins
+        if: steps.check.outputs.stale == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH="refresh/toolchains-${{ github.run_id }}"
           git config user.name  "easysetup-bot"
           git config user.email "easysetup-bot@users.noreply.github.com"
-          git checkout -b "refresh/toolchains-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
           git add matrix.yml
           git commit -m "chore(matrix): refresh pinned toolchain versions"
-          git push -u origin "refresh/toolchains-${{ github.run_id }}"
+          git push -u origin "$BRANCH"
+
+          # The body is generated from the actual diff, so the reviewer sees the
+          # old -> new versions rather than a generic message.
+          {
+            echo "Automated check found newer upstream releases than the pins in \`matrix.yml\`."
+            echo
+            echo "| setup | from | to |"
+            echo "|---|---|---|"
+            git diff HEAD~1 -- matrix.yml | grep -E '^[-+]    version:' || true
+            echo
+            echo "Each bump also rewrites the artifact name and **clears the sha256**."
+            echo "Merging this starts a release run that rebuilds the assets and re-pins the"
+            echo "checksums, so \`install.sh\` keeps refusing anything it cannot verify."
+            echo
+            echo "**Review before merging**: a bump changes the toolchain every consuming"
+            echo "CI pipeline gets."
+          } > /tmp/body.md
+          cat /tmp/body.md
           gh pr create \
             --title "chore(matrix): refresh pinned toolchain versions" \
-            --body "Automated check found newer upstream releases than the pins in matrix.yml. Review before merging: a bump changes the toolchain every consuming CI pipeline gets."
+            --body-file /tmp/body.md
