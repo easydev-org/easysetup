@@ -183,6 +183,64 @@ else
   echo "skip YAML parse check (PyYAML not installed)"
 fi
 
+echo "== action.yml is a valid composite action =="
+"$PY" - <<'PY' || fail=1
+import re, sys, yaml
+
+d = yaml.safe_load(open("action.yml"))
+bad = 0
+if d.get("runs", {}).get("using") != "composite":
+    print("FAIL action.yml: runs.using must be 'composite'")
+    bad = 1
+steps = d.get("runs", {}).get("steps", [])
+if not steps:
+    print("FAIL action.yml: no steps")
+    bad = 1
+# In a composite action every step must name a shell; GitHub rejects it
+# otherwise without saying which step.
+for i, s in enumerate(steps):
+    if "uses" in s:
+        continue
+    if "shell" not in s:
+        print("FAIL action.yml step %d (%s) has no shell" % (i, s.get("name", "?")))
+        bad = 1
+declared = set(d.get("inputs", {}))
+for ref in set(re.findall(r"inputs\.([a-z-]+)", open("action.yml").read())):
+    if ref not in declared:
+        print("FAIL action.yml references undeclared input %r" % ref)
+        bad = 1
+if not bad:
+    print("ok   action.yml: composite, %d steps, inputs declared" % len(steps))
+sys.exit(bad)
+PY
+
+echo "== the example workflow names only setups that exist =="
+"$PY" - <<'PY' || fail=1
+import pathlib, re, sys
+sys.path.insert(0, ".")
+import matrixlib
+
+text = pathlib.Path("examples/ci.yml").read_text()
+bad = 0
+for block in re.findall(r"tools:\s*(.+)", text):
+    # Two spellings appear in the example:
+    #   tools: node-22 python-3.12
+    #   with: { tools: "java-21 r-4" }
+    # Strip a trailing inline-map brace and any wrapping quotes.
+    b = block.strip().rstrip("}").strip().strip('"').strip("'")
+    for name in b.split():
+        if name in ("|", ">", "", "}"):
+            continue
+        try:
+            matrixlib.resolve_requirement(name)
+        except ValueError as e:
+            print("FAIL examples/ci.yml asks for %r: %s" % (name, e))
+            bad = 1
+if not bad:
+    print("ok   every setup named in the example resolves")
+sys.exit(bad)
+PY
+
 echo "== matrixlib needs no third-party module =="
 # The release job runs in debian:trixie without PyYAML, so the parser must work
 # with the stdlib alone. -S disables site-packages and proves it.
