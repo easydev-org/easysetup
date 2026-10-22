@@ -414,7 +414,7 @@ setups:
     version: "4.54.1"
     apt_deps: [ca-certificates, curl]
     artifact: yq-4.54.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "48135abc6789975b068b031576e773564427b370d70d355bcda5a54df337f3c3"
 
   # -------------------------------------------------------------
   # The client for the gitlfs protocol easyblobs exercises.
