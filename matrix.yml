@@ -174,7 +174,7 @@ setups:
   # runtime package in apt_deps.
   - tool: rust
     version: "1.99.1"
-    target: x86_64-pc-windows-gnu
+    components: [x86_64-pc-windows-gnu]
     apt_deps: [ca-certificates, curl, gcc-mingw-w64-x86-64]
     artifact: rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz
     sha256: ""
@@ -184,7 +184,7 @@ setups:
   # binary. Stated here so nobody expects an .exe.
   - tool: rust
     version: "1.99.1"
-    target: x86_64-pc-windows-msvc
+    components: [x86_64-pc-windows-msvc]
     apt_deps: [ca-certificates, curl]
     artifact: rust-1.99.1-x86_64-pc-windows-msvc-debian-trixie-amd64.tar.xz
     sha256: ""
