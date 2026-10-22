@@ -19,10 +19,19 @@ For every entry, installing is exactly:
 3. verify its `sha256`,
 4. unpack it at `/`.
 
-**Nothing is compiled or resolved at install time.** Ruby and PHP ship source
-only, so those are compiled once when the release is cut — the tarball carries
-the built tree. `./selftest.sh` fails if `install.sh` ever grows a step that
-would need the network (`cargo install`, `pip install`, `rustup`, `make`, …).
+**Nothing is compiled — not at install time, and not when the release is cut
+either.** Every toolchain comes from an upstream *prebuilt* distribution:
+
+| tool | prebuilt source |
+|---|---|
+| node, python, go, java | vendor official tarballs |
+| maven, gradle, helm, bazel, dotnet | vendor official distributions |
+| rust | rust-lang's own component tarballs (unpacked, not built) |
+| php | `shivammathur/php-builder`, a **debian 13** build — exact platform match |
+| ruby | `ruby/ruby-builder`, the tarball behind `ruby/setup-ruby` |
+
+`./selftest.sh` fails if a build script ever gains `./configure`, `make` or
+`cmake`, or if `install.sh` grows a step that needs the network.
 
 ## Usage
 
@@ -98,12 +107,12 @@ an entry is called.
 | `java` | 17.0.20+101, 21.0.12+101, 25.0.4+101, 27.0.0+35 | Temurin JDK |
 | `maven` | 3.10.0 | needs a `java-*` beside it |
 | `gradle` | 9.8.2, 8.14.6 | needs a `java-*` beside it |
-| `ruby` | 4.0.7, 3.4.9 | compiled at release time |
+| `ruby` | 4.0.8, 3.4.11 | prebuilt (ubuntu tarball; glibc is backward compatible) |
 | `rust` | 1.99.1 | rustc + cargo + host std; **no rustup** |
 | `rust` +`x86_64-pc-windows-gnu` | 1.99.1 | cross-compiles real .exe via mingw |
 | `rust` +`x86_64-pc-windows-msvc` | 1.99.1 | std only — `cargo check`, not linking |
 | `dotnet` | 10.0.402 | LTS |
-| `php` | 8.5.12 | compiled at release time |
+| `php` | 8.5 | prebuilt for debian 13; the value is php-builder's release line |
 | `helm` | 4.3.1 | |
 | `bazel` | 9.3.1 | needs a JRE (`openjdk-21-jre-headless` in apt_deps) |
 | `buf` | 1.75.0 | |
