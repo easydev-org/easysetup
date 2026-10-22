@@ -34,10 +34,20 @@ jobs:
       - name: the tools run in a FOLLOWING step (this is the real test)
         run: |
           set -eux
-          node --version
-          npm --version
-          python3 --version
-          python3 -c 'import sys; print("python ok", sys.version_info[:2])'
+          # Assert on what was ASKED FOR, not on a hard-coded tool: `inputs.tools`
+          # is overridable, so this job was failing for asking for node while
+          # being told to install swift-sdk-wasm. Every requested setup must
+          # have left a bin dir on PATH.
+          for d in /opt/setup/*/bin; do
+            [ -d "$d" ] || continue
+            case ":$PATH:" in
+              *":$d:"*) echo "on PATH: $d" ;;
+              *) echo "::error::$d is not on PATH"; exit 1 ;;
+            esac
+          done
+          # And at least one real command answers.
+          command -v swift || command -v node || command -v python3
+          echo "toolchain reachable from a later step"
 
       - name: env.sh exists and is sourceable
         run: |
