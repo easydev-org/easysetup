@@ -216,43 +216,10 @@ jobs:
 
       # Pin the checksums into matrix.yml, because install.sh refuses to unpack
       # an asset it cannot verify.
+      #
+      # The work lives in tools/pin-checksums.sh: it needs a loop, a retry and a
+      # heredoc, and inlining those let the YAML indentation decide the meaning of
+      # the program. It also edits the LATEST main rather than this job's
+      # checkout, because main moves while fifteen builds run.
       - name: record sha256 in matrix.yml
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import glob, hashlib, os, re
-          text = open("matrix.yml").read()
-          for path in glob.glob("/tmp/assets/*.tar.xz"):
-              digest = hashlib.sha256(open(path, "rb").read()).hexdigest()
-              asset = os.path.basename(path)
-              # Replace the sha256 that follows this artefact's name.
-              pattern = re.compile(
-                  r'(artifact: ' + re.escape(asset) + r'\n\s+sha256: )"[^"]*"')
-              text, n = pattern.subn(r'\1"' + digest + '"', text)
-              print(f"{asset} -> {digest} ({n} replacement)")
-          open("matrix.yml", "w").write(text)
-          PY
-          git diff --stat
-          if git diff --quiet matrix.yml; then
-            echo "matrix.yml unchanged"
-          else
-            git config user.name  "easysetup-bot"
-            git config user.email "easysetup-bot@users.noreply.github.com"
-            git add matrix.yml
-            git commit -m "chore(matrix): pin sha256 for the published assets"
-            # The runner's checkout can be behind if main moved while the 15
-            # builds ran (it did: a push from another path lost this race with
-            # '! [rejected] main -> main (fetch first)'). Rebase onto whatever
-            # main is now and retry, so a checksum commit is never dropped.
-            for attempt in 1 2 3; do
-              git fetch origin main
-              git rebase origin/main || { git rebase --abort; exit 1; }
-              if git push origin HEAD:main; then
-                echo "pushed on attempt $attempt"
-                exit 0
-              fi
-              sleep 5
-            done
-            echo "could not push the checksum commit" >&2
-            exit 1
-          fi
+        run: bash tools/pin-checksums.sh /tmp/assets
