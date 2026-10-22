@@ -1,63 +1,46 @@
-# matrix.yml — the ONLY list of toolchain images this repository publishes.
+# matrix.yml — the toolchain versions easysetup publishes.
 #
-# This file is the authority for two things:
-#   1. .github/workflows/build.yml builds exactly these images, nothing else.
-#   2. The platform's CI resolves a job's `setup:` list against these entries and
-#      refuses anything that is not here.
+# ONE ENTRY PER TOOL. There are deliberately no combinations here: a job that
+# needs node AND python asks for two setups, and each installs itself into
+# /opt/setup/<tool>. Combinations are the CONSUMER's business, not ours.
 #
-# Versions are PINNED BY HAND on purpose. A CI system whose toolchain versions
-# move on their own is not reproducible: the same commit would build one day and
-# fail the next because a runner picked up a newer Node. Upgrades are made by
-# editing this file (see .github/workflows/refresh.yml, which only ever opens a
-# pull request - it never pushes to main).
+# For every entry this file records:
+#   version    the pinned upstream version (hand-pinned, never "latest")
+#   apt_deps   base packages installed with apt before unpacking. These are the
+#              shared runtime libraries the prebuilt tool needs on debian, and
+#              nothing else - the tool itself is NOT an apt package.
+#   artifact   the release asset carrying a complete /opt/setup/<tool> tree
+#   sha256     checksum of that asset; the installer refuses a mismatch
 #
-# `tag` is the image tag under ghcr.io/easydev-org/easysetup:<tag>.
-# Every tool is installed under /opt/setup/<tool> and exposed by
-# /opt/setup/env.sh, so a job only needs `source /opt/setup/env.sh`.
+# A release tag is <tool>-<version>, so the asset for node 22.20.0 lives at
+#   https://github.com/easydev-org/easysetup/releases/download/node-22.20.0/<artifact>
 
-images:
-  # --- single-tool images (small, for jobs that need one runtime) ---
-  - tag: node22
-    tools:
-      node: "22.20.0"
+base:
+  # Every setup targets debian trixie on amd64. Anything else is unsupported.
+  distro: debian-trixie
+  arch: amd64
 
-  - tag: python312
-    tools:
-      python: "3.12.11"
+setups:
+  node:
+    version: "22.20.0"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: node-22.20.0-debian-trixie-amd64.tar.xz
+    sha256: ""            # filled in by the release workflow
 
-  - tag: go127
-    tools:
-      go: "1.27.2"
+  python:
+    version: "3.12.11"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
+    artifact: python-3.12.11-debian-trixie-amd64.tar.xz
+    sha256: ""
 
-  - tag: java21
-    tools:
-      java: "21.0.8+9"
+  go:
+    version: "1.27.2"
+    apt_deps: [ca-certificates, curl]
+    artifact: go-1.27.2-debian-trixie-amd64.tar.xz
+    sha256: ""
 
-  # --- the common multi-tool combinations ---
-  - tag: node22-python312
-    tools:
-      node: "22.20.0"
-      python: "3.12.11"
-
-  - tag: node22-python312-java21
-    tools:
-      node: "22.20.0"
-      python: "3.12.11"
-      java: "21.0.8+9"
-
-  - tag: node22-go127
-    tools:
-      node: "22.20.0"
-      go: "1.27.2"
-
-  - tag: python312-java21
-    tools:
-      python: "3.12.11"
-      java: "21.0.8+9"
-
-  - tag: all
-    tools:
-      node: "22.20.0"
-      python: "3.12.11"
-      go: "1.27.2"
-      java: "21.0.8+9"
+  java:
+    version: "21.0.8+9"
+    apt_deps: [ca-certificates, curl]
+    artifact: java-21.0.8-9-debian-trixie-amd64.tar.xz
+    sha256: ""
