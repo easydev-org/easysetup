@@ -1,27 +1,26 @@
 # matrix.yml — the toolchain versions easysetup publishes.
 #
-# ONE ENTRY PER (tool, VERSION). There are deliberately no combinations: a job
-# that needs node AND python installs two setups, and each extracts into its own
-# /opt/setup/<tool>-<major> directory. Combinations are the CONSUMER's business.
-#
-# Several versions of the same tool coexist on purpose, so a repository can pin
-# the runtime its lockfile was built against instead of chasing the newest.
-# Each one lands in a versioned directory:
-#
-#   /opt/setup/node-22/bin/node
-#   /opt/setup/node-24/bin/node
-#
-# so installing two does not put them in each other's way.
+# A LIST, one entry per published setup. `version` is a FIELD of the entry, not
+# part of its name: nothing in this file encodes a version twice, and the
+# directory a setup installs into is DERIVED from tool + version rather than
+# being something a human has to keep in sync.
 #
 # Fields:
-#   id         the name used by install.sh and by a job's `setup:` list
-#   version    hand-pinned upstream version (never "latest")
-#   apt_deps   base packages installed with apt before unpacking - shared
-#              runtime libraries only, never the tool itself
-#   artifact   the release asset carrying a complete tree
-#   sha256     checksum; install.sh refuses to unpack on a mismatch
+#   tool       the toolchain (node, python, go, java, maven, ...)
+#   version    the exact upstream version, pinned by hand
+#   apt_deps   base packages installed with apt before unpacking. Shared
+#              runtime libraries only - never the tool itself, and never
+#              anything that requires a download at install time.
+#   artifact   the release asset carrying a complete /opt/setup tree
+#   sha256     checksum of that asset; install.sh refuses a mismatch
 #
-# A release tag is <id>-<version>, e.g. releases/download/node-22-22.23.4/...
+# Derived names (never stored):
+#   directory   /opt/setup/<tool>-<version>      e.g. /opt/setup/node-22.23.4
+#   release tag <tool>-<version>                 e.g. node-22.23.4
+#
+# The install contract, for every entry: apt-get the listed packages, then
+# unpack the tarball. No other network access is permitted or needed - the
+# toolchain is already built and sits in the release.
 
 base:
   # Every setup targets debian trixie on amd64. Anything else is unsupported.
@@ -30,112 +29,197 @@ base:
 
 setups:
   # ---------------------------------------------------------------- node ---
-  node-22:
-    tool: node
+  - tool: node
     version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: "dbb67fc99ffbaafefe367f98716d2c76954eb4a5b41283aaaad3676b724e3894"
+    sha256: ""
 
-  node-24:
-    tool: node
+  - tool: node
     version: "24.22.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
-    sha256: "4f0de5a77dc293cfe3ec0c7b5e695c082b2b6b8be9ad7ab0093f238d99c84621"
+    sha256: ""
 
-  node-26:
-    tool: node
+  - tool: node
     version: "26.12.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-26.12.1-debian-trixie-amd64.tar.xz
-    sha256: "f8d2d79ee8538ca7b74add0259e70d6cf8d1382cb6f2741c6dd94d41e478d2f1"
+    sha256: ""
 
   # -------------------------------------------------------------- python ---
-  python-312:
-    tool: python
+  - tool: python
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: "19a3555fb45c36036568326cffbc0973791bf8c3b97785113aed41be8350f0ea"
+    sha256: ""
 
-  python-313:
-    tool: python
+  - tool: python
     version: "3.13.17"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.13.17-debian-trixie-amd64.tar.xz
-    sha256: "c42e74bd6a38fb7b96672e05e213952c61aa6ffbf46c81a57b0da328f08ca3f8"
+    sha256: ""
 
-  python-314:
-    tool: python
+  - tool: python
     version: "3.14.9"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.14.9-debian-trixie-amd64.tar.xz
-    sha256: "f0b44335f378be5a5e8e2c1f8bf85d3c6987626a20ef2e9a49ca56cb1cb46b5e"
+    sha256: ""
 
-  python-315:
-    tool: python
+  - tool: python
     version: "3.15.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.15.1-debian-trixie-amd64.tar.xz
-    sha256: "98075c46054f8612b697c107fdd9f8be4ce7c10ec0c5e138fff6b30c258fe901"
+    sha256: ""
 
   # ------------------------------------------------------------------ go ---
-  go-124:
-    tool: go
+  - tool: go
     version: "1.24.13"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.24.13-debian-trixie-amd64.tar.xz
-    sha256: "9dff0fc822c400278312c41e069b73b92e556b1ad723560ce64862190cdd181a"
+    sha256: ""
 
-  go-125:
-    tool: go
+  - tool: go
     version: "1.25.14"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.25.14-debian-trixie-amd64.tar.xz
-    sha256: "5859ab426fe08391d6f5cab5e0a64a6d0be63926579cbd65fc52d9d1378b9f2e"
+    sha256: ""
 
-  go-126:
-    tool: go
+  - tool: go
     version: "1.26.10"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.26.10-debian-trixie-amd64.tar.xz
-    sha256: "47a33f349830cda314008875aecebfbeb3c7eee13f2e89456f00c0d22d53ec18"
+    sha256: ""
 
-  go-127:
-    tool: go
+  - tool: go
     version: "1.27.3"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.27.3-debian-trixie-amd64.tar.xz
-    sha256: "72a29072ca727fc620b526d5206af92d711c82109cf1efced67c7a5dbd06d6b5"
+    sha256: ""
 
   # ---------------------------------------------------------------- java ---
-  # Adoptium's semver carries a build suffix ("21.0.12+101.0.LTS"); the "+" is
-  # not safe in an asset name, so it becomes "-" in `artifact`.
-  java-17:
-    tool: java
+  - tool: java
     version: "17.0.20+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-17.0.20-101-debian-trixie-amd64.tar.xz
-    sha256: "18dfcbc6e7d6c74e24ec89df024d740429083c9168a9e4d815cf4c86fd95d0fb"
+    sha256: ""
 
-  java-21:
-    tool: java
+  - tool: java
     version: "21.0.12+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-21.0.12-101-debian-trixie-amd64.tar.xz
-    sha256: "986089e011023a383385b4b588b7fd59131069c79f1b50388aff93a678c6ef45"
+    sha256: ""
 
-  java-25:
-    tool: java
+  - tool: java
     version: "25.0.4+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-25.0.4-101-debian-trixie-amd64.tar.xz
-    sha256: "d6676c6a0dc9121ba6ce55d4e14041be61508a8ebd062b42f2b22ecb2f923f87"
+    sha256: ""
 
-  java-27:
-    tool: java
+  - tool: java
     version: "27.0.0+35"
     apt_deps: [ca-certificates, curl]
     artifact: java-27.0.0-35-debian-trixie-amd64.tar.xz
-    sha256: "cadf532ade0986d41ab2ebaa1d4d5e54fe49e24f1c68fa548b432238e80829f0"
+    sha256: ""
+
+  # --------------------------------------------------------------- maven ---
+  # Apache Maven, from the official -bin.tar.gz. Needs a JRE, which is NOT
+  # bundled: install a java-* setup alongside and JAVA_HOME will be set.
+  - tool: maven
+    version: "3.10.0"
+    apt_deps: [ca-certificates, curl]
+    artifact: maven-3.10.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -------------------------------------------------------------- gradle ---
+  - tool: gradle
+    version: "9.8.2"
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: gradle-9.8.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  - tool: gradle
+    version: "8.14.6"
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: gradle-8.14.6-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------- ruby ---
+  # Ruby ships SOURCE only, so the build compiles it once in the release job
+  # and the tarball carries the compiled tree. Installing never compiles.
+  - tool: ruby
+    version: "4.0.7"
+    apt_deps: [ca-certificates, curl, libssl3, libyaml-0-2, zlib1g, libffi8, libreadline8, libgmp10]
+    artifact: ruby-4.0.7-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  - tool: ruby
+    version: "3.4.9"
+    apt_deps: [ca-certificates, curl, libssl3, libyaml-0-2, zlib1g, libffi8, libreadline8, libgmp10]
+    artifact: ruby-3.4.9-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------- rust ---
+  # The host toolchain: rustc + cargo + the linux std. The release job merges
+  # those three upstream components into ONE tree, so installing is a single
+  # unpack and nothing is fetched from rustup at run time.
+  - tool: rust
+    version: "1.99.1"
+    apt_deps: [ca-certificates, curl, gcc, libc6-dev]
+    artifact: rust-1.99.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # Cross target: Windows GNU. It links with mingw on linux, so this one really
+  # produces a .exe from a linux host - that is why it carries the linker's
+  # runtime package in apt_deps.
+  - tool: rust
+    version: "1.99.1"
+    target: x86_64-pc-windows-gnu
+    apt_deps: [ca-certificates, curl, gcc-mingw-w64-x86-64]
+    artifact: rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # Cross target: Windows MSVC. Only the std is published for it; linking needs
+  # MSVC on Windows, so on linux this supports `cargo check`, not a finished
+  # binary. Stated here so nobody expects an .exe.
+  - tool: rust
+    version: "1.99.1"
+    target: x86_64-pc-windows-msvc
+    apt_deps: [ca-certificates, curl]
+    artifact: rust-1.99.1-x86_64-pc-windows-msvc-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -------------------------------------------------------------- dotnet ---
+  - tool: dotnet
+    version: "10.0.402"
+    apt_deps: [ca-certificates, curl, libicu76, libssl3, zlib1g]
+    artifact: dotnet-10.0.402-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ----------------------------------------------------------------- php ---
+  - tool: php
+    version: "8.5.12"
+    apt_deps: [ca-certificates, curl, libxml2, libsqlite3-0, libssl3, zlib1g, libonig5, libcurl4]
+    artifact: php-8.5.12-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------- helm ---
+  - tool: helm
+    version: "4.3.1"
+    apt_deps: [ca-certificates, curl]
+    artifact: helm-4.3.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- bazel ---
+  - tool: bazel
+    version: "9.3.1"
+    apt_deps: [ca-certificates, curl, unzip, gcc, libc6-dev, zlib1g, openjdk-21-jre-headless]
+    artifact: bazel-9.3.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ----------------------------------------------------------------- buf ---
+  - tool: buf
+    version: "1.75.0"
+    apt_deps: [ca-certificates, curl]
+    artifact: buf-1.75.0-debian-trixie-amd64.tar.xz
+    sha256: ""
