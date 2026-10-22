@@ -35,21 +35,21 @@ setups:
     version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: "edc7f8fa62eeacd0bf2b0f711c5bbd8260a71f2368d60d4cf5fc52e69c7417c7"
+    sha256: "dbb67fc99ffbaafefe367f98716d2c76954eb4a5b41283aaaad3676b724e3894"
 
   node-24:
     tool: node
     version: "24.22.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
-    sha256: "489153df5ae7cb685ed6cc16c369d3b93113d71ff3429eba8cfccc04acb658a6"
+    sha256: "4f0de5a77dc293cfe3ec0c7b5e695c082b2b6b8be9ad7ab0093f238d99c84621"
 
   node-26:
     tool: node
     version: "26.12.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-26.12.1-debian-trixie-amd64.tar.xz
-    sha256: "7f979bffc88bba672b479f6d65c93dfffac9c73b44e51e86c072300a8b141489"
+    sha256: "f8d2d79ee8538ca7b74add0259e70d6cf8d1382cb6f2741c6dd94d41e478d2f1"
 
   # -------------------------------------------------------------- python ---
   python-312:
@@ -57,28 +57,28 @@ setups:
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: "bbd9da51431ec0da83782308a667dd281a54da8f3e4786ee942765f4ff13086b"
+    sha256: "19a3555fb45c36036568326cffbc0973791bf8c3b97785113aed41be8350f0ea"
 
   python-313:
     tool: python
     version: "3.13.17"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.13.17-debian-trixie-amd64.tar.xz
-    sha256: "7c5e7f09bda28ed95419365253e2c5f2dc0bac3d1ff3274ac66472cae4549f0f"
+    sha256: "c42e74bd6a38fb7b96672e05e213952c61aa6ffbf46c81a57b0da328f08ca3f8"
 
   python-314:
     tool: python
     version: "3.14.9"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.14.9-debian-trixie-amd64.tar.xz
-    sha256: "8820a9999fa535ce2b3d21d62c5ac038883496aa4983dfd5b6e6b4e08088d899"
+    sha256: "f0b44335f378be5a5e8e2c1f8bf85d3c6987626a20ef2e9a49ca56cb1cb46b5e"
 
   python-315:
     tool: python
     version: "3.15.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.15.1-debian-trixie-amd64.tar.xz
-    sha256: "9423505385903bd2591e5b73a9a67523d535c6389a3cd145d4437ea27bada535"
+    sha256: "98075c46054f8612b697c107fdd9f8be4ce7c10ec0c5e138fff6b30c258fe901"
 
   # ------------------------------------------------------------------ go ---
   go-124:
@@ -86,28 +86,28 @@ setups:
     version: "1.24.13"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.24.13-debian-trixie-amd64.tar.xz
-    sha256: "2dc87efaa2063db88bb8cbd0b1bf9c83ef101fbdced476aeeea4e7e855ea66bc"
+    sha256: "9dff0fc822c400278312c41e069b73b92e556b1ad723560ce64862190cdd181a"
 
   go-125:
     tool: go
     version: "1.25.14"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.25.14-debian-trixie-amd64.tar.xz
-    sha256: "b2bcbb46bed7b43ab490795cf1f4135aa985a2f3e79a83992e5452d93e46f941"
+    sha256: "5859ab426fe08391d6f5cab5e0a64a6d0be63926579cbd65fc52d9d1378b9f2e"
 
   go-126:
     tool: go
     version: "1.26.10"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.26.10-debian-trixie-amd64.tar.xz
-    sha256: "0253b7a478e9d3e4f6a19dc26feaaf4968d1b59220f32379670e724d86671c23"
+    sha256: "47a33f349830cda314008875aecebfbeb3c7eee13f2e89456f00c0d22d53ec18"
 
   go-127:
     tool: go
     version: "1.27.3"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.27.3-debian-trixie-amd64.tar.xz
-    sha256: "74e329aa6d177df2377e77d8623c800a058894ca1f62241e5ce59f8ebb7169d6"
+    sha256: "72a29072ca727fc620b526d5206af92d711c82109cf1efced67c7a5dbd06d6b5"
 
   # ---------------------------------------------------------------- java ---
   # Adoptium's semver carries a build suffix ("21.0.12+101.0.LTS"); the "+" is
@@ -117,25 +117,25 @@ setups:
     version: "17.0.20+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-17.0.20-101-debian-trixie-amd64.tar.xz
-    sha256: "344e8718dbf0dde196b2b5182e116548c4920c4d9da3c2ba24eadec1e7908e30"
+    sha256: "18dfcbc6e7d6c74e24ec89df024d740429083c9168a9e4d815cf4c86fd95d0fb"
 
   java-21:
     tool: java
     version: "21.0.12+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-21.0.12-101-debian-trixie-amd64.tar.xz
-    sha256: "38c38c71dc03453d4e43c0cb19da25f9cc256c0326cef2e2234a6a58137b70a2"
+    sha256: "986089e011023a383385b4b588b7fd59131069c79f1b50388aff93a678c6ef45"
 
   java-25:
     tool: java
     version: "25.0.4+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-25.0.4-101-debian-trixie-amd64.tar.xz
-    sha256: "dbe5cd9fd6f94a3fc858a24d21b1eac1ab5fbe4e7986120a447494025b9f1701"
+    sha256: "d6676c6a0dc9121ba6ce55d4e14041be61508a8ebd062b42f2b22ecb2f923f87"
 
   java-27:
     tool: java
     version: "27.0.0+35"
     apt_deps: [ca-certificates, curl]
     artifact: java-27.0.0-35-debian-trixie-amd64.tar.xz
-    sha256: "44e74872014465007dc493f35247d0ddd83143bde250b8b3bc92be4916c85042"
+    sha256: "cadf532ade0986d41ab2ebaa1d4d5e54fe49e24f1c68fa548b432238e80829f0"
