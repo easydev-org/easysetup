@@ -60,15 +60,32 @@ done
 echo "ruby: rewrote $fixed shebang(s) to ${PREFIX}/bin/ruby"
 
 # Verify what the consumer will get, using the same environment env.sh sets.
+#
+# The stdlib directory is <major>.<minor>.0 (ruby 4.0.8 -> lib/ruby/4.0.0,
+# ruby 3.4.11 -> lib/ruby/3.4.0), so it is DERIVED here rather than hard-coded.
+# Hard-coding 4.0.0 made ruby-3.4.11 build a tree where RubyGems and
+# error_highlight could not be loaded: the interpreter ran, but nothing it
+# needed was on the path.
+ABI=$(ls "$ROOT/lib/ruby" | grep -E '^[0-9]+\.[0-9]+\.0$' | head -1)
+[ -n "$ABI" ] || { echo "ruby: no <abi> dir under lib/ruby" >&2; exit 1; }
+echo "ruby: abi dir is lib/ruby/$ABI"
+
 export LD_LIBRARY_PATH="$ROOT/lib"
-export RUBYLIB="$ROOT/lib/ruby/4.0.0:$ROOT/lib/ruby/4.0.0/x86_64-linux"
-export GEM_HOME="$ROOT/lib/ruby/gems/4.0.0"
+export RUBYLIB="$ROOT/lib/ruby/$ABI:$ROOT/lib/ruby/$ABI/x86_64-linux"
+export GEM_HOME="$ROOT/lib/ruby/gems/$ABI"
 export GEM_PATH="$GEM_HOME"
 
 "$ROOT/bin/ruby" --version
 "$ROOT/bin/ruby" -e '
 require "openssl"; require "zlib"; require "json"
 puts "ruby ok: openssl=#{OpenSSL::OPENSSL_VERSION} json=#{JSON.generate({ok: true})}"
+'
+
+# The three that failed for 3.4.11: they are default gems that live in the abi
+# dir, so requiring them proves the path is right.
+"$ROOT/bin/ruby" -e '
+require "rubygems"; require "error_highlight"; require "did_you_mean"
+puts "rubygems=#{Gem::VERSION} default gems load ok"
 '
 
 # `gem` and the other bin/ scripts now carry a shebang pointing at the FINAL
