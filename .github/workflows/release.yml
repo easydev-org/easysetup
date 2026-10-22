@@ -227,5 +227,19 @@ jobs:
             git config user.email "easysetup-bot@users.noreply.github.com"
             git add matrix.yml
             git commit -m "chore(matrix): pin sha256 for the published assets"
-            git push
+            # The runner's checkout can be behind if main moved while the 15
+            # builds ran (it did: a push from another path lost this race with
+            # '! [rejected] main -> main (fetch first)'). Rebase onto whatever
+            # main is now and retry, so a checksum commit is never dropped.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main || { git rebase --abort; exit 1; }
+              if git push origin HEAD:main; then
+                echo "pushed on attempt $attempt"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "could not push the checksum commit" >&2
+            exit 1
           fi
