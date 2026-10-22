@@ -56,7 +56,7 @@ jobs:
           print(json.dumps({"include": out}))
           PY
           echo "list=$(cat /tmp/list.json)" >> "$GITHUB_OUTPUT"
-          python3 -c 'import json;d=json.load(open("/tmp/list.json"));[print(x["name"],x["version"]) for x in d["include"]]'
+          python3 -c 'import json;d=json.load(open("/tmp/list.json"));[print(x["id"],x["tool"],x["version"]) for x in d["include"]]'
 
   build:
     needs: setup
