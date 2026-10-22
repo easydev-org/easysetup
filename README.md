@@ -27,9 +27,42 @@ Matching is by **whole segments**, not characters: `node-2` does **not** match
 `node-22.23.4`, because `2` is not a segment of `22`. A character-prefix rule
 would silently install the wrong major version, so it is refused instead.
 
-A bare `rust-1.99.1` resolves to the **host** toolchain; a cross-compilation
-target is only reachable by its full name (`rust-1.99.1+x86_64-pc-windows-gnu`),
-so asking for the plain version never hands you a Windows-only tree.
+A bare `rust-1.99.1` resolves to the **host** toolchain. Cross-compilation
+support is an optional **component**, named with `@`:
+
+| you write | you get |
+|---|---|
+| `rust-1.99.1` | the host toolchain |
+| `rust-1.99.1@x86_64-pc-windows-gnu` | host + that component |
+| `rust-1@x86_64-pc-windows-gnu` | version prefix also works |
+
+**A component must be spelled in full** — `@windows-gnu`, `@x86_64` and
+`@gnu` are all refused rather than guessed at, because a wrong guess costs a
+full toolchain download.
+
+## components: the general mechanism
+
+`components` is how an optional add-on is attached to a package. Today rust
+is the only user, but nothing in the mechanism is rust-specific:
+
+```yaml
+  - tool: rust
+    version: "1.99.1"
+    components: [x86_64-pc-windows-gnu]
+    artifact: rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz
+```
+
+The install directory (and release tag) carries them as `+<c1>+<c2>`, so two
+entries sharing tool+version stay distinguishable:
+
+```
+rust-1.99.1
+rust-1.99.1+x86_64-pc-windows-gnu
+```
+
+`components` is a list, so one entry can carry several add-ons. An entry with
+components follows its host entry's version when `bump.py` runs: bumping it
+on its own would desync the pair.
 
 `install.sh` prints what it resolved (`==> node-22 -> node-22.23.4`), and
 `python3 matrixlib.py resolve node-22` shows it without installing.
