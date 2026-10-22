@@ -385,8 +385,12 @@ def main(argv):
                 chain = resolve_chain(argv[2])
             except ValueError as ex:
                 sys.exit(f"matrixlib: {ex}")
+            # The entry the user asked for is the LAST one in the chain (deps
+            # come first); comparing against a fresh resolve() is wrong when the
+            # name is itself a range or a bare tool.
+            wanted = chain[-1]["dir"] if chain else None
             for x in chain:
-                mark = "" if x["dir"] == resolve(argv[2])["dir"] else "  (required)"
+                mark = "" if x["dir"] == wanted else "  (required)"
                 print(f'{x["dir"]}{mark}')
             return 0
     except (ValueError, OSError) as e:
