@@ -135,6 +135,22 @@ images like the other tools. Instead:
 
 ## Releases
 
+**Both workflows are `workflow_dispatch` only — there is no `push:` trigger.**
+
+A push trigger fires once per commit, and this repository is edited through the
+GitHub contents API, which creates **one commit per file**. A 25-file change
+therefore started 25 runs, each fanning out to 28 build jobs; hundreds of jobs
+queued behind the account's concurrency limit and nothing finished. Publishing
+artefacts is an explicit act anyway.
+
+To rebuild everything, or just one entry:
+
+```bash
+gh workflow run release.yml                          # all entries
+gh workflow run release.yml -f only=node-22.23.4     # one entry
+gh workflow run refresh.yml                          # check for newer upstream versions
+```
+
 One release per entry, tagged with the derived directory name:
 
 ```
