@@ -44,7 +44,8 @@ def call(method, url, payload=None):
 # stale Dockerfile/build.sh keep building combinations that no longer exist.
 for stale in ("Dockerfile", "build.sh", "env.sh.in",
               "tools/node.sh", "tools/python.sh", "tools/go.sh", "tools/java.sh",
-              ".github/workflows/build.yml", "tools/build-node.sh.bak"):
+              ".github/workflows/build.yml", "tools/build-node.sh.bak",
+              "probe.py", "probe2.py", "probe3.py"):
     status, info = call("GET", f"{API}/contents/{stale}")
     if status == 200:
         call("DELETE", f"{API}/contents/{stale}",
