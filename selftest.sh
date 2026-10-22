@@ -97,4 +97,11 @@ print("selftest: workflow keys agree with the manifest")
 PY
 
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
+
+echo "== bump.py rewriting rules =="
+# The refresh workflow edits matrix.yml unattended, so the rewrite has its own
+# tests: bumping node-22 must not touch node-24, and a malformed block must fail
+# the whole file instead of half-writing it.
+"$PY" tools/test_bump.py | tail -3
+
 echo "selftest: ok"
