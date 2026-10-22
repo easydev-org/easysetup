@@ -75,6 +75,22 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # Install this setup's OWN apt_deps, the same list install.sh uses. The
+      # build/verify steps then run in the same library environment a consumer
+      # gets, which is what makes the ldd check meaningful: a missing entry in
+      # apt_deps shows up here instead of in someone's pipeline.
+      - name: install apt_deps for ${{ matrix.id }}
+        run: |
+          set -euo pipefail
+          DEPS=$(awk -v want="${{ matrix.id }}" '
+            /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
+            name==want && /apt_deps:/ { sub(/^[^[]*\[/,""); sub(/\].*/,""); gsub(/,/," "); print; exit }
+          ' matrix.yml)
+          echo "apt_deps: $DEPS"
+          if [ -n "${DEPS// /}" ]; then
+            apt-get install -y -qq --no-install-recommends $DEPS >/dev/null
+          fi
+
       - name: build ${{ matrix.id }} ${{ matrix.version }}
         run: |
           set -euo pipefail
@@ -87,6 +103,11 @@ jobs:
       # Verify in a clean directory: unpack, then run the tool by absolute path.
       # A tarball that unpacks but ships a broken binary must fail HERE, not in
       # some consumer's CI.
+      #
+      # `ldd` first, and that is the point: running the binary only reveals a
+      # missing shared library by accident (node 26 died on libatomic.so.1 while
+      # node 22/24 were fine). ldd names EVERY unresolved library up front, so a
+      # typo in apt_deps fails the build instead of shipping a broken tarball.
       - name: verify ${{ matrix.id }}
         run: |
           set -euo pipefail
@@ -94,6 +115,27 @@ jobs:
           tar -xJf "/tmp/out/${{ matrix.artifact }}"
           B="/tmp/verify/opt/setup/${{ matrix.id }}/bin"
           test -d "$B"
+
+          # Every ELF in bin/ must resolve all of its shared libraries.
+          echo "--- shared library check"
+          missing=0
+          for f in "$B"/*; do
+            [ -f "$f" ] || continue
+            case "$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')" in
+              *177ELF*)
+                if ldd "$f" 2>&1 | grep -q 'not found'; then
+                  echo "MISSING for $f:"
+                  ldd "$f" 2>&1 | grep 'not found'
+                  missing=1
+                fi ;;
+            esac
+          done
+          [ "$missing" -eq 0 ] || {
+            echo "the tarball needs libraries apt_deps did not install" >&2
+            echo "add them to apt_deps for ${{ matrix.id }} in matrix.yml" >&2
+            exit 1; }
+
+          echo "--- run the tool"
           case "${{ matrix.tool }}" in
             node)   "$B/node" --version ;;
             python) "$B/python3" --version ;;
