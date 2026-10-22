@@ -1,0 +1,140 @@
+# Dogfooding: use OUR OWN action the way a consumer would, against the artifacts
+# that are actually published. Nothing here is mocked - if this job passes, then
+# `uses: easydev-org/easysetup@main` works.
+#
+# Manual only, like the other workflows: this repository is edited through the
+# contents API (one commit per file), so a push trigger would start a run per
+# file.
+name: action-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      tools:
+        description: 'space-separated setups to exercise'
+        required: false
+        default: 'node-22 python-3.12'
+
+permissions:
+  contents: read
+
+jobs:
+  # The plain case: two toolchains, one call, and the NEXT step uses them.
+  basic:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        id: es
+        with:
+          tools: ${{ inputs.tools }}
+
+      - name: the tools run in a FOLLOWING step (this is the real test)
+        run: |
+          set -eux
+          node --version
+          npm --version
+          python3 --version
+          python3 -c 'import sys; print("python ok", sys.version_info[:2])'
+
+      - name: env.sh exists and is sourceable
+        run: |
+          set -eux
+          test -f "$EASYSETUP_ENV"
+          # A consumer must be able to source it under `set -u`.
+          ( set -u; . "$EASYSETUP_ENV" )
+          echo "env.sh ok at $EASYSETUP_ENV"
+
+      - name: the output the action promises
+        run: |
+          test "${{ steps.es.outputs.env-script }}" = "/opt/setup/env.sh"
+          echo "output env-script ok"
+
+  # Two separate calls must ACCUMULATE. This is the regression that motivated
+  # gen-env.sh: env.sh used to be regenerated from "what this call installed",
+  # so the second call erased the first tool.
+  accumulate:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with: { tools: node-22 }
+
+      - uses: ./
+        with: { tools: python-3.12 }
+
+      - name: both toolchains survive
+        run: |
+          set -eux
+          node --version
+          python3 --version
+          command -v node
+          command -v python3
+
+  # A setup that needs environment variables, not only PATH.
+  env-vars:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with: { tools: java-21 }
+
+      - name: JAVA_HOME comes from env.sh
+        run: |
+          set -eux
+          . "$EASYSETUP_ENV"
+          test -n "$JAVA_HOME"
+          java -version
+
+  # A dependency: asking for the SDK must install the compiler too, via
+  # `requires: swift@>=6.4 <7`. Only runs when asked for, because 1.1 GB in a
+  # smoke test is a bad default.
+  requires:
+    if: inputs.tools == 'swift-sdk-wasm'
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with: { tools: swift-sdk-wasm }
+
+      - name: the dependency was installed as well
+        run: |
+          set -eux
+          swift --version
+          ls -d /opt/setup/swift-* /opt/setup/swift-sdk-wasm-*
+
+  # The action must FAIL LOUDLY on the wrong platform rather than half-install.
+  # ubuntu 24.04 has glibc 2.39; the artifacts need 2.41. Installing 300 MB and
+  # then having every binary die at the loader is the worst possible outcome.
+  wrong-platform:
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: the action must refuse
+        id: attempt
+        continue-on-error: true
+        uses: ./
+        with: { tools: node-22 }
+
+      - name: and it must not have installed anything
+        run: |
+          set -eux
+          if [ "${{ steps.attempt.outcome }}" != "failure" ]; then
+            echo "::error::the action succeeded on ubuntu 24.04; it should have refused"
+            exit 1
+          fi
+          if [ -d /opt/setup/node-22.23.4 ]; then
+            echo "::error::it installed a toolchain it cannot run"
+            exit 1
+          fi
+          echo "correctly refused on the wrong platform"
