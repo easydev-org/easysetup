@@ -60,5 +60,41 @@ for id in $(manifest_ids); do
   [ -n "$d" ] || { echo "FAIL $id: apt_deps did not parse"; fail=1; }
 done
 
+echo "== workflow references match the manifest shape =="
+# The release workflow builds its matrix from matrix.yml and then refers to the
+# fields by name. Renaming a key there and forgetting one reference produced a
+# KeyError that only showed up as a failed `setup` job. Check the two agree.
+#
+# PY points at whatever python has PyYAML; the CI image guarantees python3, a
+# developer machine may only have python.
+PY=${PY:-$(command -v python3 || command -v python)}
+[ -n "$PY" ] || { echo "selftest: no python found"; exit 1; }
+"$PY" - <<'PY'
+import re, sys, yaml
+
+doc = yaml.safe_load(open("matrix.yml"))
+ids = list(doc["setups"])
+sample = doc["setups"][ids[0]]
+
+wf = open(".github/workflows/release.yml").read()
+
+# 1. every setup must carry the fields the workflow reads.
+for i, s in doc["setups"].items():
+    for f in ("tool", "version", "artifact"):
+        if f not in s:
+            sys.exit(f"selftest: setup {i} is missing '{f}'")
+
+# 2. keys the workflow expects from the generated matrix include-list.
+for key in ('"id"', '"tool"', '"version"', '"artifact"'):
+    if key not in wf:
+        sys.exit(f"selftest: release.yml never mentions {key}")
+
+# 3. no stale reference to the old key name.
+if re.search(r'x\["name"\]|matrix\.name\b', wf):
+    sys.exit("selftest: release.yml still refers to the old 'name' key")
+
+print("selftest: workflow keys agree with the manifest")
+PY
+
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
