@@ -58,9 +58,12 @@ jobs:
                   continue
               out.append({"dir": e["dir"], "tool": e["tool"],
                           "version": e["version"], "artifact": e["artifact"],
-                          # Space-separated so it survives as one matrix field
-                          # and can be split again in the build script.
-                          "components": " ".join(e["components"])})
+                          # `builder` is the script that produces the tarball;
+                          # several tools can share one (rust-toolchain-*).
+                          "builder": e["builder"],
+                          # Space-separated list of setups to run before this
+                          # one; empty for most.
+                          "requires": " ".join(e["requires"])})
           print(json.dumps({"include": out}))
           PY
           echo "list=$(cat /tmp/list.json)" >> "$GITHUB_OUTPUT"
@@ -111,9 +114,8 @@ jobs:
           set -euo pipefail
           # The build script is chosen by TOOL, but installs under the PATH ID so
           # node-22 and node-24 do not overwrite each other.
-          bash "tools/build-${{ matrix.tool }}.sh" \
-            "${{ matrix.dir }}" "${{ matrix.version }}" /tmp/out \
-            "${{ matrix.components }}"
+          bash "tools/build-${{ matrix.builder }}.sh" \
+            "${{ matrix.dir }}" "${{ matrix.version }}" /tmp/out
           ls -lh /tmp/out
 
       # Verify in a clean directory: unpack, then run the tool by absolute path.
@@ -147,8 +149,8 @@ jobs:
           # (no `target:` field) are held to the ldd check.
           echo "--- shared library check"
           missing=0
-          if [ -n "${{ matrix.components }}" ]; then
-            echo "components [${{ matrix.components }}]: skipping ldd (their libraries are not for linux)"
+          if [ "${{ matrix.builder }}" = "rust" ] && [ "${{ matrix.tool }}" != "rust" ]; then
+            echo "${{ matrix.tool }}: a cross-compile std, its libraries are not for linux - skipping ldd"
           else
             # Some trees ship their own .so (ruby bundles libruby.so.4.0 inside
             # lib/). ldd must run with the same LD_LIBRARY_PATH the consumer's
@@ -173,18 +175,19 @@ jobs:
             exit 1; }
 
           echo "--- run the tool"
-          if [ -n "${{ matrix.components }}" ]; then
-            # A component-only entry has no runnable binary of its own: a rust
-            # windows-gnu std ships .dll/.exe, a windows-msvc std ships only
-            # std. Assert each component is actually present, which is the
+          if [ "${{ matrix.builder }}" = "rust" ] && [ "${{ matrix.tool }}" != "rust" ]; then
+            # A cross-compile std has no runnable binary of its own. Assert the
+            # std for its target is actually in the tree, which is the
             # deliverable.
-            for c in ${{ matrix.components }}; do
-              found=$(find "/tmp/verify/opt/setup/${{ matrix.dir }}" -type d \
-                        -path "*rustlib/$c*" | head -1)
-              [ -n "$found" ] || {
-                echo "component $c is not in the tree" >&2; exit 1; }
-              echo "component $c present: $found"
-            done
+            # matrix.tool is `rust-toolchain-<target>`; strip the fixed prefix
+            # with a shell parameter expansion (a GitHub expression cannot do it).
+            full='${{ matrix.tool }}'
+            tgt=${full#rust-toolchain-}
+            found=$(find "/tmp/verify/opt/setup/${{ matrix.dir }}" -type d \
+                      -path "*rustlib/$tgt*" | head -1)
+            [ -n "$found" ] || {
+              echo "std for $tgt is not in the tree" >&2; exit 1; }
+            echo "std for $tgt present: $found"
           else
             case "${{ matrix.tool }}" in
               node)   "$B/node" --version ;;
@@ -195,6 +198,21 @@ jobs:
               php)    "$B/php" --version | head -1 ;;
               helm)   "$B/helm" version --short ;;
               buf)    "$B/buf" --version ;;
+              deno)   "$B/deno" --version ;;
+              dart)   "$B/dart" --version ;;
+              julia)  "$B/julia" --version ;;
+              perl)   "$B/perl" -v 2>&1 | sed -n 2p ;;
+              lua)    "$B/lua" -v 2>&1 | head -1 ;;
+              erlang) "$B/erl" -noshell -eval 'io:format("~s~n",[erlang:system_info(otp_release)]),halt().' ;;
+              elixir) "$B/elixir" --version | head -1 ;;
+              opam)   "$B/opam" --version ;;
+              conda)  "$B/conda" --version ;;
+              ghc)    "$B/ghc" --version ;;
+              cabal)  "$B/cabal" --version ;;
+              # R's binary is at the prefix root under lib/R/bin.
+              r)      "$R/lib/R/bin/R" --version | head -1 ;;
+              # luarocks needs a lua from its requires, installed separately.
+              luarocks) echo "luarocks: layout checked at build time (lua comes from requires)" ;;
               # dotnet's binary sits at the prefix root, not in bin/.
               dotnet) "$R/dotnet" --version ;;
               # maven / gradle / bazel need a JRE that is not in the tarball by
