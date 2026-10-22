@@ -149,6 +149,10 @@ done
         echo "  fi"
         echo "  unset _abi"
         echo "fi" ;;
+      erlang-*|elixir-*)
+        # BEAM aborts on startup when the locale is not UTF-8. Exporting it here
+        # means a consumer who sources env.sh does not have to know that.
+        echo "[ -d /opt/setup/$id ] && { LANG=\${LANG:-C.UTF-8}; LC_ALL=\${LC_ALL:-C.UTF-8}; export LANG LC_ALL; }" ;;
     esac
   done
   echo "export PATH"
