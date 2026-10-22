@@ -1,0 +1,63 @@
+# matrix.yml — the ONLY list of toolchain images this repository publishes.
+#
+# This file is the authority for two things:
+#   1. .github/workflows/build.yml builds exactly these images, nothing else.
+#   2. The platform's CI resolves a job's `setup:` list against these entries and
+#      refuses anything that is not here.
+#
+# Versions are PINNED BY HAND on purpose. A CI system whose toolchain versions
+# move on their own is not reproducible: the same commit would build one day and
+# fail the next because a runner picked up a newer Node. Upgrades are made by
+# editing this file (see .github/workflows/refresh.yml, which only ever opens a
+# pull request - it never pushes to main).
+#
+# `tag` is the image tag under ghcr.io/easydev-org/easysetup:<tag>.
+# Every tool is installed under /opt/setup/<tool> and exposed by
+# /opt/setup/env.sh, so a job only needs `source /opt/setup/env.sh`.
+
+images:
+  # --- single-tool images (small, for jobs that need one runtime) ---
+  - tag: node22
+    tools:
+      node: "22.20.0"
+
+  - tag: python312
+    tools:
+      python: "3.12.11"
+
+  - tag: go127
+    tools:
+      go: "1.27.2"
+
+  - tag: java21
+    tools:
+      java: "21.0.8+9"
+
+  # --- the common multi-tool combinations ---
+  - tag: node22-python312
+    tools:
+      node: "22.20.0"
+      python: "3.12.11"
+
+  - tag: node22-python312-java21
+    tools:
+      node: "22.20.0"
+      python: "3.12.11"
+      java: "21.0.8+9"
+
+  - tag: node22-go127
+    tools:
+      node: "22.20.0"
+      go: "1.27.2"
+
+  - tag: python312-java21
+    tools:
+      python: "3.12.11"
+      java: "21.0.8+9"
+
+  - tag: all
+    tools:
+      node: "22.20.0"
+      python: "3.12.11"
+      go: "1.27.2"
+      java: "21.0.8+9"
