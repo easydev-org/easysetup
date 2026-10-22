@@ -15,6 +15,7 @@
 set -euo pipefail
 
 . "$(dirname "$0")/lib.sh"
+. "$(dirname "$0")/lib-relocate.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d); ROOT="$STAGE/opt/setup/$DIR"; mkdir -p "$ROOT"
@@ -30,15 +31,11 @@ SRC=$(find /tmp/r-x -maxdepth 4 -type d -name "$VERSION" -path "*/opt/R/*" | hea
 cp -a "$SRC"/. "$ROOT"/
 rm -rf /tmp/r-x
 
-# R's launcher is a shell script with the build prefix baked in, and R IGNORES
-# $R_HOME when it disagrees ("WARNING: ignoring environment value of R_HOME"),
-# so the script itself has to name the final prefix.
+# R's launcher bakes in R_HOME_DIR=/opt/R/<version>/lib/R and R IGNORES $R_HOME
+# when it disagrees, so the script itself must name the final prefix.
 PREFIX="/opt/setup/$DIR"
-old="/opt/R/$VERSION"
-for f in "$ROOT"/bin/R "$ROOT"/bin/Rscript; do
-  [ -f "$f" ] && sed -i "s|$old|$PREFIX|g" "$f"
-done
-echo "r: rewrote $old -> $PREFIX"
+n=$(relocate_scripts "$ROOT" "$PREFIX" "/opt/R/$VERSION")
+echo "r: rewrote the prefix in $n script(s)"
 
 # --- bundled libraries -----------------------------------------------------
 # Each entry is a .deb whose payload carries a soname trixie does not ship.
