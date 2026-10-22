@@ -45,7 +45,14 @@ for f in "$ROOT"/bin/R "$ROOT"/bin/Rscript; do
 done
 echo "r: rewrote $old -> $PREFIX in bin/R and bin/Rscript"
 
-"$ROOT/bin/R" --version | head -1
+# Verify against the FINAL path, because bin/R now hard-codes it and R refuses
+# to run from anywhere else. The tree is still staged under /tmp, so stand the
+# final path up with a symlink for the check and remove it again.
+mkdir -p "$(dirname "$PREFIX")"
+rm -f "$PREFIX"
+ln -s "$ROOT" "$PREFIX"
+"$PREFIX/bin/R" --version | head -1
+rm -f "$PREFIX"
 
 mkdir -p "$OUT"
 ASSET="$OUT/r-${VERSION}-debian-trixie-amd64.tar.xz"
