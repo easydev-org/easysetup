@@ -45,6 +45,7 @@ def load(path=MATRIX):
     entries = []
     cur = None
     in_setups = False
+    list_key = None          # the key whose block list we are currently inside
 
     for raw in open(path, encoding="utf-8"):
         line = raw.rstrip("\n")
@@ -62,6 +63,7 @@ def load(path=MATRIX):
         if indent == 0:
             in_setups = stripped == "setups:"
             cur = None
+            list_key = None
             continue
         if not in_setups:
             continue
@@ -70,6 +72,7 @@ def load(path=MATRIX):
         if indent == 2 and stripped.startswith("- "):
             cur = {}
             entries.append(cur)
+            list_key = None
             rest = stripped[2:]
             k, _, v = rest.partition(":")
             cur[k.strip()] = _scalar(v)
@@ -78,7 +81,19 @@ def load(path=MATRIX):
         # `    key: value` belongs to the current entry (4 spaces)
         if indent == 4 and cur is not None:
             k, _, v = stripped.partition(":")
-            cur[k.strip()] = _scalar(v)
+            k = k.strip()
+            if v.strip() == "":
+                # `components:` with a block list of `      - item` lines.
+                cur[k] = []
+                list_key = k
+            else:
+                cur[k] = _scalar(v)
+                list_key = None
+            continue
+
+        # `      - item` continues the block list opened at indent 4.
+        if indent == 6 and stripped.startswith("- ") and cur is not None and list_key:
+            cur[list_key].append(_scalar(stripped[2:]))
             continue
 
         raise ValueError(f"matrixlib: unsupported line in matrix.yml: {raw!r}")
@@ -89,12 +104,34 @@ def load(path=MATRIX):
     for e in entries:
         if "tool" not in e or "version" not in e:
             raise ValueError(f"matrixlib: entry without tool/version: {e}")
-        # "rust-1.99.1+x86_64-pc-windows-gnu": two entries can share tool +
-        # version and differ only by target (host toolchain vs cross std), so
-        # the target is part of the identity.
-        base = f'{e["tool"]}-{e["version"]}'
+        # `components` is the general mechanism for "optional add-ons installed
+        # alongside a tool". Today the only user is rust, where a cross-compile
+        # std is a component of the toolchain:
+        #
+        #   tool: rust, version: 1.99.1,
+        #   components: [x86_64-pc-windows-gnu]
+        #
+        # The directory (and release tag) carries them as `+<c1>+<c2>`, so two
+        # entries sharing tool+version stay distinguishable:
+        #
+        #   rust-1.99.1
+        #   rust-1.99.1+x86_64-pc-windows-gnu
+        #
+        # `target` is accepted as the old single-value spelling; it is folded
+        # into `components` here so nothing downstream has to know both names.
+        comps = e.get("components")
+        if comps is None:
+            comps = []
+        elif isinstance(comps, str):
+            comps = [comps]
         if e.get("target"):
-            base += f'+{e["target"]}'
+            comps = list(comps) + [e["target"]]
+            del e["target"]
+        e["components"] = list(comps)
+
+        base = f'{e["tool"]}-{e["version"]}'
+        for c in e["components"]:
+            base += f'+{c}'
         e["dir"] = base
         e["tag"] = base
     return entries
@@ -120,51 +157,62 @@ def _vkey(version):
 
 
 def resolve(name, path=MATRIX):
-    """Resolve a setup name to one entry, allowing a PREFIX of the version.
+    """Resolve a setup name to one entry.
 
-    People write `node-22`, not `node-22.23.4`. So a name is matched against
-    each entry's `<tool>-<version>` by DOT-SEPARATED PREFIX, and if several
-    entries match, the NEWEST version wins:
+    Two independent things may be abbreviated, and they use different syntax:
+
+    VERSION is a dot-separated PREFIX, because people write `node-22`:
 
         node-22       -> node-22.23.4     (the newest 22.x we publish)
         node-22.23    -> node-22.23.4
-        node-22.23.4  -> node-22.23.4     (exact, and exact always wins)
+        node-22.23.4  -> node-22.23.4     (exact always wins)
 
-    Matching is by whole segments, not characters: `node-2` does NOT match
-    `node-22.23.4`, because "2" is not a segment of "22". A character-prefix
-    rule would silently install the wrong major version.
+    A COMPONENT is named after the version with `@`, and only its FULL name is
+    accepted - no partial matching:
 
-    A bare `rust-1.99.1` resolves to the HOST build. Cross-compilation targets
-    are separate entries whose directory carries `+<target>`, and those are only
-    reachable by their full name - asking for "rust-1.99.1" must never hand back
-    a Windows-only tree.
+        rust-1.99.1@x86_64-pc-windows-gnu  -> that entry
+        rust-1.99.1@windows-gnu            -> no match (not a full component name)
 
-    Returns None when nothing matches. Raises Ambiguous only if two entries have
-    the same tool+version+target, which the manifest should never contain.
+    Version matching is by whole segments, not characters: `node-2` does NOT
+    match `node-22.23.4`, because "2" is not a segment of "22". A character
+    prefix would silently install the wrong major version.
+
+    With no `@`, only entries WITHOUT components are considered, so a bare
+    `rust-1.99.1` is always the host toolchain and never a cross-compile one.
+
+    Returns None when nothing matches. Raises Ambiguous if two entries match
+    equally, which the manifest should never contain.
     """
     entries = load(path)
 
-    # 1) Exact directory match always wins.
+    # 1) Exact directory match always wins (this is how `+component` names and
+    #    fully spelled versions land).
     for e in entries:
         if e["dir"] == name:
             return e
 
-    # 2) A cross target is only reachable by its full directory name.
-    if "+" in name:
-        return None
+    # 2) `tool-<version prefix>@<component>`
+    base, sep, comp = name.partition("@")
+    if sep:
+        want_comps = [comp]
+    else:
+        want_comps = []
 
-    # 3) Split the name into tool + a dotted version prefix.
-    tool, _, want = name.partition("-")
+    tool, _, want = base.partition("-")
     if not tool or not want:
         return None
     want_segments = want.split(".")
 
     matches = []
     for e in entries:
-        if e["tool"] != tool or e.get("target"):
-            continue                      # a bare name never selects a cross build
+        if e["tool"] != tool:
+            continue
+        # The component set must match EXACTLY: a bare name selects only
+        # component-free entries; `@x` selects only entries whose components are
+        # exactly ["x"].
+        if sorted(e["components"]) != sorted(want_comps):
+            continue
         have_segments = e["version"].split("+")[0].split(".")
-        # The prefix must be whole segments of the version.
         if len(want_segments) > len(have_segments):
             continue
         if have_segments[:len(want_segments)] != want_segments:
