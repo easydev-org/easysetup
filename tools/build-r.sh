@@ -2,11 +2,12 @@
 # build-r.sh <dir> <version> <outdir>
 #
 # Posit publishes prebuilt R as a .deb per ubuntu release. A .deb is an ar
-# archive containing a data tarball, so the build EXTRACTS it into our prefix
-# with `dpkg-deb -x` rather than installing it onto the build host.
+# archive containing a data tarball, so the build EXTRACTS it with
+# `dpkg-deb -x` rather than installing it onto the build host.
 #
-# /usr/lib/R/bin/R is where a deb-installed R lands, so the tree keeps that
-# layout and the verify step calls it by that path.
+# The payload is rooted at ./opt/R/<version>/ (NOT /usr - posit installs R into
+# /opt). That directory is what becomes /opt/setup/r-<version>, so R's own
+# internal relative paths keep working.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
@@ -21,12 +22,17 @@ fetch "$URL" /tmp/r.deb
 dpkg-deb -x /tmp/r.deb /tmp/r-x
 rm -f /tmp/r.deb
 
-# The deb's payload is /usr/lib/R plus /usr/bin/R symlinks; keep it under our
-# own prefix so nothing is written to the host.
-cp -a /tmp/r-x/usr/. "$ROOT"/
+# The deb extracts to <tmp>/opt/R/<version>/.
+SRC=$(find /tmp/r-x -maxdepth 4 -type d -name "$VERSION" -path "*/opt/R/*" | head -1)
+if [ -z "$SRC" ]; then
+  echo "r: no opt/R/<version> directory in the .deb" >&2
+  find /tmp/r-x -maxdepth 3 -type d | head -10 >&2
+  exit 1
+fi
+cp -a "$SRC"/. "$ROOT"/
 rm -rf /tmp/r-x
 
-"$ROOT/lib/R/bin/R" --version | head -1
+"$ROOT/bin/R" --version | head -1
 
 mkdir -p "$OUT"
 ASSET="$OUT/r-${VERSION}-debian-trixie-amd64.tar.xz"
