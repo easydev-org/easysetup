@@ -80,6 +80,7 @@ jobs:
       # gets, which is what makes the ldd check meaningful: a missing entry in
       # apt_deps shows up here instead of in someone's pipeline.
       - name: install apt_deps for ${{ matrix.id }}
+        shell: bash
         run: |
           set -euo pipefail
           DEPS=$(awk -v want="${{ matrix.id }}" '
@@ -87,7 +88,10 @@ jobs:
             name==want && /apt_deps:/ { sub(/^[^[]*\[/,""); sub(/\].*/,""); gsub(/,/," "); print; exit }
           ' matrix.yml)
           echo "apt_deps: $DEPS"
-          if [ -n "${DEPS// /}" ]; then
+          # No bash-isms needed beyond this point, but the step is pinned to bash
+          # because the job container's default shell is dash and the previous
+          # version died on 'Bad substitution' (${DEPS// /}).
+          if [ -n "$DEPS" ]; then
             # apt-get update is repeated here: the index from the earlier
             # "build prerequisites" step was already deleted (`rm -rf
             # /var/lib/apt/lists/*` is the habit in every Debian image), and
@@ -97,6 +101,7 @@ jobs:
           fi
 
       - name: build ${{ matrix.id }} ${{ matrix.version }}
+        shell: bash
         run: |
           set -euo pipefail
           # The build script is chosen by TOOL, but installs under the PATH ID so
@@ -114,6 +119,7 @@ jobs:
       # node 22/24 were fine). ldd names EVERY unresolved library up front, so a
       # typo in apt_deps fails the build instead of shipping a broken tarball.
       - name: verify ${{ matrix.id }}
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/verify && cd /tmp/verify
