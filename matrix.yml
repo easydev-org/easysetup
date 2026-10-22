@@ -422,7 +422,7 @@ setups:
     version: "3.8.1"
     apt_deps: [ca-certificates, curl]
     artifact: git-lfs-3.8.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "4ce2a36541fd71324cdd3c3c56969fa164be849a8333e788a66c041ef7a42645"
 
   # -----------------------------------------------------------------
   # One 55 MB tree that is both a Zig compiler and, via `zig cc`, a C/C++
