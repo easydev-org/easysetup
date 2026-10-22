@@ -142,11 +142,12 @@ jobs:
           # untested until a consumer hit it.
           for req in ${{ matrix.requires }}; do
             echo "--- building dependency $req"
-            rtool=$(python3 matrixlib.py get "$req" tool)
-            rbuilder=$(python3 matrixlib.py get "$req" builder)
-            rver=$(python3 matrixlib.py get "$req" version)
-            rart=$(python3 matrixlib.py get "$req" artifact)
-            bash "tools/build-$rbuilder.sh" "$req" "$rver" /tmp/out-dep
+            # The step is `cd /tmp/verify`, so refer to the checkout absolutely.
+            REPO="$GITHUB_WORKSPACE"
+            rbuilder=$(python3 "$REPO/matrixlib.py" get "$req" builder)
+            rver=$(python3 "$REPO/matrixlib.py" get "$req" version)
+            rart=$(python3 "$REPO/matrixlib.py" get "$req" artifact)
+            ( cd "$REPO" && bash "tools/build-$rbuilder.sh" "$req" "$rver" /tmp/out-dep )
             tar -xJf "/tmp/out-dep/$rart" -C /tmp/verify
             # Put the dependency on PATH so the tool under test can exec it.
             if [ -d "/tmp/verify/opt/setup/$req/bin" ]; then
@@ -230,8 +231,9 @@ jobs:
               conda)  "$B/conda" --version ;;
               ghc)    "$B/ghc" --version ;;
               cabal)  "$B/cabal" --version ;;
-              # R's payload is /opt/R/<ver>/{bin,lib}, so bin/R is the binary.
-              r)      "$B/R" --version | head -1 ;;
+              # R's payload is /opt/R/<ver>/{bin,lib}; its launcher hard-codes
+              # R_HOME from that build prefix, so R_HOME must point at this tree.
+              r)      R_HOME="$R/lib/R" "$B/R" --version | head -1 ;;
               # luarocks is a lua script: its `requires` put lua on PATH above,
               # so this actually runs it.
               luarocks) "$B/luarocks" --version | head -1 ;;
