@@ -33,7 +33,7 @@ while IFS= read -r d; do
 done <<< "$ids"
 ok "required fields present"
 
-echo "== directory is derived as <tool>-<version> =="
+echo "== directory is derived as <tool>-<version>[+component...] =="
 "$PY" - <<'PY' || fail=1
 import sys
 sys.path.insert(0, ".")
@@ -41,8 +41,8 @@ import matrixlib
 bad = 0
 for e in matrixlib.load():
     want = f'{e["tool"]}-{e["version"]}'
-    if e.get("target"):
-        want += f'+{e["target"]}'
+    for c in e["components"]:
+        want += f'+{c}'
     if e["dir"] != want:
         print(f"FAIL {e['dir']} != {want}")
         bad = 1
@@ -50,8 +50,13 @@ for e in matrixlib.load():
     if any(ch.isdigit() for ch in e["tool"]):
         print(f"FAIL {e['dir']}: tool field contains digits ({e['tool']})")
         bad = 1
+    # `+` in the directory must ONLY come from components.
+    pluses = e["dir"].count("+") - (e["version"].count("+"))
+    if pluses != len(e["components"]):
+        print(f"FAIL {e['dir']}: '+' count does not match components")
+        bad = 1
 if not bad:
-    print("ok   every directory derives from tool+version")
+    print("ok   every directory derives from tool+version+components")
 sys.exit(bad)
 PY
 
