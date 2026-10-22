@@ -43,13 +43,17 @@ BUNDLE=$(find /tmp/sdk-x -maxdepth 1 -mindepth 1 -name '*.artifactbundle' | head
 cp -a "$BUNDLE" "$ROOT"/
 rm -rf /tmp/sdk-x
 
-# Prove the bundle is intact the way swift checks it: a manifest plus payload.
+# Prove the bundle is intact the way swift checks it: a manifest and at least
+# one payload directory beside it. The payload directory is NOT named after
+# STEM - for the static SDK it is `swift-6.4.1-RELEASE_static-linux-0.1.0` - so
+# assert on the structure rather than on a fixed name.
 BDIR=$(find "$ROOT" -maxdepth 1 -mindepth 1 -name '*.artifactbundle' | head -1)
 test -f "$BDIR/info.json" || { echo "swift-sdk: info.json missing" >&2; exit 1; }
-test -d "$BDIR/$STEM" || {
-  echo "swift-sdk: payload directory '$STEM' missing" >&2
+payload=$(find "$BDIR" -maxdepth 1 -mindepth 1 -type d | head -1)
+test -n "$payload" || {
+  echo "swift-sdk: no payload directory beside info.json" >&2
   ls "$BDIR" >&2; exit 1; }
-echo "swift-sdk: $(basename "$BDIR") present with info.json"
+echo "swift-sdk: $(basename "$BDIR") with info.json and payload $(basename "$payload")"
 
 mkdir -p "$OUT"
 ASSET="$OUT/${TOOL}-${VERSION}-debian-trixie-amd64.tar.xz"
