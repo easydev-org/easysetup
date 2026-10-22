@@ -5,6 +5,8 @@
 # its own libpython and stdlib, so nothing is compiled here.
 set -euo pipefail
 
+. "$(dirname "$0")/lib.sh"
+
 ID="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$ID"
@@ -27,7 +29,7 @@ for a in rel.get("assets",[]):
 [ -n "$ASSET_URL" ] || { echo "python: no install_only build for $VERSION" >&2; exit 1; }
 
 echo "python: $ID $VERSION <- $ASSET_URL"
-curl -fsSL --retry 3 -o /tmp/python.tar.gz "$ASSET_URL"
+fetch "$ASSET_URL" /tmp/python.tar.gz
 tar -xzf /tmp/python.tar.gz -C /tmp
 cp -a /tmp/python/. "$ROOT"/
 rm -rf /tmp/python /tmp/python.tar.gz
