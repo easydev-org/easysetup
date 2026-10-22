@@ -365,7 +365,7 @@ setups:
     requires: ["swift@>=6.4,<7"]
     apt_deps: [ca-certificates, curl]
     artifact: swift-sdk-static-linux-6.4.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "0e48979f7e18ae75709a97a6f4dd59e71b71b4bdb0f932210feb097ee6024d9d"
 
   - tool: swift-sdk-wasm
     builder: swift-sdk
