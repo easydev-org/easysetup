@@ -406,7 +406,7 @@ setups:
     version: "1.8.2"
     apt_deps: [ca-certificates, curl]
     artifact: jq-1.8.2-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "0c4d7b0d76ead1f544fdda1c6ad6d70ead02200e9b6559bedcd1ffffad3f6582"
 
   # ------------------------------------------------------------------
   # The YAML equivalent of jq.
