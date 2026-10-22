@@ -398,7 +398,7 @@ setups:
     version: "1.13.2"
     apt_deps: [ca-certificates, curl, unzip]
     artifact: ninja-1.13.2-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "2a61114345a3c314fffdf300dbaed8ebec1cc009fc6651e32cebd4691dcb0ca0"
 
   # ------------------------------------------------------------------
   # JSON on the command line; CI scripts reach for it constantly.
