@@ -447,4 +447,4 @@ setups:
     version: "2.2.12"
     apt_deps: [ca-certificates, curl, xz-utils]
     artifact: nim-2.2.12-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "2474631b6615266d5d5ef96b510cce3e8a9527e05f9c3c65b993ae96ca0cc253"
