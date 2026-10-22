@@ -39,24 +39,24 @@ jobs:
           ONLY: ${{ inputs.only }}
         run: |
           set -euo pipefail
+          # The matrix comes from matrixlib, so this workflow and install.sh
+          # cannot disagree about what an entry is called.
           python3 - <<'PY' > /tmp/list.json
-          import json, os, yaml
+          import json, os, sys
+          sys.path.insert(0, ".")
+          import matrixlib
           only = os.environ.get("ONLY", "").strip()
-          doc = yaml.safe_load(open("matrix.yml"))
           out = []
-          for id, s in doc["setups"].items():
-              if only and id != only:
+          for e in matrixlib.load():
+              if only and e["dir"] != only:
                   continue
-              out.append({
-                  "id": id,
-                  "tool": s["tool"],
-                  "version": s["version"],
-                  "artifact": s["artifact"],
-              })
+              out.append({"dir": e["dir"], "tool": e["tool"],
+                          "version": e["version"], "artifact": e["artifact"],
+                          "target": e.get("target", "")})
           print(json.dumps({"include": out}))
           PY
           echo "list=$(cat /tmp/list.json)" >> "$GITHUB_OUTPUT"
-          python3 -c 'import json;d=json.load(open("/tmp/list.json"));[print(x["id"],x["tool"],x["version"]) for x in d["include"]]'
+          python3 -c 'import json;d=json.load(open("/tmp/list.json"));[print(x["dir"],x["tool"],x["version"]) for x in d["include"]]'
 
   build:
     needs: setup
@@ -79,14 +79,11 @@ jobs:
       # build/verify steps then run in the same library environment a consumer
       # gets, which is what makes the ldd check meaningful: a missing entry in
       # apt_deps shows up here instead of in someone's pipeline.
-      - name: install apt_deps for ${{ matrix.id }}
+      - name: install apt_deps for ${{ matrix.dir }}
         shell: bash
         run: |
           set -euo pipefail
-          DEPS=$(awk -v want="${{ matrix.id }}" '
-            /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
-            name==want && /apt_deps:/ { sub(/^[^[]*\[/,""); sub(/\].*/,""); gsub(/,/," "); print; exit }
-          ' matrix.yml)
+          DEPS=$(python3 matrixlib.py apt "${{ matrix.dir }}")
           echo "apt_deps: $DEPS"
           # No bash-isms needed beyond this point, but the step is pinned to bash
           # because the job container's default shell is dash and the previous
@@ -100,14 +97,15 @@ jobs:
             apt-get install -y -qq --no-install-recommends $DEPS
           fi
 
-      - name: build ${{ matrix.id }} ${{ matrix.version }}
+      - name: build ${{ matrix.dir }}
         shell: bash
         run: |
           set -euo pipefail
           # The build script is chosen by TOOL, but installs under the PATH ID so
           # node-22 and node-24 do not overwrite each other.
           bash "tools/build-${{ matrix.tool }}.sh" \
-            "${{ matrix.id }}" "${{ matrix.version }}" /tmp/out
+            "${{ matrix.dir }}" "${{ matrix.version }}" /tmp/out \
+            "${{ matrix.target }}"
           ls -lh /tmp/out
 
       # Verify in a clean directory: unpack, then run the tool by absolute path.
@@ -118,13 +116,13 @@ jobs:
       # missing shared library by accident (node 26 died on libatomic.so.1 while
       # node 22/24 were fine). ldd names EVERY unresolved library up front, so a
       # typo in apt_deps fails the build instead of shipping a broken tarball.
-      - name: verify ${{ matrix.id }}
+      - name: verify ${{ matrix.dir }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/verify && cd /tmp/verify
           tar -xJf "/tmp/out/${{ matrix.artifact }}"
-          B="/tmp/verify/opt/setup/${{ matrix.id }}/bin"
+          B="/tmp/verify/opt/setup/${{ matrix.dir }}/bin"
           test -d "$B"
 
           # Every ELF in bin/ must resolve all of its shared libraries.
@@ -143,7 +141,7 @@ jobs:
           done
           [ "$missing" -eq 0 ] || {
             echo "the tarball needs libraries apt_deps did not install" >&2
-            echo "add them to apt_deps for ${{ matrix.id }} in matrix.yml" >&2
+            echo "add them to apt_deps for ${{ matrix.dir }} in matrix.yml" >&2
             exit 1; }
 
           echo "--- run the tool"
@@ -158,7 +156,7 @@ jobs:
       # has to travel to the publish job through the Actions artifact store.
       - uses: actions/upload-artifact@v4
         with:
-          name: setup-${{ matrix.id }}
+          name: setup-${{ matrix.dir }}
           path: /tmp/out/${{ matrix.artifact }}
           retention-days: 1
 
@@ -188,13 +186,16 @@ jobs:
           # One release per tool+version. Delete-and-recreate so a rebuild
           # replaces the asset instead of piling up duplicates.
           python3 - <<'PY' > /tmp/releases.txt
-          import yaml
-          doc = yaml.safe_load(open("matrix.yml"))
-          for id, s in doc["setups"].items():
-              print(f'{id}\t{s["version"]}\t{s["artifact"]}')
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib
+          for e in matrixlib.load():
+              print(f'{e["dir"]}\t{e["version"]}\t{e["artifact"]}')
           PY
           while IFS=$'\t' read -r id version artifact; do
-            tag="$id-$version"
+            # `id` is already <tool>-<version> (matrixlib derives it), so the
+            # release tag is the id itself - no second place assembles a name.
+            tag="$id"
             # A build that failed upstream has no asset here. Skipping it keeps
             # the other releases going; the entry's sha256 stays empty, and
             # install.sh refuses to unpack an unverified asset, so a missing
