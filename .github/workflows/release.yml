@@ -300,6 +300,15 @@ jobs:
               ghc)    "$B/ghc" --version ;;
               cabal)  "$B/cabal" --version ;;
               swift)  "$B/swift" --version ;;
+              cmake)  "$B/cmake" --version | head -1 ;;
+              ninja)  "$B/ninja" --version ;;
+              jq)     "$B/jq" --version ;;
+              yq)     "$B/yq" --version ;;
+              git-lfs) "$B/git-lfs" --version ;;
+              # zig's compiler binary sits at the prefix root, not in bin/.
+              zig)    "$R/zig" version ;;
+              crystal) "$B/crystal" --version | head -1 ;;
+              nim)    "$B/nim" --version | head -1 ;;
               # An SDK has no binary; assert its artifactbundle manifest and
               # payload are present, which is what the compiler needs.
               swift-sdk-*)
