@@ -7,6 +7,7 @@
 # it out, and that is an unpack of prebuilt binaries, not a compiler build.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
+. "$(dirname "$0")/lib-relocate.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d); ROOT="$STAGE/opt/setup/$DIR"; mkdir -p "$ROOT"
@@ -23,6 +24,12 @@ cd /tmp/ghc-src
 make install 2>&1 | tail -2
 cd /
 rm -rf /tmp/ghc-src
+
+# GHC's bin/ghc is a WRAPPER SCRIPT recording the install prefix it saw at
+# configure time (a /tmp staging dir here). Once packed and unpacked elsewhere
+# it looks for lib/ghc-<ver>/bin/ghc-<ver> under that dead path and fails.
+n=$(relocate_scripts "$ROOT" "/opt/setup/$DIR")
+echo "ghc: rewrote the prefix in $n wrapper script(s)"
 
 "$ROOT/bin/ghc" --version
 
