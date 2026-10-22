@@ -88,7 +88,12 @@ jobs:
           ' matrix.yml)
           echo "apt_deps: $DEPS"
           if [ -n "${DEPS// /}" ]; then
-            apt-get install -y -qq --no-install-recommends $DEPS >/dev/null
+            # apt-get update is repeated here: the index from the earlier
+            # "build prerequisites" step was already deleted (`rm -rf
+            # /var/lib/apt/lists/*` is the habit in every Debian image), and
+            # without an index apt-get install exits 2 with no useful message.
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends $DEPS
           fi
 
       - name: build ${{ matrix.id }} ${{ matrix.version }}
