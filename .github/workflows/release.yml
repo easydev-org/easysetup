@@ -269,6 +269,14 @@ jobs:
               conda)  "$B/conda" --version ;;
               ghc)    "$B/ghc" --version ;;
               cabal)  "$B/cabal" --version ;;
+              swift)  "$B/swift" --version ;;
+              # An SDK has no binary; assert its artifactbundle manifest and
+              # payload are present, which is what the compiler needs.
+              swift-sdk-*)
+                bd=$(find "$R" -maxdepth 2 -name '*.artifactbundle' | head -1)
+                [ -n "$bd" ] && [ -f "$bd/info.json" ] || {
+                  echo "swift-sdk: no artifactbundle/info.json" >&2; exit 1; }
+                echo "artifactbundle: $(basename "$bd")" ;;
               # The build rewrote bin/R's baked-in prefix, so it runs as-is.
               r)      "$B/R" --version | head -1 ;;
               # luarocks is a lua script: its `requires` put lua on PATH above,
