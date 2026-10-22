@@ -172,21 +172,23 @@ setups:
   # Cross target: Windows GNU. It links with mingw on linux, so this one really
   # produces a .exe from a linux host - that is why it carries the linker's
   # runtime package in apt_deps.
-  - tool: rust
+  - tool: rust-toolchain-x86_64-pc-windows-gnu
+    builder: rust
     version: "1.99.1"
-    components: [x86_64-pc-windows-gnu]
+    requires: [rust-1.99.1]
     apt_deps: [ca-certificates, curl, gcc-mingw-w64-x86-64]
-    artifact: rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz
+    artifact: rust-toolchain-x86_64-pc-windows-gnu-1.99.1-debian-trixie-amd64.tar.xz
     sha256: ""
 
   # Cross target: Windows MSVC. Only the std is published for it; linking needs
   # MSVC on Windows, so on linux this supports `cargo check`, not a finished
   # binary. Stated here so nobody expects an .exe.
-  - tool: rust
+  - tool: rust-toolchain-x86_64-pc-windows-msvc
+    builder: rust
     version: "1.99.1"
-    components: [x86_64-pc-windows-msvc]
+    requires: [rust-1.99.1]
     apt_deps: [ca-certificates, curl]
-    artifact: rust-1.99.1-x86_64-pc-windows-msvc-debian-trixie-amd64.tar.xz
+    artifact: rust-toolchain-x86_64-pc-windows-msvc-1.99.1-debian-trixie-amd64.tar.xz
     sha256: ""
 
   # -------------------------------------------------------------- dotnet ---
@@ -222,4 +224,119 @@ setups:
     version: "1.75.0"
     apt_deps: [ca-certificates, curl]
     artifact: buf-1.75.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------- deno ---
+  # Single static binary. Covers the `jsr` protocol.
+  - tool: deno
+    version: "2.9.8"
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: deno-2.9.8-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- conda ---
+  # Miniforge: a self-contained conda whose installer just unpacks a prefix.
+  - tool: conda
+    version: "26.7.2-1"
+    apt_deps: [ca-certificates, curl, bzip2]
+    artifact: conda-26.7.2-1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------- R ---
+  # Posit's prebuilt R for ubuntu 24.04: a .deb, so the build unpacks it with
+  # dpkg-deb -x instead of installing to the host.
+  - tool: r
+    version: "4.5.2"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4]
+    artifact: r-4.5.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- julia ---
+  - tool: julia
+    version: "1.12.0"
+    apt_deps: [ca-certificates, curl]
+    artifact: julia-1.12.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ----------------------------------------------------------------- dart ---
+  - tool: dart
+    version: "3.10.0"
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: dart-3.10.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ----------------------------------------------------------------- opam ---
+  # Single binary. It still needs an OCaml compiler to do anything, which opam
+  # fetches on demand - that is opam's own model, not something we can pin.
+  - tool: opam
+    version: "2.6.1"
+    apt_deps: [ca-certificates, curl, bzip2, m4, build-essential, pkg-config]
+    artifact: opam-2.6.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- erlang ---
+  # Prebuilt OTP from erlef/otp_builds (ubuntu 24.04 build; glibc is backward
+  # compatible with trixie's).
+  - tool: erlang
+    version: "29.1.2"
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libncursesw6, libstdc++6]
+    artifact: erlang-29.1.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- elixir ---
+  # Needs a BEAM runtime: erlang is a real dependency, not an optional add-on.
+  - tool: elixir
+    version: "1.20.4"
+    requires: [erlang-29.1.2]
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: elixir-1.20.4-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------ sbt ---
+  # Covers the `ivy` protocol. Needs a JRE, which a java-* setup provides.
+  - tool: sbt
+    version: "2.0.11"
+    apt_deps: [ca-certificates, curl]
+    artifact: sbt-2.0.11-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------ ghc ---
+  # GHC ships deb11/deb12/deb13 builds; only deb11 and deb12 exist for these
+  # versions, and a deb12 build runs on trixie (glibc is backward compatible).
+  # Covers hackage and stackage together with cabal.
+  - tool: ghc
+    version: "9.12.2"
+    apt_deps: [ca-certificates, curl, gcc, libc6-dev, libgmp10, libnuma1, xz-utils]
+    artifact: ghc-9.12.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  - tool: cabal
+    version: "3.12.1.0"
+    apt_deps: [ca-certificates, curl]
+    artifact: cabal-3.12.1.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ----------------------------------------------------------------- perl ---
+  # skaji/relocatable-perl: a perl that runs from any prefix, and it already
+  # bundles cpanm, which is exactly the client the `cpan` protocol needs.
+  - tool: perl
+    version: "5.44.0.0"
+    apt_deps: [ca-certificates, curl, libc6-dev, gcc, make]
+    artifact: perl-5.44.0.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------ lua ---
+  - tool: lua
+    version: "5.4.8"
+    apt_deps: [ca-certificates, curl, libc6-dev, gcc, make]
+    artifact: lua-5.4.8-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------- luarocks ---
+  # Needs a lua interpreter, declared as a dependency.
+  - tool: luarocks
+    version: "3.12.2"
+    requires: [lua-5.4.8]
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: luarocks-3.12.2-debian-trixie-amd64.tar.xz
     sha256: ""
