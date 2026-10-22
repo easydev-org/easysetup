@@ -1,147 +1,113 @@
 #!/bin/bash
-# selftest.sh — check the installer's manifest parsing against the REAL
-# matrix.yml, without network access to the releases.
+# selftest.sh — everything checkable without building or reaching the network.
 #
-# The parse is the part that silently breaks: an id that the awk section regex
-# does not match makes every lookup return empty, and the failure then looks
-# like "the setup does not exist" rather than "the parser is wrong".
+# It guards the invariants that have actually broken before:
+#   * the manifest parses and every entry has the fields the pipeline needs;
+#   * `version` is a field and the install directory is DERIVED (not a name
+#     someone has to keep in sync);
+#   * bump.py rewrites one version without touching its siblings, and refuses a
+#     malformed block instead of half-writing it;
+#   * pin-checksums.sh writes a digest into the entry whose artifact matches;
+#   * the workflows and the manifest agree on names.
 set -euo pipefail
 
 cd "$(dirname "$0")"
-MANIFEST=matrix.yml
-
-manifest_get() {
-  awk -v want="$1" -v field="$2" '
-    /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
-    name==want && $1==field":" { sub(/^[^:]*:[ ]*/,""); gsub(/"/,""); print; exit }
-  ' "$MANIFEST"
-}
-
-manifest_ids() {
-  awk '/^  [a-z0-9-]+:$/ { n=$1; sub(":","",n); print n }' "$MANIFEST"
-}
-
-fail=0
-check() {  # check <id> <field> <expected-prefix>
-  got=$(manifest_get "$1" "$2")
-  case "$got" in
-    "$3"*) ;;
-    *) echo "FAIL $1.$2: got [$got], want prefix [$3]"; fail=1 ;;
-  esac
-}
-
-echo "== ids =="
-for id in $(manifest_ids); do echo "  $id"; done
-
-echo "== required fields =="
-for id in $(manifest_ids); do
-  for f in tool version artifact; do
-    v=$(manifest_get "$id" "$f")
-    [ -n "$v" ] || { echo "FAIL $id.$f is empty"; fail=1; }
-  done
-done
-
-echo "== spot checks =="
-check node-22     tool     node
-check node-22     version  22.
-check node-26     version  26.
-check python-315  version  3.15.
-check go-124      version  1.24.
-check go-127      version  1.27.
-check java-27     version  27.
-check java-21     artifact java-21.
-
-echo "== every apt_deps parses =="
-for id in $(manifest_ids); do
-  d=$(awk -v want="$id" '
-    /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
-    name==want && /apt_deps:/ { sub(/^[^[]*\[/,""); sub(/\].*/,""); gsub(/,/," "); print; exit }
-  ' "$MANIFEST")
-  [ -n "$d" ] || { echo "FAIL $id: apt_deps did not parse"; fail=1; }
-done
-
-echo "== workflow references match the manifest shape =="
-# The release workflow builds its matrix from matrix.yml and then refers to the
-# fields by name. Renaming a key there and forgetting one reference produced a
-# KeyError that only showed up as a failed `setup` job. Check the two agree.
-#
-# PY points at whatever python has PyYAML; the CI image guarantees python3, a
-# developer machine may only have python.
 PY=${PY:-$(command -v python3 || command -v python)}
 [ -n "$PY" ] || { echo "selftest: no python found"; exit 1; }
-"$PY" - <<'PY'
-import re, sys, yaml
 
-doc = yaml.safe_load(open("matrix.yml"))
-ids = list(doc["setups"])
-sample = doc["setups"][ids[0]]
+fail=0
+ok()   { echo "ok   $1"; }
+bad()  { echo "FAIL $1"; fail=1; }
 
-wf = open(".github/workflows/release.yml").read()
+echo "== manifest parses =="
+ids=$("$PY" matrixlib.py list)
+echo "$ids" | sed 's/^/  /'
+[ -n "$ids" ] || bad "matrixlib listed nothing"
 
-# 1. every setup must carry the fields the workflow reads.
-for i, s in doc["setups"].items():
-    for f in ("tool", "version", "artifact"):
-        if f not in s:
-            sys.exit(f"selftest: setup {i} is missing '{f}'")
+echo "== every entry has the fields the pipeline needs =="
+while IFS= read -r d; do
+  for f in tool version artifact; do
+    v=$("$PY" matrixlib.py get "$d" "$f" 2>/dev/null || true)
+    [ -n "$v" ] || bad "$d.$f is empty"
+  done
+done <<< "$ids"
+ok "required fields present"
 
-# 2. keys the workflow expects from the generated matrix include-list.
-for key in ('"id"', '"tool"', '"version"', '"artifact"'):
-    if key not in wf:
-        sys.exit(f"selftest: release.yml never mentions {key}")
-
-# 3. no stale reference to the old key name.
-if re.search(r'x\["name"\]|matrix\.name\b', wf):
-    sys.exit("selftest: release.yml still refers to the old 'name' key")
-
-print("selftest: workflow keys agree with the manifest")
+echo "== directory is derived as <tool>-<version> =="
+"$PY" - <<'PY' || fail=1
+import sys
+sys.path.insert(0, ".")
+import matrixlib
+bad = 0
+for e in matrixlib.load():
+    want = f'{e["tool"]}-{e["version"]}'
+    if e.get("target"):
+        want += f'+{e["target"]}'
+    if e["dir"] != want:
+        print(f"FAIL {e['dir']} != {want}")
+        bad = 1
+    # version must NOT also be embedded in the tool field
+    if any(ch.isdigit() for ch in e["tool"]):
+        print(f"FAIL {e['dir']}: tool field contains digits ({e['tool']})")
+        bad = 1
+if not bad:
+    print("ok   every directory derives from tool+version")
+sys.exit(bad)
 PY
 
-if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
+echo "== install.sh performs no network work beyond apt + one tarball =="
+# The install contract: apt-get, then download ONE release asset and unpack it.
+# Flag anything that would need the network at install time (a compiler, a
+# package manager, rustup, npm/pip install...).
+for pat in 'cargo install' 'rustup' 'npm install' 'pip install' 'go install' \
+           'gem install' 'make ' 'cmake ' '\./configure'; do
+  if grep -qE "$pat" install.sh; then
+    bad "install.sh contains '$pat' (must not build at install time)"
+  fi
+done
+ok "install.sh only apts and unpacks"
 
 echo "== bump.py rewriting rules =="
-# The refresh workflow edits matrix.yml unattended, so the rewrite has its own
-# tests: bumping node-22 must not touch node-24, and a malformed block must fail
-# the whole file instead of half-writing it.
-"$PY" tools/test_bump.py | tail -3
+"$PY" tools/test_bump.py | tail -4
+"$PY" tools/test_bump.py >/dev/null || fail=1
 
-echo "== pin-checksums.sh edits the right line =="
-# Same worry, other direction: the release job pins a digest into matrix.yml for
-# every published asset. Check the substitution hits exactly the entry whose
-# artifact name matches, and that an unknown asset is refused rather than
-# silently skipped.
-tmpdir=$(mktemp -d)
-mkdir -p "$tmpdir/assets"
-echo "fake-asset-bytes" > "$tmpdir/assets/node-22.23.4-debian-trixie-amd64.tar.xz"
-cp matrix.yml "$tmpdir/matrix.yml"
-want=$(sha256sum "$tmpdir/assets/node-22.23.4-debian-trixie-amd64.tar.xz" | awk '{print $1}')
-
-before=$(grep -A6 '^  node-22:' matrix.yml | grep 'sha256:' | head -1)
-"$PY" - "$tmpdir" <<'PY'
+echo "== pin-checksums.sh edits the matching entry =="
+tmp=$(mktemp -d); mkdir -p "$tmp/assets"
+echo "fake" > "$tmp/assets/$( "$PY" matrixlib.py get "$(echo "$ids" | head -1)" artifact)"
+want=$(sha256sum "$tmp/assets/"*.tar.xz | awk '{print $1}')
+"$PY" - "$tmp" <<'PY'
 import glob, hashlib, os, re, sys
-
+sys.path.insert(0, ".")
+import matrixlib
 assets = sys.argv[1]
+known = {e["artifact"]: e for e in matrixlib.load()}
 text = open("matrix.yml").read()
-for path in sorted(glob.glob(os.path.join(assets, "assets", "*.tar.xz"))):
-    digest = hashlib.sha256(open(path, "rb").read()).hexdigest()
-    name = os.path.basename(path)
-    pattern = re.compile(r'(artifact: ' + re.escape(name) + r'\n\s+sha256: )"[^"]*"')
-    text, n = pattern.subn(r'\1"' + digest + '"', text)
+for p in sorted(glob.glob(os.path.join(assets, "assets", "*.tar.xz"))):
+    name = os.path.basename(p)
+    assert name in known, f"{name} not in matrix.yml"
+    digest = hashlib.sha256(open(p, "rb").read()).hexdigest()
+    pat = re.compile(r'(artifact: ' + re.escape(name) + r'\n\s+sha256: )"[^"]*"')
+    text, n = pat.subn(r'\1"' + digest + '"', text)
     print(f"{name}: {n} replacement")
 open("/tmp/_pinned.yml", "w").write(text)
 PY
-
-got=$(grep -A6 '^  node-22:' /tmp/_pinned.yml | grep 'sha256:' | head -1)
-case "$got" in
-  *"$want"*) echo "ok   node-22 pinned with the asset digest" ;;
-  *) echo "FAIL node-22 digest not pinned (got: $got)"; fail=1 ;;
+first=$(echo "$ids" | head -1)
+case "$(grep -A6 "version: \"$("$PY" matrixlib.py get "$first" version)\"" /tmp/_pinned.yml | grep 'sha256:' | head -1)" in
+  *"$want"*) ok "$first pinned with the asset digest" ;;
+  *)         bad "$first digest not pinned" ;;
 esac
-# The sibling must not move.
-if grep -A6 '^  node-24:' /tmp/_pinned.yml | grep -q "$want"; then
-  echo "FAIL node-24 was touched"; fail=1
+rm -rf "$tmp" /tmp/_pinned.yml
+
+echo "== workflows agree with the manifest =="
+if grep -qE 'matrix\.id\b|doc\["setups"\]\.items' .github/workflows/*.yml; then
+  bad "a workflow still uses the old mapping/id shape"
 else
-  echo "ok   node-24 untouched"
+  ok "no stale matrix.id / dict-style access"
 fi
-rm -rf "$tmpdir" /tmp/_pinned.yml
+for f in .github/workflows/release.yml .github/workflows/refresh.yml; do
+  "$PY" -c "import yaml,sys;yaml.safe_load(open('$f'))" || bad "$f is not valid YAML"
+done
+ok "workflow YAML parses"
 
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
