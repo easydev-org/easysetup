@@ -179,24 +179,33 @@ jobs:
             # The step is `cd /tmp/verify`, but matrixlib reads matrix.yml by a
             # RELATIVE path, so every lookup must run with the checkout as cwd.
             REPO="$GITHUB_WORKSPACE"
-            rbuilder=$(cd "$REPO" && python3 matrixlib.py get "$req" builder)
-            rver=$(cd "$REPO" && python3 matrixlib.py get "$req" version)
-            rart=$(cd "$REPO" && python3 matrixlib.py get "$req" artifact)
+            # `req` is a REQUIREMENT, not a directory: it may be a range like
+            # `swift@>=6.4,<7`. `matrixlib.py get` takes a directory, so resolve
+            # the requirement first, then read fields off the concrete entry.
+            rdir=$(cd "$REPO" && python3 matrixlib.py resolve "$req" | tail -1)
+            if [ -z "$rdir" ]; then
+              echo "cannot resolve required setup '$req'" >&2
+              exit 1
+            fi
+            echo "--- dependency $req resolves to $rdir"
+            rbuilder=$(cd "$REPO" && python3 matrixlib.py get "$rdir" builder)
+            rver=$(cd "$REPO" && python3 matrixlib.py get "$rdir" version)
+            rart=$(cd "$REPO" && python3 matrixlib.py get "$rdir" artifact)
             # A dependency may itself need packages (lua builds with gcc/make).
             # Install ITS apt_deps too, or the build fails for a reason that has
             # nothing to do with the setup under test.
-            rdeps=$(cd "$REPO" && python3 matrixlib.py apt "$req")
+            rdeps=$(cd "$REPO" && python3 matrixlib.py apt "$rdir")
             if [ -n "$rdeps" ]; then
               apt-get install -y -qq --no-install-recommends $rdeps
             fi
-            ( cd "$REPO" && bash "tools/build-$rbuilder.sh" "$req" "$rver" /tmp/out-dep )
+            ( cd "$REPO" && bash "tools/build-$rbuilder.sh" "$rdir" "$rver" /tmp/out-dep )
             tar -xJf "/tmp/out-dep/$rart" -C /tmp/verify
             # Put the dependency on PATH so the tool under test can exec it.
-            if [ -d "/tmp/verify/opt/setup/$req/bin" ]; then
-              PATH="/tmp/verify/opt/setup/$req/bin:$PATH"
+            if [ -d "/tmp/verify/opt/setup/$rdir/bin" ]; then
+              PATH="/tmp/verify/opt/setup/$rdir/bin:$PATH"
               export PATH
             fi
-            echo "--- dependency $req unpacked at /tmp/verify/opt/setup/$req"
+            echo "--- dependency $rdir unpacked at /tmp/verify/opt/setup/$rdir"
           done
           # Not every toolchain has a bin/ dir: dotnet unpacks to the prefix
           # root (dotnet, sdk/, shared/), while node/python/go put binaries in
