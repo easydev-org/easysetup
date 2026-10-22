@@ -116,3 +116,36 @@ checksum. Adding a *tool* means also adding `tools/build-<tool>.sh`.
 
 A pinned version is deliberate: a CI that silently upgrades runtimes breaks
 builds nobody touched.
+
+## Keeping the pins current
+
+`tools/bump.py` compares every setup against its own upstream release line and
+reports anything stale:
+
+```bash
+python3 tools/bump.py --check     # exit 1 if any pin is behind
+python3 tools/bump.py --apply     # rewrite matrix.yml
+```
+
+Each id tracks only its own line, so `node-22`, `node-24` and `node-26` never
+overwrite each other:
+
+| id | tracks |
+|---|---|
+| `node-22` | newest `22.x` |
+| `python-312` | newest `3.12.x` |
+| `go-124` | newest `1.24.x` |
+| `java-17` | newest `17` GA |
+
+A bump rewrites the version **and the artifact name** (the asset carries the
+version) and **clears `sha256`**, because the old digest cannot match a
+different file. The release workflow re-pins it once the new asset is built, so
+`install.sh` never unpacks something it cannot verify.
+
+`.github/workflows/refresh.yml` runs `--check` weekly and, when something is
+stale, runs `--apply` and opens a **pull request** with the diff. It never
+pushes to main: a bump changes the runtime every consuming CI pipeline gets.
+
+The rewrite rules have offline tests (`tools/test_bump.py`, run by
+`./selftest.sh`): bumping one id must leave its siblings untouched, and a
+malformed block must fail the whole file rather than half-write it.
