@@ -1,18 +1,18 @@
 #!/bin/bash
-# build-node.sh <version> <outdir> — pack a complete node tree into a tarball.
+# build-node.sh <id> <version> <outdir>
 #
-# The tarball's root is opt/setup/node/..., so the consumer can `tar -xJf ... -C /`
-# without knowing anything about this repository's layout.
+# Packs a complete node tree at opt/setup/<id>/..., where <id> is the matrix id
+# (e.g. node-22). The versioned directory is what lets node-22 and node-24 live
+# side by side.
 set -euo pipefail
 
-VERSION="$1"
-OUT="$2"
+ID="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d)
-ROOT="$STAGE/opt/setup/node"
+ROOT="$STAGE/opt/setup/$ID"
 mkdir -p "$ROOT"
 
 URL="https://nodejs.org/dist/v${VERSION}/node-v${VERSION}-linux-x64.tar.xz"
-echo "node: ${VERSION} <- ${URL}"
+echo "node: $ID $VERSION <- $URL"
 curl -fsSL --retry 3 --retry-delay 2 -o /tmp/node.tar.xz "$URL"
 tar -xJf /tmp/node.tar.xz -C "$ROOT" --strip-components=1
 rm -f /tmp/node.tar.xz
