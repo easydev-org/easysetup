@@ -49,17 +49,21 @@ fi
 mkdir -p /opt/setup
 installed=""
 
-for id in "$@"; do
-  tool=$(mlib get "$id" tool 2>/dev/null || true)
-  version=$(mlib get "$id" version 2>/dev/null || true)
-  artifact=$(mlib get "$id" artifact 2>/dev/null || true)
-  sha=$(mlib get "$id" sha256 2>/dev/null || true)
-
-  if [ -z "$tool" ] || [ -z "$version" ] || [ -z "$artifact" ]; then
-    echo "install.sh: '$id' is not a setup in the manifest" >&2
-    echo "            known setups: $(mlib list | tr '\n' ' ')" >&2
+for name in "$@"; do
+  # Resolve first: a name may be a prefix of the version (`node-22`), and the
+  # concrete directory is what everything below keys off.
+  id=$(mlib resolve "$name" 2>/dev/null || true)
+  if [ -z "$id" ]; then
+    echo "install.sh: no setup matches '$name'" >&2
+    echo "            available: $(mlib list | tr '\n' ' ')" >&2
     exit 2
   fi
+  [ "$id" = "$name" ] || echo "==> $name -> $id"
+
+  tool=$(mlib get "$id" tool)
+  version=$(mlib get "$id" version)
+  artifact=$(mlib get "$id" artifact)
+  sha=$(mlib get "$id" sha256)
 
   echo "==> $id ($tool $version)"
 
