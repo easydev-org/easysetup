@@ -127,10 +127,10 @@ done
       java-*)
         echo "[ -d /opt/setup/$id ] && { JAVA_HOME=/opt/setup/$id; export JAVA_HOME; }" ;;
       r-*)
-        # R's launcher was built with R_HOME pointing at /opt/R/<version>; the
-        # tree now lives under /opt/setup, so R_HOME must be overridden or R
-        # refuses to start ("R_HOME not found").
-        echo "[ -d /opt/setup/$id/lib/R ] && { R_HOME=/opt/setup/$id/lib/R; export R_HOME; }" ;;
+        # Nothing to export: R ignores $R_HOME when it disagrees with the path
+        # baked into its own launcher, so the build rewrites bin/R instead. This
+        # branch exists only to record that, so nobody adds a useless R_HOME.
+        : ;;
       ruby-*)
         # The prebuilt ruby ships libruby.so inside its own lib/ and was built
         # with an absolute prefix, so the loader and RubyGems both have to be
