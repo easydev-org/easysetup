@@ -1,0 +1,148 @@
+name: easysetup
+description: >-
+  Install pinned node / python / go / java / rust / swift / ... toolchains into
+  /opt/setup. Prebuilt for debian trixie, unpacked rather than compiled.
+author: easydev
+
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  tools:
+    description: >-
+      Space-separated setup ids, e.g. "node-22 python-3.12". A name may be a
+      version prefix: node-22 selects the newest 22.x published.
+    required: true
+  cache:
+    description: >-
+      Cache /opt/setup between runs, keyed on the exact setup list. Leave on
+      unless you are debugging the installer itself.
+    required: false
+    default: "true"
+  repo:
+    description: >-
+      Where install.sh and matrix.yml are read from. Override only to test a
+      fork.
+    required: false
+    default: easydev-org/easysetup
+
+outputs:
+  env-script:
+    description: >-
+      Path to the generated env.sh. Later steps normally don't need it: the
+      action already adds every bin directory to $GITHUB_PATH.
+    value: ${{ steps.install.outputs.env-script }}
+
+runs:
+  using: composite
+  steps:
+    # ------------------------------------------------------------------ 1 ---
+    # Why this exists, and why it is not optional:
+    #
+    # The artifacts are built for debian trixie (glibc 2.41). The container a
+    # job runs in MUST be trixie-based, or glibc is too old and every binary
+    # dies at the loader. We cannot fix that here - it is a hard limit of
+    # prebuilt binaries - so we detect it and say so plainly instead of
+    # installing 300 MB of toolchain that cannot start.
+    - name: check the platform matches the artifacts
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -r /etc/os-release ]; then
+          echo "::warning::cannot read /etc/os-release; assuming debian 13"
+          exit 0
+        fi
+        . /etc/os-release
+        if [ "${ID:-}" != "debian" ] || [ "${VERSION_ID:-}" != "13" ]; then
+          cat >&2 <<EOF
+        ::error::easysetup artifacts are built for debian 13 (trixie); this is
+        ${ID:-?} ${VERSION_ID:-?}.
+
+        Add this to the job that uses the action:
+
+            runs-on: ubuntu-latest
+            container: debian:trixie-slim
+
+        The binaries are linked against trixie's glibc 2.41. A newer distro is
+        fine; an older one (ubuntu 24.04 is glibc 2.39) cannot load them at all.
+        EOF
+          exit 1
+        fi
+        echo "platform ok: debian ${VERSION_ID}"
+
+    # ------------------------------------------------------------------ 2 ---
+    # debian:trixie-slim ships none of these, and install.sh needs all four:
+    # curl to download, xz-utils for `tar -xJf`, python3 for matrixlib, and
+    # ca-certificates for the TLS to github.com.
+    - name: install the installer's own prerequisites
+      shell: bash
+      run: |
+        set -euo pipefail
+        missing=""
+        for c in curl python3 tar; do
+          command -v "$c" >/dev/null 2>&1 || missing="$missing $c"
+        done
+        xz_missing=0; command -v xz >/dev/null 2>&1 || xz_missing=1
+        if [ -n "$missing" ] || [ "$xz_missing" = 1 ]; then
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            curl ca-certificates xz-utils python3
+        fi
+        echo "prerequisites present"
+
+    # ------------------------------------------------------------------ 3 ---
+    # The cache key is the setup list itself. Two jobs asking for
+    # "node-22 python-3.12" share one entry; a job asking for anything else gets
+    # its own. That is coarse but correct: the artifact for a given id is
+    # immutable (its sha256 is pinned), so a hit can never be stale in a way
+    # that matters.
+    - name: restore /opt/setup
+      if: inputs.cache == 'true'
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: /opt/setup
+        key: easysetup-${{ inputs.tools }}-${{ inputs.repo }}
+
+    # ------------------------------------------------------------------ 4 ---
+    - name: install
+      id: install
+      shell: bash
+      env:
+        TOOLS: ${{ inputs.tools }}
+        ES_REPO: ${{ inputs.repo }}
+      run: |
+        set -euo pipefail
+        # cache-hit means the whole tree came back; install.sh is idempotent and
+        # would skip each entry anyway, but this also skips the round trip that
+        # fetches matrix.yml.
+        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
+          echo "restored /opt/setup from cache"
+        else
+          EASYSETUP_REPO="$ES_REPO" \
+            bash -c "curl -fsSL https://raw.githubusercontent.com/$ES_REPO/main/install.sh | bash -s -- $TOOLS"
+        fi
+        test -f /opt/setup/env.sh
+        echo "env-script=/opt/setup/env.sh" >> "$GITHUB_OUTPUT"
+
+    # ------------------------------------------------------------------ 5 ---
+    # install.sh already appends the bin dirs to $GITHUB_PATH when it detects
+    # Actions. Re-assert it here so a cache HIT (where install.sh never ran)
+    # also reaches later steps. This is the difference between "the action
+    # installed node" and "your next step can run node".
+    - name: expose the toolchain to later steps
+      shell: bash
+      run: |
+        set -euo pipefail
+        # shellcheck disable=SC2013
+        for d in /opt/setup/*/bin; do
+          [ -d "$d" ] || continue
+          echo "$d" >> "$GITHUB_PATH"
+        done
+        # Variables that are not PATH (JAVA_HOME, GEM_HOME, LD_LIBRARY_PATH for
+        # R's bundled libs, the BEAM locale) live in env.sh; GITHUB_ENV cannot
+        # express "source this file", so hand later steps the path instead.
+        echo "EASYSETUP_ENV=/opt/setup/env.sh" >> "$GITHUB_ENV"
+        echo "Later steps: source \$EASYSETUP_ENV if you need JAVA_HOME etc."
