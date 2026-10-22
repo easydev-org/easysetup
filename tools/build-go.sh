@@ -1,15 +1,14 @@
 #!/bin/bash
-# build-go.sh <version> <outdir>
+# build-go.sh <id> <version> <outdir>
 set -euo pipefail
 
-VERSION="$1"
-OUT="$2"
+ID="$1"; VERSION="$2"; OUT="$3"
 STAGE=$(mktemp -d)
-ROOT="$STAGE/opt/setup/go"
+ROOT="$STAGE/opt/setup/$ID"
 mkdir -p "$ROOT"
 
 URL="https://go.dev/dl/go${VERSION}.linux-amd64.tar.gz"
-echo "go: ${VERSION} <- ${URL}"
+echo "go: $ID $VERSION <- $URL"
 curl -fsSL --retry 3 --retry-delay 2 -o /tmp/go.tar.gz "$URL"
 tar -xzf /tmp/go.tar.gz -C "$ROOT" --strip-components=1
 rm -f /tmp/go.tar.gz
