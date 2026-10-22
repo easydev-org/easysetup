@@ -311,6 +311,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
+        # A run with `only:` produces exactly one artifact, and a run where the
+        # single build failed produces none. download-artifact@v4 FAILS when no
+        # artifact matches, which then fails the whole publish job even though
+        # there is simply nothing to publish - so let it fail softly and check
+        # for ourselves.
+        continue-on-error: true
         with:
           pattern: setup-*
           path: /tmp/assets
@@ -321,6 +327,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          if [ ! -d /tmp/assets ] || [ -z "$(ls -A /tmp/assets 2>/dev/null)" ]; then
+            echo "no artifacts to publish (every build in this run failed or was skipped)"
+            exit 0
+          fi
           ls -l /tmp/assets
           # One release per tool+version. Delete-and-recreate so a rebuild
           # replaces the asset instead of piling up duplicates.
