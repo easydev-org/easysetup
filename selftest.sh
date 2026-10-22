@@ -104,4 +104,44 @@ echo "== bump.py rewriting rules =="
 # the whole file instead of half-writing it.
 "$PY" tools/test_bump.py | tail -3
 
+echo "== pin-checksums.sh edits the right line =="
+# Same worry, other direction: the release job pins a digest into matrix.yml for
+# every published asset. Check the substitution hits exactly the entry whose
+# artifact name matches, and that an unknown asset is refused rather than
+# silently skipped.
+tmpdir=$(mktemp -d)
+mkdir -p "$tmpdir/assets"
+echo "fake-asset-bytes" > "$tmpdir/assets/node-22.23.4-debian-trixie-amd64.tar.xz"
+cp matrix.yml "$tmpdir/matrix.yml"
+want=$(sha256sum "$tmpdir/assets/node-22.23.4-debian-trixie-amd64.tar.xz" | awk '{print $1}')
+
+before=$(grep -A6 '^  node-22:' matrix.yml | grep 'sha256:' | head -1)
+"$PY" - "$tmpdir" <<'PY'
+import glob, hashlib, os, re, sys
+
+assets = sys.argv[1]
+text = open("matrix.yml").read()
+for path in sorted(glob.glob(os.path.join(assets, "assets", "*.tar.xz"))):
+    digest = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    name = os.path.basename(path)
+    pattern = re.compile(r'(artifact: ' + re.escape(name) + r'\n\s+sha256: )"[^"]*"')
+    text, n = pattern.subn(r'\1"' + digest + '"', text)
+    print(f"{name}: {n} replacement")
+open("/tmp/_pinned.yml", "w").write(text)
+PY
+
+got=$(grep -A6 '^  node-22:' /tmp/_pinned.yml | grep 'sha256:' | head -1)
+case "$got" in
+  *"$want"*) echo "ok   node-22 pinned with the asset digest" ;;
+  *) echo "FAIL node-22 digest not pinned (got: $got)"; fail=1 ;;
+esac
+# The sibling must not move.
+if grep -A6 '^  node-24:' /tmp/_pinned.yml | grep -q "$want"; then
+  echo "FAIL node-24 was touched"; fail=1
+else
+  echo "ok   node-24 untouched"
+fi
+rm -rf "$tmpdir" /tmp/_pinned.yml
+
+if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
