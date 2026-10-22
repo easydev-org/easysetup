@@ -1,13 +1,14 @@
 # easysetup
 
-Prebuilt toolchain images for easydev CI. One image = one fixed set of runtimes,
-so a CI job gets node / python / go / java **without installing anything at run
-time**.
+Prebuilt toolchains for easydev CI, installed on demand into `/opt/setup`.
 
-```
-ghcr.io/easydev-org/easysetup:node22
-ghcr.io/easydev-org/easysetup:node22-python312
-ghcr.io/easydev-org/easysetup:all
+**One setup per tool. No combinations.** A job that needs node *and* python
+installs two setups; they do not conflict because each lives in its own
+directory. Combining them is the consumer's business, not this repository's.
+
+```bash
+./install.sh node                    # /opt/setup/node
+./install.sh node python             # both, stacked
 ```
 
 ## How a CI job uses it
@@ -18,78 +19,89 @@ version: 1
 on: [rr_opened, rr_synced]
 jobs:
   test:
-    setup: [node22, python312]     # resolved to the image above
+    image: debian:trixie
+    setup: [node, python]            # two setups, installed in order
     commands:
       - . /opt/setup/env.sh
       - node --version && python3 --version
       - npm ci && pytest
 ```
 
-The job does not name a version and does not download anything: `setup:` is
-matched against `matrix.yml`, and the matching image already contains the
-toolchains.
+The platform runs `install.sh node python` before `commands`. Nothing is
+compiled and no version is resolved at run time: each asset is a prebuilt tree
+whose version was pinned when the release was cut.
 
-## Layout inside the image
+## What a setup contains
 
 ```
 /opt/setup/node/bin/node
-/opt/setup/python/bin/python3
-/opt/setup/go/bin/go
-/opt/setup/java/bin/java
-/opt/setup/env.sh          -> prepends the ones that exist to PATH, sets JAVA_HOME
+/opt/setup/node/lib/...
+/opt/setup/node/...
+/opt/setup/env.sh          <- written by install.sh; prepends what was installed
 ```
 
-Nothing is installed into `/usr`. The base image's apt layer only carries shared
-runtime libraries (`ca-certificates`, `libstdc++6`, `zlib1g`, `libssl3`, a C
-toolchain for native modules) - never node/python/java/go themselves, so the
-version is exactly what `matrix.yml` pins.
+The tarball's root is `opt/setup/<tool>/...`, so it extracts at `/` with no
+special flags and no knowledge of this repository's layout.
+
+## distro support
+
+**debian trixie, amd64 only.** The assets are built inside `debian:trixie` and
+contain binaries linked against trixie's glibc; they expect trixie's shared
+libraries at run time. `install.sh` refuses to run on a non-debian host. Other
+distros would need their own build, not a rebuild of this one.
+
+The apt layer installs only the *shared libraries* a tool needs
+(`ca-certificates`, `libssl3`, `zlib1g`, ... - see `apt_deps` in `matrix.yml`).
+The tool itself is never an apt package, so its version is exactly the pin.
 
 ## matrix.yml is the authority
 
-Both the build and the consumers read the same file:
-
-- `.github/workflows/build.yml` builds exactly the `images:` listed.
-- The platform's CI resolves `setup: [...]` against the same list and **fails
-  loudly** for a combination that is not published.
-
-Versions are pinned by hand. Reproducibility beats novelty: a CI that silently
-picks up a new runtime breaks builds for reasons the author never changed.
-`.github/workflows/refresh.yml` runs weekly and opens a **pull request** when a
-pin is stale - it never pushes to main.
-
-## Building locally
-
-```bash
-python3 -m pip install pyyaml
-./build.sh                      # build every image in matrix.yml
-./build.sh with ONLY=node22     # one image
-PUSH=1 ./build.sh               # build + push to ghcr (needs docker login)
-```
-
-Each image is smoke-tested after the build: every tool it declares must answer
-`--version` from a shell that only sourced `/opt/setup/env.sh`.
-
-## Adding a combination
-
-Append to `matrix.yml`:
-
 ```yaml
-  - tag: go127-java21
-    tools:
-      go: "1.27.2"
-      java: "21.0.8+9"
+setups:
+  node:
+    version: "22.20.0"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: node-22.20.0-debian-trixie-amd64.tar.xz
+    sha256: "…"            # written by the release workflow
 ```
 
-Commit; the workflow builds and publishes `:go127-java21`. No code change.
+| field | meaning |
+|---|---|
+| `version` | hand-pinned upstream version - never "latest" |
+| `apt_deps` | base packages installed with apt before unpacking |
+| `artifact` | the release asset carrying the complete `/opt/setup/<tool>` tree |
+| `sha256` | asset checksum; `install.sh` refuses to unpack on mismatch |
+
+`install.sh` reads this file at run time, so the version it installs is the one
+in the release - not a moving target.
+
+## Releases
+
+One release per tool+version:
+
+```
+https://github.com/easydev-org/easysetup/releases/download/node-22.20.0/node-22.20.0-debian-trixie-amd64.tar.xz
+```
+
+`.github/workflows/release.yml` builds each one inside `debian:trixie`,
+unpacks it in a clean directory to run the tool, publishes the release, and
+commits the resulting `sha256` back into `matrix.yml`.
 
 ## Supported tools
 
-| tool | source | notes |
-|---|---|---|
-| `node` | nodejs.org dist tarball | static Linux x64 build |
-| `python` | astral-sh/python-build-standalone | self-contained CPython, no compile |
-| `go` | go.dev/dl | official tarball |
-| `java` | Adoptium Temurin | JDK; `JAVA_HOME` is exported |
+| tool | source |
+|---|---|
+| `node` | nodejs.org dist tarball (static linux-x64) |
+| `python` | astral-sh/python-build-standalone (`install_only`) |
+| `go` | go.dev/dl official tarball |
+| `java` | Adoptium Temurin JDK |
 
-Anything else is rejected by the Dockerfile (`unknown tool`) - the set is
-deliberately small and explicit.
+Anything else is rejected by `install.sh` and by the Dockerfile-independent
+build scripts: the set is deliberately small and explicit.
+
+## Adding a tool version
+
+Edit `matrix.yml` (bump `version`, update `artifact`, clear `sha256`), commit.
+The release workflow rebuilds that asset and re-pins the checksum. Bumping a
+version is a deliberate act - a CI that silently upgrades runtimes is a CI that
+breaks builds nobody touched.
