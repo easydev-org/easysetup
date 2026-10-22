@@ -86,6 +86,34 @@ echo "== bump.py rewriting rules =="
 "$PY" tools/test_bump.py | tail -4
 "$PY" tools/test_bump.py >/dev/null || fail=1
 
+echo "== env.sh accumulates across invocations =="
+# The real failure this guards: install.sh is called once per `uses:` step, and
+# generating env.sh from "what this run installed" made each call erase the
+# previous one. gen-env.sh must build the file from what is on disk.
+{
+  fake=$(mktemp -d)
+  mkdir -p "$fake/node-22.23.4/bin" "$fake/python-3.12.15/bin"
+  for id in node-22.23.4 python-3.12.15; do
+    printf 'id=%s\nsha256=x\nartifact=x\n' "$id" > "$fake/$id/.easysetup"
+  done
+  EASYSETUP_ROOT="$fake" bash tools/gen-env.sh "$fake/env.sh" >/dev/null
+  if grep -q '_use_node()' "$fake/env.sh" && grep -q '_use_python()' "$fake/env.sh"; then
+    echo "ok   env.sh knows every installed setup"
+  else
+    echo "FAIL env.sh dropped a setup - it is regenerating from the call, not the tree"
+    exit 1
+  fi
+  # And it must be sourceable under `set -u`, which is how CI runs.
+  if ( set -u; . "$fake/env.sh" >/dev/null 2>&1 ); then
+    echo "ok   env.sh is sourceable under set -u"
+  else
+    echo "FAIL env.sh breaks under set -u"
+    exit 1
+  fi
+  rm -rf "$fake"
+} || fail=1
+
+
 echo "== setup name resolution =="
 # `install.sh node-22` must work; `node-2` must NOT silently pick node 22.
 "$PY" tools/test_resolve.py | tail -3
