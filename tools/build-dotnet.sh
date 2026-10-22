@@ -23,8 +23,23 @@ rm -f /tmp/dotnet.tar.gz
 # the build never touches $HOME of the build container.
 export DOTNET_CLI_HOME="$ROOT/.cli-home"
 export DOTNET_NOLOGO=1
-"$ROOT/dotnet" --info 2>&1 | grep -E '^ Version|^ SDK' | head -2
-"$ROOT/dotnet" --version
+
+# Verify the PAYLOAD, do not execute it.
+#
+# Two reasons the binary is not run here:
+#   * `dotnet --version` needs ICU (globalization) and tzdata, which are in
+#     apt_deps and therefore present in the release container but not in every
+#     build sandbox - running it there aborted with a TimeZoneInfo crash for a
+#     perfectly good SDK;
+#   * an earlier `dotnet --info | grep ...` also killed the build, because grep
+#     returns 1 on no match and `set -o pipefail` turns that into a failure.
+#
+# Structure is what this script has to guarantee; the release workflow runs the
+# tool once, inside debian:trixie with the right libraries installed.
+test -x "$ROOT/dotnet" || { echo "dotnet: binary missing" >&2; exit 1; }
+ls "$ROOT"/sdk/*/dotnet.dll >/dev/null 2>&1 || {
+  echo "dotnet: no SDK directory in the tarball" >&2; exit 1; }
+echo "dotnet: SDK $(ls "$ROOT"/sdk | head -1) present ($(du -sh "$ROOT" | cut -f1))"
 
 mkdir -p "$OUT"
 ASSET="$OUT/dotnet-${VERSION}-debian-trixie-amd64.tar.xz"
