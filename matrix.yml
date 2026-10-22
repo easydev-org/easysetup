@@ -240,14 +240,14 @@ setups:
     version: "26.7.2-1"
     apt_deps: [ca-certificates, curl, bzip2, libx11-6, libxext6, libxrender1, libsm6, libice6]
     artifact: conda-26.7.2-1-debian-trixie-amd64.tar.xz
-    sha256: "863edab05fa6e520f313e458393c3171359cc46746ecb061d918e5193e15c103"
+    sha256: ""
 
   # ------------------------------------------------------------------- R ---
   # Posit's prebuilt R for ubuntu 24.04: a .deb, so the build unpacks it with
   # dpkg-deb -x instead of installing to the host.
   - tool: r
     version: "4.5.2"
-    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4, libopenblas0-pthread, libcairo2, libglib2.0-0t64, libgomp1, libjpeg62-turbo, libpango-1.0-0, libpangocairo-1.0-0, libpng16-16t64, libtcl8.6, libtiff6, libtk8.6, libx11-6, libxt6t64, libdeflate0, libpaper1, libtirpc3t64]
+    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4, libopenblas0-pthread, libcairo2, libglib2.0-0t64, libgomp1, libjpeg62-turbo, libpango-1.0-0, libpangocairo-1.0-0, libpng16-16t64, libtcl8.6, libtiff6, libtk8.6, libx11-6, libxt6t64, libdeflate0, libpaper2, libtirpc3t64]
     artifact: r-4.5.2-debian-trixie-amd64.tar.xz
     sha256: ""
 
