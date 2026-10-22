@@ -40,33 +40,39 @@ support is an optional **component**, named with `@`:
 `@gnu` are all refused rather than guessed at, because a wrong guess costs a
 full toolchain download.
 
-## components: the general mechanism
+## requires: dependencies, with optional version ranges
 
-`components` is how an optional add-on is attached to a package. Today rust
-is the only user, but nothing in the mechanism is rust-specific:
+`requires` names setups that must be installed first. A requirement may pin an
+exact setup, name a version line, or give a range - all resolved against what
+the manifest actually publishes:
 
-```yaml
-  - tool: rust
-    version: "1.99.1"
-    components: [x86_64-pc-windows-gnu]
-    artifact: rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz
+| you write | you get |
+|---|---|
+| `erlang-29.1.2` | exactly that setup |
+| `erlang-29` | that tool, newest 29.x |
+| `erlang@>=29 <30` | any 29.x (newest wins) |
+| `erlang@>=29,<30` | the same, comma-separated |
+| `erlang` | newest of that tool |
+
+The `@` separates the tool from the constraint, so `erlang-29` (a version
+prefix) and `erlang@>=29` (a range) are never confused.
+
+**A requirement that matches nothing is an error**, and the message names what
+is published:
+
+```
+requires 'erlang@>=99': no erlang satisfies '>=99' (published: 29.1.2, 29.0.1)
 ```
 
-The install directory (and release tag) carries them as `+<c1>+<c2>`, so two
-entries sharing tool+version stay distinguishable:
+That matters: a dependency that silently resolved to nothing would install the
+dependent with no runtime at all, and fail much later and far from the cause.
+
+`matrixlib.py plan <name>` shows the resolution with dependencies marked:
 
 ```
-rust-1.99.1
-rust-1.99.1+x86_64-pc-windows-gnu
+erlang-29.1.2  (required)
+elixir-1.20.4
 ```
-
-`components` is a list, so one entry can carry several add-ons. An entry with
-components follows its host entry's version when `bump.py` runs: bumping it
-on its own would desync the pair.
-
-`install.sh` prints what it resolved (`==> node-22 -> node-22.23.4`), and
-`python3 matrixlib.py resolve node-22` shows it without installing.
-
 ## The install contract
 
 For every entry, installing is exactly:
