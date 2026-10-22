@@ -33,8 +33,28 @@ def _scalar(s):
         return ""
     if s.startswith("[") and s.endswith("]"):
         inner = s[1:-1].strip()
-        return [] if not inner else [x.strip().strip('"').strip("'")
-                                     for x in inner.split(",")]
+        if not inner:
+            return []
+        # Split on commas that are NOT inside quotes. A requirement like
+        # ["swift@>=6.4,<7"] carries its own comma, and splitting naively
+        # turned it into two broken entries.
+        items, buf, quote = [], "", None
+        for ch in inner:
+            if quote:
+                if ch == quote:
+                    quote = None
+                else:
+                    buf += ch
+            elif ch in "\"'":
+                quote = ch
+            elif ch == ",":
+                items.append(buf.strip())
+                buf = ""
+            else:
+                buf += ch
+        if buf.strip():
+            items.append(buf.strip())
+        return [x for x in items if x]
     if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
         return s[1:-1]
     return s
