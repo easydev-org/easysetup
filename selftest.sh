@@ -122,5 +122,25 @@ echo "== matrixlib needs no third-party module =="
 "$PY" -S matrixlib.py list >/dev/null || bad "matrixlib fails without site-packages"
 ok "matrixlib runs on the standard library alone"
 
+echo "== no build script compiles anything =="
+# Every toolchain is prebuilt upstream; the release job only downloads and
+# repacks. A `./configure` or `make` here means a 10-20 minute build and a
+# toolchain that depends on the build machine - both were removed on purpose.
+# (bazel's installer is a .sh that unpacks an embedded zip, so it is allowed;
+# it is matched by name only when actually invoked as a compiler driver.)
+for f in tools/build-*.sh; do
+  if grep -qE '^\s*\./configure|^\s*make( |$)|^\s*make install|cmake ' "$f"; then
+    bad "$f compiles at build time"
+  fi
+done
+ok "no toolchain is compiled"
+
+echo "== every tool has a build script =="
+for d in $("$PY" matrixlib.py list); do
+  tool=$("$PY" matrixlib.py get "$d" tool)
+  [ -f "tools/build-$tool.sh" ] || bad "missing tools/build-$tool.sh (for $d)"
+done
+ok "build scripts exist for every tool"
+
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
