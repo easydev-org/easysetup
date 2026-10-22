@@ -53,8 +53,19 @@ jobs:
           import matrixlib
           only = os.environ.get("ONLY", "").strip()
           out = []
+          # `only` is a NAME, not necessarily a full directory: it is resolved
+          # the same way install.sh resolves it, so `only: swift-sdk-wasm` and
+          # `only: swift-sdk-wasm-6.4.1` and `only: node-22` all work. Comparing
+          # raw strings instead silently produced a run with ZERO build jobs -
+          # setup and publish both "succeeded" while nothing was built.
+          only_dir = None
+          if only:
+              _e = matrixlib.resolve_requirement(only)
+              if _e is None:
+                  sys.exit("only=%r matches no setup" % only)
+              only_dir = _e["dir"]
           for e in matrixlib.load():
-              if only and e["dir"] != only:
+              if only_dir and e["dir"] != only_dir:
                   continue
               out.append({"dir": e["dir"], "tool": e["tool"],
                           "version": e["version"], "artifact": e["artifact"],
