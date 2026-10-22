@@ -33,21 +33,21 @@ setups:
   node-22:
     tool: node
     version: "22.23.4"
-    apt_deps: [ca-certificates, curl, xz-utils]
+    apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
     sha256: ""
 
   node-24:
     tool: node
     version: "24.22.1"
-    apt_deps: [ca-certificates, curl, xz-utils]
+    apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
     sha256: ""
 
   node-26:
     tool: node
     version: "26.12.1"
-    apt_deps: [ca-certificates, curl, xz-utils]
+    apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-26.12.1-debian-trixie-amd64.tar.xz
     sha256: ""
 
