@@ -1,42 +1,52 @@
 #!/bin/bash
 # build-php.sh <dir> <version> <outdir>
 #
-# PHP built from source. php.net publishes source only, and the CLI needs to be
-# configured with the extensions a CI job expects (openssl, curl, mbstring,
-# pdo_sqlite) - a bare ./configure would produce a php that cannot reach https.
+# PHP from shivammathur/php-builder — the prebuilt tarball behind GitHub
+# Actions' setup-php, and it publishes a **debian 13 (= trixie)** build, so it
+# is an exact platform match. Nothing is compiled.
 #
-# This compiles once here; the tarball is the built tree, so installing is an
-# unpack.
+# NOTE on `version`: php-builder tags a RELEASE LINE ("8.5"), not a patch level.
+# The version in matrix.yml is therefore the builder tag, and the exact patch
+# release is whatever that tag currently ships. That is deliberate: tying to the
+# tag means the pin is one readable value, and a rebuild of the same tag is
+# still reproducible because our own release asset is checksummed.
 set -euo pipefail
 
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
-MAJOR_MINOR="${VERSION%.*}"       # 8.5.12 -> 8.5
 
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$DIR"
 mkdir -p "$ROOT"
 
-URL="https://www.php.net/distributions/php-${VERSION}.tar.gz"
+URL="https://github.com/shivammathur/php-builder/releases/download/${VERSION}/php_${VERSION}+debian13.tar.xz"
 echo "php: $DIR $VERSION <- $URL"
-fetch "$URL" /tmp/php.tar.gz
-rm -rf /tmp/php-src && mkdir -p /tmp/php-src
-tar -xzf /tmp/php.tar.gz -C /tmp/php-src --strip-components=1
-rm -f /tmp/php.tar.gz
+fetch "$URL" /tmp/php.tar.xz
 
-cd /tmp/php-src
-./configure --prefix="$ROOT" \
-  --enable-mbstring --with-openssl --with-curl --with-zlib \
-  --enable-pdo --with-pdo-sqlite --without-pear \
-  2>&1 | tail -3
-make -j"$(nproc)" 2>&1 | tail -3
-make install 2>&1 | tail -3
-cd /
-rm -rf /tmp/php-src
+# The tarball is a filesystem tree rooted at usr/ (it is meant to be unpacked
+# over /). Unpack it into a scratch prefix, then take the parts a CLI needs.
+rm -rf /tmp/php-x && mkdir -p /tmp/php-x
+tar -xJf /tmp/php.tar.xz -C /tmp/php-x
+rm -f /tmp/php.tar.xz
 
+echo "php: layout:"
+ls /tmp/php-x | head
+
+# Copy the whole usr/local tree it ships (bin/sbin/lib/etc) so php.ini and its
+# extensions stay together under our own directory.
+if [ -d /tmp/php-x/usr/local ]; then
+  cp -a /tmp/php-x/usr/local/. "$ROOT"/
+else
+  cp -a /tmp/php-x/. "$ROOT"/
+fi
+rm -rf /tmp/php-x
+
+# php resolves its ini and extension dir from the compiled-in prefix, which was
+# /usr/local. Point it at this tree so nothing leaks to the host.
+export PHPRC="$ROOT/lib"
 "$ROOT/bin/php" --version | head -1
-"$ROOT/bin/php" -r 'echo extension_loaded("openssl") ? "openssl ok\n" : "openssl MISSING\n";'
+"$ROOT/bin/php" -r 'echo "openssl=", extension_loaded("openssl") ? "yes" : "NO", " json=", extension_loaded("json") ? "yes" : "NO", "\n";'
 
 mkdir -p "$OUT"
 ASSET="$OUT/php-${VERSION}-debian-trixie-amd64.tar.xz"
