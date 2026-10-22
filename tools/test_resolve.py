@@ -38,6 +38,14 @@ setups:
     builder: rust
     version: "1.99.1"
     requires: [rust-1.99.1]
+  # A tool whose name EXTENDS another tool's name. Asking for the longer one must
+  # never resolve to the shorter: that silently installs the wrong thing.
+  - tool: swift
+    version: "6.4.1"
+  - tool: swift-sdk-wasm
+    builder: swift-sdk
+    version: "6.4.1"
+    requires: [swift@>=6.4 <7]
   - tool: erlang
     version: "29.1.2"
   - tool: elixir
@@ -93,6 +101,26 @@ ok("long tool name, version prefix",
 ok("long tool name, bare major",
    matrixlib.resolve("rust-toolchain-x86_64-pc-windows-gnu-1", str(MATRIX))["dir"],
    "rust-toolchain-x86_64-pc-windows-gnu-1.99.1")
+
+# `swift-sdk-wasm` must resolve to the SDK, NOT to `swift` with a bogus
+# "sdk-wasm" version. This was a real bug: the remainder after the tool prefix
+# was not checked for being version-shaped, and "" compared equal to anything.
+#
+# `resolve` is the version-prefix resolver and returns None for a name that is
+# not "<tool>-<version-ish>"; `resolve_requirement` is what falls back to a bare
+# tool name, which is what install.sh actually calls.
+ok("resolve says swift-sdk-wasm is not a swift version",
+   matrixlib.resolve("swift-sdk-wasm", str(MATRIX)), None)
+ok("resolve_requirement finds the SDK",
+   matrixlib.resolve_requirement("swift-sdk-wasm", str(MATRIX))["dir"],
+   "swift-sdk-wasm-6.4.1")
+# A bare tool name has no version part, so `resolve` (which needs
+# "<tool>-<version-ish>") declines; resolve_requirement is the entry point that
+# understands it.
+ok("bare swift resolves to the newest swift",
+   matrixlib.resolve_requirement("swift", str(MATRIX))["dir"], "swift-6.4.1")
+ok("swift-6.4 is swift, not the SDK",
+   matrixlib.resolve("swift-6.4", str(MATRIX))["dir"], "swift-6.4.1")
 
 # --- requires is followed, dependency first, once -------------------------
 chain = [e["dir"] for e in matrixlib.resolve_chain("elixir-1", str(MATRIX))]
