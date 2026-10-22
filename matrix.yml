@@ -238,7 +238,7 @@ setups:
   # Miniforge: a self-contained conda whose installer just unpacks a prefix.
   - tool: conda
     version: "26.7.2-1"
-    apt_deps: [ca-certificates, curl, bzip2]
+    apt_deps: [ca-certificates, curl, bzip2, libx11-6, libxext6, libxrender1, libsm6, libice6]
     artifact: conda-26.7.2-1-debian-trixie-amd64.tar.xz
     sha256: ""
 
