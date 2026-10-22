@@ -143,12 +143,14 @@ echo "== matrixlib needs no third-party module =="
 ok "matrixlib runs on the standard library alone"
 
 echo "== which build scripts compile, and is that intended =="
-# The model is drifting from "repack a prebuilt tarball" to "build from source":
-# R is the first setup done this way, on purpose, because no single prebuilt
-# binary can satisfy every target distro's ABI (R's ubuntu .deb needs libicu 74,
-# trixie has 76). The list below is the authoritative set of source builds, so a
-# NEW one cannot slip in unnoticed - adding a compiler means adding it here.
-COMPILED="tools/build-r.sh tools/build-lua.sh tools/build-ghc.sh"
+# The model is "repack a prebuilt tarball, bundling any library whose ABI the
+# target lacks" - NOT "compile from source". Two scripts are exceptions, both
+# for lack of any prebuilt alternative:
+#   lua  no official binary release; builds in seconds from 400 KB of source.
+#   ghc  its tarball is a bindist whose own `make install` lays out the
+#        PREBUILT compiler (it does not compile GHC).
+# This list is authoritative, so a new compiler cannot slip in unnoticed.
+COMPILED="tools/build-lua.sh tools/build-ghc.sh"
 for f in tools/build-*.sh; do
   compiles=0
   if grep -qE '^\s*\./configure|^\s*make( |$)|^\s*make install|cmake ' "$f"; then
