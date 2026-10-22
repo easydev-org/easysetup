@@ -354,7 +354,7 @@ setups:
     version: "6.4.1"
     apt_deps: [ca-certificates, curl, binutils, binutils-gold, gcc, g++, libcurl4, libedit2, libicu76, libncurses6, libncursesw6, libc6-dev, libpython3.13, libsqlite3-0, libstdc++6, libxml2, pkg-config, tzdata, unzip, zip, uuid-runtime, zlib1g, libz3-4]
     artifact: swift-6.4.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "de2bcbdb60c87a0a94a066d1be11adac5464ad898300eeefcadd3263ae2512c2"
 
   # The three Swift SDKs. An SDK has no binary of its own - it is a sysroot that
   # the swift compiler drives - so each declares the toolchain as a dependency,
