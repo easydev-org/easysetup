@@ -112,6 +112,15 @@ for key in $(printf '%s\n' "${!DEFAULT_ID[@]}" | sort); do
       erlang|elixir)
         echo "  # BEAM aborts on startup without a UTF-8 locale."
         echo "  export LANG=\"\${LANG:-C.UTF-8}\" LC_ALL=\"\${LC_ALL:-C.UTF-8}\"" ;;
+      nix)
+        echo "  # nix hard-codes /nix: its store paths and profile links are"
+        echo "  # absolute. install.sh materialises the tree there, so the real"
+        echo "  # commands are in the profile, not under \$d/bin."
+        echo "  if [ -d /nix/var/nix/profiles/default/bin ]; then"
+        echo "    PATH=\"/nix/var/nix/profiles/default/bin:\$PATH\"; export PATH"
+        echo "  fi"
+        echo "  # The modern CLI is off by default; a container has no nix.conf."
+        echo "  export NIX_CONFIG=\"\${NIX_CONFIG:-experimental-features = nix-command flakes}\"" ;;
     esac
     echo "  PATH=\"\$d/bin:\$PATH\"; export PATH"
     echo "}"

@@ -125,6 +125,17 @@ for id in $ALL; do
   rm -f "$WORK/asset"
   [ -d "/opt/setup/$id" ] || {
     echo "install.sh: $artifact did not produce /opt/setup/$id" >&2; exit 1; }
+  # 4b) A few tools cannot live under /opt/setup at all and must be materialised
+  #     at their compiled-in root. Nix is that case: every store path and profile
+  #     link inside the tree points at /nix, so it only works there. The tarball
+  #     is staged under /opt/setup/<id> and then copied into place.
+  case "$id" in
+    nix-*)
+      echo "    materialising /nix from the setup tree (nix hard-codes that path)"
+      mkdir -p /nix
+      cp -a "/opt/setup/$id/." /nix/
+      ;;
+  esac
   # Record what was unpacked, so a second run can tell "already done" from
   # "a different pin is wanted".
   printf 'id=%s\nsha256=%s\nartifact=%s\n' "$id" "$sha" "$artifact" > "$marker"

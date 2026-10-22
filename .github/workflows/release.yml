@@ -312,8 +312,12 @@ jobs:
               # nix must answer as a single-user install: no daemon socket, and
               # the modern CLI enabled by the nix.conf written during the build.
               nix)
-                "$R/bin/nix" --version
-                "$R/bin/nix" eval --expr '1 + 2'
+                # The tree keeps nix's own layout (store/, var/); the command
+                # lives in the profile, not in <tree>/bin, so materialise /nix
+                # the way install.sh will and check it there.
+                mkdir -p /nix && cp -a "$R/." /nix/
+                /nix/var/nix/profiles/default/bin/nix --version
+                /nix/var/nix/profiles/default/bin/nix eval --expr '1 + 2'
                 if [ -S "$R/var/nix/daemon-socket/socket" ]; then
                   echo "::error::unexpected daemon socket in a single-user install"
                   exit 1
