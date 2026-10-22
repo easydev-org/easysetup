@@ -134,6 +134,27 @@ jobs:
           tar -xJf "/tmp/out/${{ matrix.artifact }}"
           R="/tmp/verify/opt/setup/${{ matrix.dir }}"
           test -d "$R"
+          # A setup that `requires` another cannot be exercised alone: elixir
+          # shells out to `erl`, luarocks to `lua`. Those dependencies are not
+          # in this job's artifact, so build each one from its own recipe and
+          # unpack it beside this tree. Without that, "run the tool" would only
+          # ever pass for self-contained tools and the dependency path would go
+          # untested until a consumer hit it.
+          for req in ${{ matrix.requires }}; do
+            echo "--- building dependency $req"
+            rtool=$(python3 matrixlib.py get "$req" tool)
+            rbuilder=$(python3 matrixlib.py get "$req" builder)
+            rver=$(python3 matrixlib.py get "$req" version)
+            rart=$(python3 matrixlib.py get "$req" artifact)
+            bash "tools/build-$rbuilder.sh" "$req" "$rver" /tmp/out-dep
+            tar -xJf "/tmp/out-dep/$rart" -C /tmp/verify
+            # Put the dependency on PATH so the tool under test can exec it.
+            if [ -d "/tmp/verify/opt/setup/$req/bin" ]; then
+              PATH="/tmp/verify/opt/setup/$req/bin:$PATH"
+              export PATH
+            fi
+            echo "--- dependency $req unpacked at /tmp/verify/opt/setup/$req"
+          done
           # Not every toolchain has a bin/ dir: dotnet unpacks to the prefix
           # root (dotnet, sdk/, shared/), while node/python/go put binaries in
           # bin/. Use whichever exists rather than assuming.
@@ -209,10 +230,11 @@ jobs:
               conda)  "$B/conda" --version ;;
               ghc)    "$B/ghc" --version ;;
               cabal)  "$B/cabal" --version ;;
-              # R's binary is at the prefix root under lib/R/bin.
-              r)      "$R/lib/R/bin/R" --version | head -1 ;;
-              # luarocks needs a lua from its requires, installed separately.
-              luarocks) echo "luarocks: layout checked at build time (lua comes from requires)" ;;
+              # R's payload is /opt/R/<ver>/{bin,lib}, so bin/R is the binary.
+              r)      "$B/R" --version | head -1 ;;
+              # luarocks is a lua script: its `requires` put lua on PATH above,
+              # so this actually runs it.
+              luarocks) "$B/luarocks" --version | head -1 ;;
               # dotnet's binary sits at the prefix root, not in bin/.
               dotnet) "$R/dotnet" --version ;;
               # maven / gradle / bazel need a JRE that is not in the tarball by
