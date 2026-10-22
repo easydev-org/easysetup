@@ -468,3 +468,33 @@ setups:
     apt_deps: [ca-certificates, curl, xz-utils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
     artifact: llvm-23.1.4-debian-trixie-amd64.tar.xz
     sha256: ""
+
+  # ----------------------------------------------------------------- nix ---
+  # Single-user Nix: no daemon, no systemd, no root service. Everything lives
+  # under /nix and the official tarball ships its own store, so installing is
+  # unpacking - the same contract every other setup here follows.
+  - tool: nix
+    version: "2.31.1"
+    apt_deps: [ca-certificates, curl, xz-utils, bzip2]
+    artifact: nix-2.31.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # --------------------------------------------------------------- conan ---
+  # Pure-Python package manager: the wheel holds no binary of its own, so it
+  # rides on a python setup instead of bundling an interpreter.
+  - tool: conan
+    version: "2.33.0"
+    requires: ["python@>=3.12,<4"]
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: conan-2.33.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------- jenkins-plugin-cli ---
+  # The plugin-installation-manager-tool jar. Pure Java, so it needs a JRE that
+  # a java-* setup provides.
+  - tool: jenkins-plugin-cli
+    version: "2.15.0"
+    requires: ["java@>=17,<22"]
+    apt_deps: [ca-certificates, curl]
+    artifact: jenkins-plugin-cli-2.15.0-debian-trixie-amd64.tar.xz
+    sha256: ""

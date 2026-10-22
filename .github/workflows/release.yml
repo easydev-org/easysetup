@@ -309,6 +309,19 @@ jobs:
               zig)    "$R/zig" version ;;
               crystal) "$B/crystal" --version | head -1 ;;
               nim)    "$B/nim" --version | head -1 ;;
+              # nix must answer as a single-user install: no daemon socket, and
+              # the modern CLI enabled by the nix.conf written during the build.
+              nix)
+                "$R/bin/nix" --version
+                "$R/bin/nix" eval --expr '1 + 2'
+                if [ -S "$R/var/nix/daemon-socket/socket" ]; then
+                  echo "::error::unexpected daemon socket in a single-user install"
+                  exit 1
+                fi ;;
+              # conan rides on a python setup; the requirement puts it on PATH.
+              conan)  conan --version ;;
+              # a jar plus whatever JRE the java-* requirement installed.
+              jenkins-plugin-cli) jenkins-plugin-cli --version | head -3 ;;
               # clang must not merely start: it has to compile and link, which
               # is what proves the pruned tree kept the right pieces and that
               # libstdc++-14-dev supplied the C++ headers.
