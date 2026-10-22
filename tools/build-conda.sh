@@ -7,7 +7,12 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
-STAGE=$(mktemp -d); ROOT="$STAGE/opt/setup/$DIR"; mkdir -p "$ROOT"
+STAGE=$(mktemp -d)
+ROOT="$STAGE/opt/setup/$DIR"
+# Do NOT create $ROOT first: miniforge's -p refuses an existing directory
+# ("ERROR: File or directory already exists"). The parent must exist, the target
+# must not.
+mkdir -p "$(dirname "$ROOT")"
 
 URL="https://github.com/conda-forge/miniforge/releases/download/${VERSION}/Miniforge3-${VERSION}-Linux-x86_64.sh"
 echo "conda: $DIR $VERSION <- $URL"
