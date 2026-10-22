@@ -175,7 +175,7 @@ setups:
   - tool: rust-toolchain-x86_64-pc-windows-gnu
     builder: rust
     version: "1.99.1"
-    requires: [rust-1.99.1]
+    requires: [rust@>=1.99 <2]
     apt_deps: [ca-certificates, curl, gcc-mingw-w64-x86-64]
     artifact: rust-toolchain-x86_64-pc-windows-gnu-1.99.1-debian-trixie-amd64.tar.xz
     sha256: "46c0f2d525a7364c6305fb9b9b259e6e3543d58c3a4c0c72c26604227d8ed957"
@@ -186,7 +186,7 @@ setups:
   - tool: rust-toolchain-x86_64-pc-windows-msvc
     builder: rust
     version: "1.99.1"
-    requires: [rust-1.99.1]
+    requires: [rust@>=1.99 <2]
     apt_deps: [ca-certificates, curl]
     artifact: rust-toolchain-x86_64-pc-windows-msvc-1.99.1-debian-trixie-amd64.tar.xz
     sha256: "608e426bb8b4b52a563b6c4a8d037607118efb6f4f1e19710dd89d4bdc20b187"
@@ -291,7 +291,7 @@ setups:
   # Needs a BEAM runtime: erlang is a real dependency, not an optional add-on.
   - tool: elixir
     version: "1.20.4"
-    requires: [erlang-29.1.2]
+    requires: [erlang@>=29 <30]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: elixir-1.20.4-debian-trixie-amd64.tar.xz
     sha256: "2d4c73c879c02c41bbe8d33c4fdfabcba266ba75f8a9f617e7007b0776b61b0d"
@@ -340,7 +340,7 @@ setups:
   # Needs a lua interpreter, declared as a dependency.
   - tool: luarocks
     version: "3.12.2"
-    requires: [lua-5.4.8]
+    requires: [lua]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: luarocks-3.12.2-debian-trixie-amd64.tar.xz
     sha256: "866eba5548ca1a24d736fc9a9763b246f883f7b524ff99e5a813b28278576415"
