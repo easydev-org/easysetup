@@ -255,8 +255,11 @@ jobs:
               julia)  "$B/julia" --version ;;
               perl)   "$B/perl" -v 2>&1 | sed -n 2p ;;
               lua)    "$B/lua" -v 2>&1 | head -1 ;;
-              erlang) "$B/erl" -noshell -eval 'io:format("~s~n",[erlang:system_info(otp_release)]),halt().' ;;
-              elixir) "$B/elixir" --version | head -1 ;;
+              # NOT `| head -1` for BEAM: it writes to stdout while booting, and
+              # closing the pipe early kills the VM with
+              # "Runtime terminating during boot (... {io,terminated})".
+              erlang) "$B/erl" -noshell -eval 'io:format("~s~n",[erlang:system_info(otp_release)]),halt().' > /tmp/otp.txt 2>&1; cat /tmp/otp.txt ;;
+              elixir) "$B/elixir" --version > /tmp/ev.txt 2>&1; head -1 /tmp/ev.txt ;;
               opam)   "$B/opam" --version ;;
               conda)  "$B/conda" --version ;;
               ghc)    "$B/ghc" --version ;;
