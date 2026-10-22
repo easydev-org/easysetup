@@ -214,6 +214,12 @@ if not bad:
 sys.exit(bad)
 PY
 
+echo "== every run: block in the workflows is valid bash =="
+# A syntax error inside `run: |` passes the YAML parse and only explodes when the
+# job executes it - which is how a broken `case` arm failed all three Swift SDK
+# builds at verify time, after their artifacts had built fine.
+"$PY" tools/check-workflow-shell.py || fail=1
+
 echo "== the example workflow names only setups that exist =="
 "$PY" - <<'PY' || fail=1
 import pathlib, re, sys
