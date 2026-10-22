@@ -31,7 +31,15 @@ rm -rf /tmp/ghc-src
 n=$(relocate_scripts "$ROOT" "/opt/setup/$DIR")
 echo "ghc: rewrote the prefix in $n wrapper script(s)"
 
-"$ROOT/bin/ghc" --version
+# Verify through the FINAL path: bin/ghc now hard-codes it (it looks for
+# lib/ghc-<ver>/bin/ghc-<ver> under /opt/setup/<dir>), and the tree is still
+# staged under /tmp. A symlink stands in for the install location.
+PREFIX="/opt/setup/$DIR"
+mkdir -p "$(dirname "$PREFIX")"
+rm -f "$PREFIX"
+ln -s "$ROOT" "$PREFIX"
+"$PREFIX/bin/ghc" --version
+rm -f "$PREFIX"
 
 mkdir -p "$OUT"
 ASSET="$OUT/ghc-${VERSION}-debian-trixie-amd64.tar.xz"
