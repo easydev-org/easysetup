@@ -32,11 +32,20 @@ fi
 cp -a "$SRC"/. "$ROOT"/
 rm -rf /tmp/r-x
 
-# R's launcher hard-codes R_HOME from its build prefix (/opt/R/<version>), which
-# no longer exists once the tree lives under /opt/setup/. R_HOME is the
-# supported override, so it must be exported wherever R is used - including
-# from env.sh, which install.sh writes.
-R_HOME="$ROOT/lib/R" "$ROOT/bin/R" --version | head -1
+# R's launcher is a SHELL SCRIPT with the build prefix baked in:
+#     R_HOME_DIR=/opt/R/<version>/lib/R
+# and R deliberately IGNORES the R_HOME environment variable when it disagrees
+# with that ("WARNING: ignoring environment value of R_HOME"). So the script has
+# to be rewritten to the prefix this tarball installs to; R_HOME cannot simply
+# be exported from env.sh the way JAVA_HOME can.
+PREFIX="/opt/setup/$DIR"
+old="/opt/R/$VERSION"
+for f in "$ROOT"/bin/R "$ROOT"/bin/Rscript; do
+  [ -f "$f" ] && sed -i "s|$old|$PREFIX|g" "$f"
+done
+echo "r: rewrote $old -> $PREFIX in bin/R and bin/Rscript"
+
+"$ROOT/bin/R" --version | head -1
 
 mkdir -p "$OUT"
 ASSET="$OUT/r-${VERSION}-debian-trixie-amd64.tar.xz"
