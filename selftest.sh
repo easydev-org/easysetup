@@ -33,30 +33,40 @@ while IFS= read -r d; do
 done <<< "$ids"
 ok "required fields present"
 
-echo "== directory is derived as <tool>-<version>[+component...] =="
+echo "== directory is derived as <tool>-<version> =="
 "$PY" - <<'PY' || fail=1
-import sys
+import re, sys
 sys.path.insert(0, ".")
 import matrixlib
 bad = 0
+seen = set()
 for e in matrixlib.load():
     want = f'{e["tool"]}-{e["version"]}'
-    for c in e["components"]:
-        want += f'+{c}'
     if e["dir"] != want:
         print(f"FAIL {e['dir']} != {want}")
         bad = 1
-    # version must NOT also be embedded in the tool field
-    if any(ch.isdigit() for ch in e["tool"]):
-        print(f"FAIL {e['dir']}: tool field contains digits ({e['tool']})")
+    # Directory names must be unique; two entries with the same tool+version
+    # used to be told apart by a `+component`, which no longer exists.
+    if e["dir"] in seen:
+        print(f"FAIL duplicate directory {e['dir']}")
         bad = 1
-    # `+` in the directory must ONLY come from components.
-    pluses = e["dir"].count("+") - (e["version"].count("+"))
-    if pluses != len(e["components"]):
-        print(f"FAIL {e['dir']}: '+' count does not match components")
+    seen.add(e["dir"])
+    # The tool field is a name, not a version. Digits are fine when they are
+    # PART of a name (`rust-toolchain-x86_64-pc-windows-gnu`), so the tell is
+    # a tool name that ENDS in a dotted version, e.g. `node-22.23.4`.
+    if re.search(r"[.-]\d+\.\d+", e["tool"]):
+        print(f"FAIL {e['dir']}: tool field looks like it contains a version ({e['tool']})")
         bad = 1
+    # Every `requires` entry must resolve, and must not name itself.
+    for req in e["requires"]:
+        if req == e["dir"]:
+            print(f"FAIL {e['dir']} requires itself")
+            bad = 1
+        elif matrixlib.resolve(req) is None:
+            print(f"FAIL {e['dir']} requires unknown setup {req!r}")
+            bad = 1
 if not bad:
-    print("ok   every directory derives from tool+version+components")
+    print("ok   every directory derives from tool+version, is unique, requires resolve")
 sys.exit(bad)
 PY
 
@@ -138,19 +148,31 @@ echo "== no build script compiles anything =="
 # toolchain that depends on the build machine - both were removed on purpose.
 # (bazel's installer is a .sh that unpacks an embedded zip, so it is allowed;
 # it is matched by name only when actually invoked as a compiler driver.)
+#
+# Two exceptions are deliberate and listed here so they stay deliberate:
+#   lua  upstream publishes no binary, but it builds in seconds from a 400 KB
+#        source tarball;
+#   ghc  its tarball is a bindist whose own `make install` is the documented way
+#        to lay out the PREBUILT compiler (it does not compile GHC).
+COMPILES_OK="tools/build-lua.sh tools/build-ghc.sh"
 for f in tools/build-*.sh; do
+  case " $COMPILES_OK " in
+    *" $f "*) continue ;;
+  esac
   if grep -qE '^\s*\./configure|^\s*make( |$)|^\s*make install|cmake ' "$f"; then
     bad "$f compiles at build time"
   fi
 done
-ok "no toolchain is compiled"
+ok "no toolchain is compiled (except the two documented exceptions)"
 
 echo "== every tool has a build script =="
+# A setup names its script with `builder`, defaulting to `tool`; the entry that
+# matters is the builder, so rust-toolchain-* correctly resolve to build-rust.sh.
 for d in $("$PY" matrixlib.py list); do
-  tool=$("$PY" matrixlib.py get "$d" tool)
-  [ -f "tools/build-$tool.sh" ] || bad "missing tools/build-$tool.sh (for $d)"
+  builder=$("$PY" matrixlib.py get "$d" builder)
+  [ -f "tools/build-$builder.sh" ] || bad "missing tools/build-$builder.sh (for $d)"
 done
-ok "build scripts exist for every tool"
+ok "build scripts exist for every builder"
 
 echo "== apt_deps cover every soname the ELFs ask for =="
 # Guessing one missing library per CI round is how php took three rounds
