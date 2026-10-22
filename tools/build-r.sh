@@ -1,14 +1,19 @@
 #!/bin/bash
 # build-r.sh <dir> <version> <outdir>
 #
-# Posit publishes prebuilt R as a .deb per ubuntu release. A .deb is an ar
-# archive containing a data tarball, so the build EXTRACTS it with
-# `dpkg-deb -x` rather than installing it onto the build host.
+# R from Posit's prebuilt ubuntu-24.04 .deb, PLUS the two libraries whose ABI
+# trixie does not provide.
 #
-# The payload is rooted at ./opt/R/<version>/ (NOT /usr - posit installs R into
-# /opt). That directory is what becomes /opt/setup/r-<version>, so R's own
-# internal relative paths keep working.
+# The .deb links against libicuuc.so.74 / libicui18n.so.74 and libjpeg.so.8.
+# trixie ships libicu 76 and libjpeg .so.62 - different sonames, not different
+# patch levels, so apt_deps cannot satisfy them and the binary cannot start.
+#
+# `bundled_libs` downloads the distro packages that DO carry those exact
+# sonames and unpacks them into the tree's own lib/, which env.sh puts on
+# LD_LIBRARY_PATH. Still only apt + unpack: nothing is compiled, and the
+# consumer needs no extra apt packages for these.
 set -euo pipefail
+
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
@@ -17,41 +22,58 @@ STAGE=$(mktemp -d); ROOT="$STAGE/opt/setup/$DIR"; mkdir -p "$ROOT"
 URL="https://cdn.posit.co/r/ubuntu-2404/pkgs/r-${VERSION}_1_amd64.deb"
 echo "r: $DIR $VERSION <- $URL"
 fetch "$URL" /tmp/r.deb
-
-# dpkg-deb -x extracts without registering the package on this machine.
 dpkg-deb -x /tmp/r.deb /tmp/r-x
 rm -f /tmp/r.deb
 
-# The deb extracts to <tmp>/opt/R/<version>/.
 SRC=$(find /tmp/r-x -maxdepth 4 -type d -name "$VERSION" -path "*/opt/R/*" | head -1)
-if [ -z "$SRC" ]; then
-  echo "r: no opt/R/<version> directory in the .deb" >&2
-  find /tmp/r-x -maxdepth 3 -type d | head -10 >&2
-  exit 1
-fi
+[ -n "$SRC" ] || { echo "r: no opt/R/<version> in the .deb" >&2; exit 1; }
 cp -a "$SRC"/. "$ROOT"/
 rm -rf /tmp/r-x
 
-# R's launcher is a SHELL SCRIPT with the build prefix baked in:
-#     R_HOME_DIR=/opt/R/<version>/lib/R
-# and R deliberately IGNORES the R_HOME environment variable when it disagrees
-# with that ("WARNING: ignoring environment value of R_HOME"). So the script has
-# to be rewritten to the prefix this tarball installs to; R_HOME cannot simply
-# be exported from env.sh the way JAVA_HOME can.
+# R's launcher is a shell script with the build prefix baked in, and R IGNORES
+# $R_HOME when it disagrees ("WARNING: ignoring environment value of R_HOME"),
+# so the script itself has to name the final prefix.
 PREFIX="/opt/setup/$DIR"
 old="/opt/R/$VERSION"
 for f in "$ROOT"/bin/R "$ROOT"/bin/Rscript; do
   [ -f "$f" ] && sed -i "s|$old|$PREFIX|g" "$f"
 done
-echo "r: rewrote $old -> $PREFIX in bin/R and bin/Rscript"
+echo "r: rewrote $old -> $PREFIX"
 
-# Verify against the FINAL path, because bin/R now hard-codes it and R refuses
-# to run from anywhere else. The tree is still staged under /tmp, so stand the
-# final path up with a symlink for the check and remove it again.
+# --- bundled libraries -----------------------------------------------------
+# Each entry is a .deb whose payload carries a soname trixie does not ship.
+# They land in lib/bundled/ and are found through LD_LIBRARY_PATH.
+mkdir -p "$ROOT/lib/bundled"
+bundle_deb() {
+  local url="$1" name="$2"
+  echo "r: bundling $name"
+  fetch "$url" /tmp/bundle.deb
+  dpkg-deb -x /tmp/bundle.deb /tmp/bundle-x
+  # Library payloads live under usr/lib/<triplet>/; flatten just the .so files.
+  find /tmp/bundle-x -name '*.so.*' -o -name '*.so' | while read -r so; do
+    cp -a "$so" "$ROOT/lib/bundled/"
+  done
+  rm -rf /tmp/bundle.deb /tmp/bundle-x
+}
+
+# libicu74: exact soname libicuuc.so.74 / libicui18n.so.74 / libicudata.so.74.
+bundle_deb \
+  "http://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu74_74.2-1ubuntu3.1_amd64.deb" \
+  "libicu74"
+# libjpeg-turbo8: provides libjpeg.so.8 (trixie's libjpeg62-turbo provides .so.62).
+bundle_deb \
+  "http://archive.ubuntu.com/ubuntu/pool/main/libj/libjpeg-turbo/libjpeg-turbo8_2.1.5-2ubuntu2_amd64.deb" \
+  "libjpeg-turbo8"
+
+ls "$ROOT/lib/bundled" | head -10
+
+# Verify against the FINAL path: bin/R names it, so the staged tree cannot be
+# used directly. A symlink stands in for the install location during the check.
 mkdir -p "$(dirname "$PREFIX")"
 rm -f "$PREFIX"
 ln -s "$ROOT" "$PREFIX"
-"$PREFIX/bin/R" --version | head -1
+LD_LIBRARY_PATH="$ROOT/lib/bundled${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  "$PREFIX/bin/R" --version | head -1
 rm -f "$PREFIX"
 
 mkdir -p "$OUT"
