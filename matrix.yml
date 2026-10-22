@@ -439,7 +439,7 @@ setups:
     version: "1.22.0"
     apt_deps: [ca-certificates, curl, libgc1, libevent-2.1-7t64, libssl3, libxml2, zlib1g]
     artifact: crystal-1.22.0-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "69720af014421c78625095037001c29980ac4716ae23f543fa30e7f20b843f08"
 
   # -----------------------------------------------------------------
   # Prebuilt tree; nim finds its lib/ through a relative nim.cfg.
