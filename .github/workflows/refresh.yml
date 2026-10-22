@@ -12,8 +12,10 @@ name: refresh
 # (`python3 tools/bump.py --check`) and tested without a runner.
 
 on:
-  schedule:
-    - cron: "0 6 * * 1"      # Mondays 06:00 UTC
+  # MANUAL ONLY, for the same reason as release.yml: this repository is edited
+  # through the contents API (one commit per file), so a push trigger would fire
+  # a run per file. Checking for newer upstream versions is something you ask
+  # for, and it only opens a pull request anyway.
   workflow_dispatch:
 
 permissions:
