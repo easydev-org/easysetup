@@ -142,11 +142,12 @@ jobs:
           # untested until a consumer hit it.
           for req in ${{ matrix.requires }}; do
             echo "--- building dependency $req"
-            # The step is `cd /tmp/verify`, so refer to the checkout absolutely.
+            # The step is `cd /tmp/verify`, but matrixlib reads matrix.yml by a
+            # RELATIVE path, so every lookup must run with the checkout as cwd.
             REPO="$GITHUB_WORKSPACE"
-            rbuilder=$(python3 "$REPO/matrixlib.py" get "$req" builder)
-            rver=$(python3 "$REPO/matrixlib.py" get "$req" version)
-            rart=$(python3 "$REPO/matrixlib.py" get "$req" artifact)
+            rbuilder=$(cd "$REPO" && python3 matrixlib.py get "$req" builder)
+            rver=$(cd "$REPO" && python3 matrixlib.py get "$req" version)
+            rart=$(cd "$REPO" && python3 matrixlib.py get "$req" artifact)
             ( cd "$REPO" && bash "tools/build-$rbuilder.sh" "$req" "$rver" /tmp/out-dep )
             tar -xJf "/tmp/out-dep/$rart" -C /tmp/verify
             # Put the dependency on PATH so the tool under test can exec it.
@@ -231,9 +232,8 @@ jobs:
               conda)  "$B/conda" --version ;;
               ghc)    "$B/ghc" --version ;;
               cabal)  "$B/cabal" --version ;;
-              # R's payload is /opt/R/<ver>/{bin,lib}; its launcher hard-codes
-              # R_HOME from that build prefix, so R_HOME must point at this tree.
-              r)      R_HOME="$R/lib/R" "$B/R" --version | head -1 ;;
+              # The build rewrote bin/R's baked-in prefix, so it runs as-is.
+              r)      "$B/R" --version | head -1 ;;
               # luarocks is a lua script: its `requires` put lua on PATH above,
               # so this actually runs it.
               luarocks) "$B/luarocks" --version | head -1 ;;
