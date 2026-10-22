@@ -1,13 +1,17 @@
 #!/bin/bash
 # build-rust.sh <dir> <version> <outdir>
 #
-# Builds ONE /opt/setup tree out of the upstream rust components. Which
-# components depends on what the entry is for:
+# build-rust.sh <dir> <version> <outdir> [components...]
 #
-#   no target       rustc + cargo + rust-std for x86_64-unknown-linux-gnu
-#                   -> a complete host toolchain, ~197 MB of downloads
-#   target=...      rust-std for that target only
-#                   -> adds cross-compilation to an already installed host
+# Builds ONE /opt/setup tree out of the upstream rust components.
+#
+#   no components        rustc + cargo + rust-std for x86_64-unknown-linux-gnu
+#                        -> the host toolchain
+#   components given      rust-std for each named target only
+#                        -> cross-compilation support, installed alongside
+#
+# `components` is the general "optional add-ons for a package" mechanism; for
+# rust the add-ons are target std libraries (x86_64-pc-windows-gnu, ...).
 #
 # rustup is deliberately NOT involved: the components are unpacked directly, so
 # nothing is resolved or fetched at install time.
@@ -16,7 +20,8 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 DIR="$1"; VERSION="$2"; OUT="$3"
-TARGET="${4:-}"
+shift 3
+COMPONENTS=("$@")          # already split on whitespace by the caller
 
 STAGE=$(mktemp -d)
 ROOT="$STAGE/opt/setup/$DIR"
@@ -44,7 +49,7 @@ install_component() {
   rm -rf "/tmp/rust-${comp}" "/tmp/rust-${comp}.tar.gz"
 }
 
-if [ -z "$TARGET" ]; then
+if [ "${#COMPONENTS[@]}" -eq 0 ]; then
   # Host toolchain: rustc, cargo and the host std. rust-std is what makes
   # `cargo build` work at all for the host triple.
   install_component rustc "$HOST"
@@ -55,14 +60,18 @@ if [ -z "$TARGET" ]; then
   "$ROOT/bin/cargo" --version
   ( cd "$ROOT" && ./bin/rustc --print target-list >/dev/null )
 else
-  # A cross target: only the std for that target is needed, and it lands in the
-  # host's lib/rustlib/<target>/ directory of THIS tree.
-  install_component rust-std "$TARGET"
+  # One or more cross targets: only the std for each is needed, and it lands in
+  # the host's lib/rustlib/<target>/ directory of THIS tree.
+  for c in "${COMPONENTS[@]}"; do
+    install_component rust-std "$c"
+  done
 fi
 
 mkdir -p "$OUT"
 STEM="rust-${VERSION}"
-[ -n "$TARGET" ] && STEM="${STEM}-${TARGET}"
+for c in "${COMPONENTS[@]}"; do
+  STEM="${STEM}-${c}"
+done
 ASSET="$OUT/${STEM}-debian-trixie-amd64.tar.xz"
 tar -cJf "$ASSET" -C "$STAGE" .
 rm -rf "$STAGE"
