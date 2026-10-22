@@ -381,4 +381,4 @@ setups:
     requires: ["swift@>=6.4,<7"]
     apt_deps: [ca-certificates, curl]
     artifact: swift-sdk-android-6.4.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "be043035052e87417e6e9362df23732d24919b0eb15c3362d4f34ed4a9015fd1"
