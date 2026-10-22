@@ -33,13 +33,13 @@ setups:
     version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: "e47ee5b59984e058ed3e69b9071b6fd86e6552146c2d77f99c287bc654e9b2f1"
+    sha256: "d203d673fc61a7acca28091aed558992e9664aa4399aadcd24d168c27d14aff0"
 
   - tool: node
     version: "24.22.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
-    sha256: "b72745d2593e0712ec408bb329a23465dafbc821269b740d6282bf65eed251ff"
+    sha256: "94b7ad293dc9e4cc43ec2fba4327f1ae1a15567ac904e0e7eee3ea7c49051661"
 
   - tool: node
     version: "26.12.1"
@@ -52,7 +52,7 @@ setups:
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: "1920e6fb46cca35b114b22442ec68aea45a47bec53f9807e58a644f0781a9feb"
+    sha256: "8fa8dcf64550e251c1bb40d7c111244acce62ba68635b67a9bec59c609c53eee"
 
   - tool: python
     version: "3.13.17"
@@ -64,26 +64,26 @@ setups:
     version: "3.14.9"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.14.9-debian-trixie-amd64.tar.xz
-    sha256: "786948af42e6a2ecfde31ebbdecb5181de6b9ce16ccafa73ca78c423548eab82"
+    sha256: "92d3371af8ccfe19f3dc36e23281ab9832dc1957b0d17d4287f29cd17a795dd9"
 
   - tool: python
     version: "3.15.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.15.1-debian-trixie-amd64.tar.xz
-    sha256: "1270bfb9296713a15436d733e23b5183b07b11c170bd312afc68e76c0f43129a"
+    sha256: "87d45a1c3a534c48a9073971446a33ae05fb827a77b934c67c4de76d68833cec"
 
   # ------------------------------------------------------------------ go ---
   - tool: go
     version: "1.24.13"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.24.13-debian-trixie-amd64.tar.xz
-    sha256: "e0c6cfc488c141fadb548b3d56c28b4e01a4a61d6ad412b95e6a94262b197d1d"
+    sha256: "c76a7cc47f842111e1cdb4fc598d3aa6020a4acbce8ca35f4c69b203566f6cf5"
 
   - tool: go
     version: "1.25.14"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.25.14-debian-trixie-amd64.tar.xz
-    sha256: "58cd1f337dfe258640ec89ed757f00c0a04f14667582c17f7d169289e6c2fddb"
+    sha256: "7beee49d6afc3f3f745eed46a10676f439ce714241e23184fe962bcc811fb5e5"
 
   - tool: go
     version: "1.26.10"
@@ -208,7 +208,7 @@ setups:
     version: "4.3.1"
     apt_deps: [ca-certificates, curl]
     artifact: helm-4.3.1-debian-trixie-amd64.tar.xz
-    sha256: "4c543bb78b5b45c2f17d129389943aa9f14ed0829e80a7a5b95c44c8f8a6c7ef"
+    sha256: "3d5bfece2e80f383f4b146a31dba688599288f4cfc4cb23b343592427c31e20a"
 
   # --------------------------------------------------------------- bazel ---
   - tool: bazel
