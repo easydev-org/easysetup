@@ -142,28 +142,28 @@ echo "== matrixlib needs no third-party module =="
 "$PY" -S matrixlib.py list >/dev/null || bad "matrixlib fails without site-packages"
 ok "matrixlib runs on the standard library alone"
 
-echo "== no build script compiles anything =="
-# Every toolchain is prebuilt upstream; the release job only downloads and
-# repacks. A `./configure` or `make` here means a 10-20 minute build and a
-# toolchain that depends on the build machine - both were removed on purpose.
-# (bazel's installer is a .sh that unpacks an embedded zip, so it is allowed;
-# it is matched by name only when actually invoked as a compiler driver.)
-#
-# Two exceptions are deliberate and listed here so they stay deliberate:
-#   lua  upstream publishes no binary, but it builds in seconds from a 400 KB
-#        source tarball;
-#   ghc  its tarball is a bindist whose own `make install` is the documented way
-#        to lay out the PREBUILT compiler (it does not compile GHC).
-COMPILES_OK="tools/build-lua.sh tools/build-ghc.sh"
+echo "== which build scripts compile, and is that intended =="
+# The model is drifting from "repack a prebuilt tarball" to "build from source":
+# R is the first setup done this way, on purpose, because no single prebuilt
+# binary can satisfy every target distro's ABI (R's ubuntu .deb needs libicu 74,
+# trixie has 76). The list below is the authoritative set of source builds, so a
+# NEW one cannot slip in unnoticed - adding a compiler means adding it here.
+COMPILED="tools/build-r.sh tools/build-lua.sh tools/build-ghc.sh"
 for f in tools/build-*.sh; do
-  case " $COMPILES_OK " in
-    *" $f "*) continue ;;
-  esac
+  compiles=0
   if grep -qE '^\s*\./configure|^\s*make( |$)|^\s*make install|cmake ' "$f"; then
-    bad "$f compiles at build time"
+    compiles=1
   fi
+  case " $COMPILED " in
+    *" $f "*)
+      [ "$compiles" = 1 ] || bad "$f is listed as a source build but does not compile - remove it from COMPILED"
+      ;;
+    *)
+      [ "$compiles" = 0 ] || bad "$f compiles but is not in COMPILED; add it deliberately or use a prebuilt"
+      ;;
+  esac
 done
-ok "no toolchain is compiled (except the two documented exceptions)"
+ok "the set of source-built setups matches COMPILED ($COMPILED)"
 
 echo "== every tool has a build script =="
 # A setup names its script with `builder`, defaulting to `tool`; the entry that
