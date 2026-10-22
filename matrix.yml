@@ -28,9 +28,9 @@ setups:
     sha256: ""            # filled in by the release workflow
 
   python:
-    version: "3.12.11"
+    version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
-    artifact: python-3.12.11-debian-trixie-amd64.tar.xz
+    artifact: python-3.12.15-debian-trixie-amd64.tar.xz
     sha256: ""
 
   go:
