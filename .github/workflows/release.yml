@@ -126,31 +126,61 @@ jobs:
           test -d "$B"
 
           # Every ELF in bin/ must resolve all of its shared libraries.
+          #
+          # EXCEPT when the entry is a CROSS target: a windows-gnu tree ships
+          # .dll/.exe objects and a windows-msvc tree ships std for a target
+          # whose libraries do not exist on linux, so `ldd` reporting "not
+          # found" there is correct and expected. Only the host-target entries
+          # (no `target:` field) are held to the ldd check.
           echo "--- shared library check"
           missing=0
-          for f in "$B"/*; do
-            [ -f "$f" ] || continue
-            case "$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')" in
-              *177ELF*)
-                if ldd "$f" 2>&1 | grep -q 'not found'; then
-                  echo "MISSING for $f:"
-                  ldd "$f" 2>&1 | grep 'not found'
-                  missing=1
-                fi ;;
-            esac
-          done
+          if [ -n "${{ matrix.target }}" ]; then
+            echo "cross target ${{ matrix.target }}: skipping ldd (its libraries are not for linux)"
+          else
+            for f in "$B"/*; do
+              [ -f "$f" ] || continue
+              case "$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')" in
+                *177ELF*)
+                  if ldd "$f" 2>&1 | grep -q 'not found'; then
+                    echo "MISSING for $f:"
+                    ldd "$f" 2>&1 | grep 'not found'
+                    missing=1
+                  fi ;;
+              esac
+            done
+          fi
           [ "$missing" -eq 0 ] || {
             echo "the tarball needs libraries apt_deps did not install" >&2
             echo "add them to apt_deps for ${{ matrix.dir }} in matrix.yml" >&2
             exit 1; }
 
           echo "--- run the tool"
-          case "${{ matrix.tool }}" in
-            node)   "$B/node" --version ;;
-            python) "$B/python3" --version ;;
-            go)     "$B/go" version ;;
-            java)   "$B/java" -version 2>&1 | head -1 ;;
-          esac
+          if [ -n "${{ matrix.target }}" ]; then
+            # A cross target has no runnable binary of its own: windows-gnu ships
+            # .exe/.dll and windows-msvc ships only std. Assert the std for that
+            # triple is actually there, which is the deliverable.
+            found=$(find "/tmp/verify/opt/setup/${{ matrix.dir }}" -type d \
+                      -path "*rustlib/${{ matrix.target }}*" | head -1)
+            [ -n "$found" ] || {
+              echo "cross target ${{ matrix.target }} is not in the tree" >&2; exit 1; }
+            echo "cross target ${{ matrix.target }} present: $found"
+          else
+            case "${{ matrix.tool }}" in
+              node)   "$B/node" --version ;;
+              python) "$B/python3" --version ;;
+              go)     "$B/go" version ;;
+              java)   "$B/java" -version 2>&1 | head -1 ;;
+              ruby)   "$B/ruby" --version ;;
+              php)    "$B/php" --version | head -1 ;;
+              helm)   "$B/helm" version --short ;;
+              buf)    "$B/buf" --version ;;
+              dotnet) "$B/dotnet" --version ;;
+              # maven / gradle / bazel need a JRE that is not in the tarball by
+              # design; their build scripts already verified the layout.
+              maven|gradle|bazel) echo "${{ matrix.tool }}: layout checked at build time" ;;
+              *) echo "no runtime check for ${{ matrix.tool }}" ;;
+            esac
+          fi
 
       # The container's filesystem is thrown away with the job, so the tarball
       # has to travel to the publish job through the Actions artifact store.
