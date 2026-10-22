@@ -33,94 +33,94 @@ setups:
     version: "22.23.4"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "279f24ad4c88e41bae701c275af96f6b0300b71a327ee3cd0c503bee38e2e89b"
 
   - tool: node
     version: "24.22.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-24.22.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "5c0d92e410f882ff90d8a25095b4ba0d08b4b26d3e6eb67abb35f94cb4cfc4ea"
 
   - tool: node
     version: "26.12.1"
     apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-26.12.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "7edb8869d545309071d675b39c93f27b69ca66372180c51cae48a84a546fa3c6"
 
   # -------------------------------------------------------------- python ---
   - tool: python
     version: "3.12.15"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.12.15-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "ab99b9a11eb82223bfe32569977c9bcc2dd5946d7bda1b02752ddcf62ff36fff"
 
   - tool: python
     version: "3.13.17"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.13.17-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "f551dcdc2f9497ddf89d948e21a95a81ce5a1aadb7d8619ef9c766c9fe98e236"
 
   - tool: python
     version: "3.14.9"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.14.9-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "ab8b5247fe1b82c12a886b3f87ff90b32569de04cf4d1785d8cddc2e7dc6b51c"
 
   - tool: python
     version: "3.15.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libffi8, libbz2-1.0, liblzma5, libsqlite3-0, libreadline8]
     artifact: python-3.15.1-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "6a9ce32e19a15dc0ac40b3b80597d426aa75ad9372ec7319e0a76d6b4a47777a"
 
   # ------------------------------------------------------------------ go ---
   - tool: go
     version: "1.24.13"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.24.13-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "7f594d31bffa5467029dcbb73606ebdf330919518a9f20e97e7b3a3fe78ae4dc"
 
   - tool: go
     version: "1.25.14"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.25.14-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "8ba348999d27eb12f5eb81b7f5a5198a8f27eb386a317f10d848ed6fdd4cbede"
 
   - tool: go
     version: "1.26.10"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.26.10-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "c2107b4b554a47f57fd77eb51b28ddba4c5a6e7136a10a96a8407e8e2acdbc3e"
 
   - tool: go
     version: "1.27.3"
     apt_deps: [ca-certificates, curl]
     artifact: go-1.27.3-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "0027a57eb1752bbe92a6ee93cb2c1a95e016635d2a62c0068210376b00a771f0"
 
   # ---------------------------------------------------------------- java ---
   - tool: java
     version: "17.0.20+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-17.0.20-101-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "f1de4fd553e7c991a5e7f5430f9ec3eb468310e49a4834bf7df744179d62af9e"
 
   - tool: java
     version: "21.0.12+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-21.0.12-101-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "700b2384ce75908f910dcc4069d365b7c3808284ee54785db0245925ce46dd3c"
 
   - tool: java
     version: "25.0.4+101"
     apt_deps: [ca-certificates, curl]
     artifact: java-25.0.4-101-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "832e91851075196aac6be1ab0e2e89eb6b84f589154d32cdf1cc224860d848f0"
 
   - tool: java
     version: "27.0.0+35"
     apt_deps: [ca-certificates, curl]
     artifact: java-27.0.0-35-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "cd6c2f115343a90c3dac552919cd3a7174975f962f327c38e527d10b6d56b8a7"
 
   # --------------------------------------------------------------- maven ---
   # Apache Maven, from the official -bin.tar.gz. Needs a JRE, which is NOT
