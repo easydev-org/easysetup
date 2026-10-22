@@ -344,3 +344,41 @@ setups:
     apt_deps: [ca-certificates, curl, unzip]
     artifact: luarocks-3.12.2-debian-trixie-amd64.tar.xz
     sha256: "866eba5548ca1a24d736fc9a9763b246f883f7b524ff99e5a813b28278576415"
+
+  # --------------------------------------------------------------- swift ---
+  # Native debian13 build from swift.org, so - unlike R - there is no foreign
+  # ABI to bundle around: it links trixie's own libicu76/libcurl4/libxml2.
+  # apt_deps is swift.org's own Debian 13 dependency list, minus the -dev
+  # packages (this is a runtime toolchain, not a build-from-source chroot).
+  - tool: swift
+    version: "6.4.1"
+    apt_deps: [ca-certificates, curl, binutils, binutils-gold, gcc, g++, libcurl4, libedit2, libicu76, libncurses6, libncursesw6, libc6-dev, libpython3.13, libsqlite3-0, libstdc++6, libxml2, pkg-config, tzdata, unzip, zip, uuid-runtime, zlib1g, libz3-4]
+    artifact: swift-6.4.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # The three Swift SDKs. An SDK has no binary of its own - it is a sysroot that
+  # the swift compiler drives - so each declares the toolchain as a dependency,
+  # the same way elixir requires erlang.
+  - tool: swift-sdk-static-linux
+    builder: swift-sdk
+    version: "6.4.1"
+    requires: [swift@>=6.4 <7]
+    apt_deps: [ca-certificates, curl]
+    artifact: swift-sdk-static-linux-6.4.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  - tool: swift-sdk-wasm
+    builder: swift-sdk
+    version: "6.4.1"
+    requires: [swift@>=6.4 <7]
+    apt_deps: [ca-certificates, curl]
+    artifact: swift-sdk-wasm-6.4.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  - tool: swift-sdk-android
+    builder: swift-sdk
+    version: "6.4.1"
+    requires: [swift@>=6.4 <7]
+    apt_deps: [ca-certificates, curl]
+    artifact: swift-sdk-android-6.4.1-debian-trixie-amd64.tar.xz
+    sha256: ""
