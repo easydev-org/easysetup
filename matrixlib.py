@@ -107,6 +107,86 @@ def by_dir(d, path=MATRIX):
     return None
 
 
+class Ambiguous(Exception):
+    """A name matched more than one entry and no rule picked a winner."""
+
+
+def _vkey(version):
+    """Numeric sort key for a version string ("22.23.4", "21.0.12+101")."""
+    main, _, build = version.partition("+")
+    nums = [int(x) for x in __import__("re").findall(r"\d+", main)]
+    bnum = [int(x) for x in __import__("re").findall(r"\d+", build)]
+    return (nums, bnum)
+
+
+def resolve(name, path=MATRIX):
+    """Resolve a setup name to one entry, allowing a PREFIX of the version.
+
+    People write `node-22`, not `node-22.23.4`. So a name is matched against
+    each entry's `<tool>-<version>` by DOT-SEPARATED PREFIX, and if several
+    entries match, the NEWEST version wins:
+
+        node-22       -> node-22.23.4     (the newest 22.x we publish)
+        node-22.23    -> node-22.23.4
+        node-22.23.4  -> node-22.23.4     (exact, and exact always wins)
+
+    Matching is by whole segments, not characters: `node-2` does NOT match
+    `node-22.23.4`, because "2" is not a segment of "22". A character-prefix
+    rule would silently install the wrong major version.
+
+    A bare `rust-1.99.1` resolves to the HOST build. Cross-compilation targets
+    are separate entries whose directory carries `+<target>`, and those are only
+    reachable by their full name - asking for "rust-1.99.1" must never hand back
+    a Windows-only tree.
+
+    Returns None when nothing matches. Raises Ambiguous only if two entries have
+    the same tool+version+target, which the manifest should never contain.
+    """
+    entries = load(path)
+
+    # 1) Exact directory match always wins.
+    for e in entries:
+        if e["dir"] == name:
+            return e
+
+    # 2) A cross target is only reachable by its full directory name.
+    if "+" in name:
+        return None
+
+    # 3) Split the name into tool + a dotted version prefix.
+    tool, _, want = name.partition("-")
+    if not tool or not want:
+        return None
+    want_segments = want.split(".")
+
+    matches = []
+    for e in entries:
+        if e["tool"] != tool or e.get("target"):
+            continue                      # a bare name never selects a cross build
+        have_segments = e["version"].split("+")[0].split(".")
+        # The prefix must be whole segments of the version.
+        if len(want_segments) > len(have_segments):
+            continue
+        if have_segments[:len(want_segments)] != want_segments:
+            continue
+        matches.append(e)
+
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+
+    # Several entries on the same line: newest wins. That is what "node-22"
+    # means when we publish 22.23.4 and 22.24.0 - you asked for the 22 line,
+    # so give you the newest of it.
+    matches.sort(key=lambda e: _vkey(e["version"]), reverse=True)
+    newest = matches[0]
+    if _vkey(matches[1]["version"]) == _vkey(newest["version"]):
+        raise Ambiguous(
+            f"{name!r} matches {newest['dir']} and {matches[1]['dir']} equally")
+    return newest
+
+
 def main(argv):
     if len(argv) < 2:
         sys.exit(__doc__)
@@ -121,7 +201,7 @@ def main(argv):
         if cmd == "get":
             if len(argv) < 4:
                 sys.exit("matrixlib: get <dir> <field>")
-            e = by_dir(argv[2])
+            e = resolve(argv[2])
             if e is None:
                 sys.exit(f"matrixlib: no setup '{argv[2]}'")
             v = e.get(argv[3], "")
@@ -129,11 +209,22 @@ def main(argv):
             return 0
 
         if cmd == "apt":
-            e = by_dir(argv[2])
+            e = resolve(argv[2])
             if e is None:
                 sys.exit(f"matrixlib: no setup '{argv[2]}'")
             v = e.get("apt_deps") or []
             print(" ".join(v) if isinstance(v, list) else v)
+            return 0
+
+        if cmd == "resolve":
+            # Print the concrete directory a name resolves to, and why when it
+            # cannot: this is what makes `install.sh node-22` self-explanatory.
+            e = resolve(argv[2])
+            if e is None:
+                avail = ", ".join(x["dir"] for x in load())
+                sys.exit(f"matrixlib: no setup matches '{argv[2]}'\n"
+                         f"  available: {avail}")
+            print(e["dir"])
             return 0
     except (ValueError, OSError) as e:
         sys.exit(f"matrixlib: {e}")
