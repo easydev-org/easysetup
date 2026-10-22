@@ -126,6 +126,12 @@ echo "== env.sh accumulates across invocations =="
 } || fail=1
 
 
+echo "== the manifest parser handles the shapes we write =="
+# Each case broke at least once: a wrapped flow list, and a quoted comma inside
+# one. Both appear in matrix.yml today.
+"$PY" tools/test_parser.py | tail -3
+"$PY" tools/test_parser.py >/dev/null || fail=1
+
 echo "== setup name resolution =="
 # `install.sh node-22` must work; `node-2` must NOT silently pick node 22.
 "$PY" tools/test_resolve.py | tail -3
