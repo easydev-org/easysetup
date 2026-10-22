@@ -117,11 +117,21 @@ done
       ruby-*)
         # The prebuilt ruby ships libruby.so inside its own lib/ and was built
         # with an absolute prefix, so the loader and RubyGems both have to be
-        # pointed at the tree. Without these three, `ruby` fails to load
-        # libruby.so and `gem` cannot find its default gems.
+        # pointed at the tree. Without these, `ruby` fails to load libruby.so and
+        # `gem` cannot find its default gems.
+        #
+        # The stdlib dir is <major>.<minor>.0 — 4.0.0 for ruby 4.0.8 but 3.4.0
+        # for ruby 3.4.11 — so it is DISCOVERED at source time, not written into
+        # this file as a constant.
         echo "[ -d /opt/setup/$id ] && { LD_LIBRARY_PATH=\"/opt/setup/$id/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"; export LD_LIBRARY_PATH; }"
-        echo "[ -d /opt/setup/$id/lib ] && { GEM_HOME=/opt/setup/$id/lib/ruby/gems/4.0.0; GEM_PATH=\$GEM_HOME; export GEM_HOME GEM_PATH; }"
-        echo "[ -d /opt/setup/$id/lib ] && { RUBYLIB=\"/opt/setup/$id/lib/ruby/4.0.0:/opt/setup/$id/lib/ruby/4.0.0/x86_64-linux\${RUBYLIB:+:\$RUBYLIB}\"; export RUBYLIB; }" ;;
+        echo "if [ -d /opt/setup/$id/lib/ruby ]; then"
+        echo "  _abi=\$(ls /opt/setup/$id/lib/ruby | grep -E '^[0-9]+\\.[0-9]+\\.0\$' | head -1)"
+        echo "  if [ -n \"\$_abi\" ]; then"
+        echo "    GEM_HOME=/opt/setup/$id/lib/ruby/gems/\$_abi; GEM_PATH=\$GEM_HOME; export GEM_HOME GEM_PATH"
+        echo "    RUBYLIB=\"/opt/setup/$id/lib/ruby/\$_abi:/opt/setup/$id/lib/ruby/\$_abi/x86_64-linux\${RUBYLIB:+:\$RUBYLIB}\"; export RUBYLIB"
+        echo "  fi"
+        echo "  unset _abi"
+        echo "fi" ;;
     esac
   done
   echo "export PATH"
