@@ -127,10 +127,11 @@ done
       java-*)
         echo "[ -d /opt/setup/$id ] && { JAVA_HOME=/opt/setup/$id; export JAVA_HOME; }" ;;
       r-*)
-        # Nothing to export: R ignores $R_HOME when it disagrees with the path
-        # baked into its own launcher, so the build rewrites bin/R instead. This
-        # branch exists only to record that, so nobody adds a useless R_HOME.
-        : ;;
+        # R ignores $R_HOME when it disagrees with the path baked into its own
+        # launcher (the build rewrites bin/R instead). It also ships two
+        # libraries under lib/bundled/ whose sonames trixie does not provide
+        # (libicuuc.so.74, libjpeg.so.8), so the loader must be pointed there.
+        echo "[ -d /opt/setup/$id/lib/bundled ] && { LD_LIBRARY_PATH=\"/opt/setup/$id/lib/bundled\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"; export LD_LIBRARY_PATH; }" ;;
       ruby-*)
         # The prebuilt ruby ships libruby.so inside its own lib/ and was built
         # with an absolute prefix, so the loader and RubyGems both have to be
