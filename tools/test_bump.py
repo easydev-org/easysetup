@@ -107,9 +107,12 @@ check("java artifact replaces +",
 check("node artifact keeps version",
       bump.artifact_for("node", "22.23.4")
       == "node-22.23.4-debian-trixie-amd64.tar.xz")
-check("rust target in artifact name",
-      bump.artifact_for("rust", "1.99.1", "x86_64-pc-windows-gnu")
+check("rust component in artifact name",
+      bump.artifact_for("rust", "1.99.1", ["x86_64-pc-windows-gnu"])
       == "rust-1.99.1-x86_64-pc-windows-gnu-debian-trixie-amd64.tar.xz")
+check("two components both appear",
+      bump.artifact_for("rust", "1.99.1", ["a-b", "c-d"])
+      == "rust-1.99.1-a-b-c-d-debian-trixie-amd64.tar.xz")
 
 # --- tracked line derivation ---------------------------------------------
 check("track node", bump.track({"tool": "node", "version": "22.23.4"}) == "22")
