@@ -243,12 +243,15 @@ setups:
     sha256: ""
 
   # ------------------------------------------------------------------- R ---
-  # Posit's prebuilt R for ubuntu 24.04: a .deb, so the build unpacks it with
-  # dpkg-deb -x instead of installing to the host.
+  # COMPILED FROM SOURCE (first setup done this way). The prebuilt options are
+  # per-distro: posit's ubuntu-24.04 .deb needs libicuuc.so.74 and libjpeg.so.8,
+  # while trixie ships libicu 76 and libjpeg .so.62 - different ABIs, so the tree
+  # cannot run here and no apt_deps can fix it. Building against trixie's own
+  # libraries removes that entire class of failure.
   - tool: r
-    version: "4.5.2"
-    apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, libicu76, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4, libopenblas0-pthread, libcairo2, libglib2.0-0t64, libgomp1, libjpeg62-turbo, libpango-1.0-0, libpangocairo-1.0-0, libpng16-16t64, libtcl8.6, libtiff6, libtk8.6, libx11-6, libxt6t64, libdeflate0, libpaper2, libtirpc3t64]
-    artifact: r-4.5.2-debian-trixie-amd64.tar.xz
+    version: "4.6.1"
+    apt_deps: [ca-certificates, curl, gcc, g++, gfortran, make, libc6-dev, zlib1g-dev, libbz2-dev, liblzma-dev, libpcre2-dev, libreadline-dev, libcurl4-openssl-dev]
+    artifact: r-4.6.1-debian-trixie-amd64.tar.xz
     sha256: ""
 
   # --------------------------------------------------------------- julia ---
@@ -290,7 +293,7 @@ setups:
     requires: [erlang-29.1.2]
     apt_deps: [ca-certificates, curl, unzip]
     artifact: elixir-1.20.4-debian-trixie-amd64.tar.xz
-    sha256: "bfa87f8b863a105d197fcf2ac08e2f74e3432b9bffaa129009a0036292c73a06"
+    sha256: ""
 
   # ------------------------------------------------------------------ sbt ---
   # Covers the `ivy` protocol. Needs a JRE, which a java-* setup provides.
