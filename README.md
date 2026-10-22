@@ -8,7 +8,31 @@ Prebuilt toolchains for CI, installed into `/opt/setup`.
 ```bash
 ./install.sh --list
 ./install.sh node-22.23.4 python-3.12.15
+./install.sh node-22                     # -> node-22.23.4
 ```
+
+### Names are resolved, not required to be exact
+
+A setup name may be a **prefix of the version**, matched by dot-separated
+segment, and when several entries match the **newest** wins:
+
+| you write | you get |
+|---|---|
+| `node-22` | `node-22.23.4` (newest 22.x published) |
+| `node-22.23` | `node-22.23.4` |
+| `node-22.23.4` | `node-22.23.4` (exact always wins) |
+| `python-3` | the newest 3.x |
+
+Matching is by **whole segments**, not characters: `node-2` does **not** match
+`node-22.23.4`, because `2` is not a segment of `22`. A character-prefix rule
+would silently install the wrong major version, so it is refused instead.
+
+A bare `rust-1.99.1` resolves to the **host** toolchain; a cross-compilation
+target is only reachable by its full name (`rust-1.99.1+x86_64-pc-windows-gnu`),
+so asking for the plain version never hands you a Windows-only tree.
+
+`install.sh` prints what it resolved (`==> node-22 -> node-22.23.4`), and
+`python3 matrixlib.py resolve node-22` shows it without installing.
 
 ## The install contract
 
