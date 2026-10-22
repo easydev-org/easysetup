@@ -21,7 +21,12 @@ unzip -q /tmp/gradle.zip -d /tmp/gradle-x
 cp -a /tmp/gradle-x/gradle-"${VERSION}"/. "$ROOT"/
 rm -rf /tmp/gradle.zip /tmp/gradle-x
 
-"$ROOT/bin/gradle" --version 2>&1 | grep -E '^Gradle' | head -1
+# Same reasoning as maven: `gradle --version` needs a JRE, and this tarball does
+# not bundle one on purpose. Check the distribution instead.
+test -x "$ROOT/bin/gradle" || { echo "gradle: bin/gradle missing" >&2; exit 1; }
+ls "$ROOT"/lib/gradle-launcher-*.jar >/dev/null 2>&1 || {
+  echo "gradle: launcher jar missing" >&2; exit 1; }
+echo "gradle: bin/gradle + launcher jar present (JRE comes from a java-* setup)"
 
 mkdir -p "$OUT"
 ASSET="$OUT/gradle-${VERSION}-debian-trixie-amd64.tar.xz"
