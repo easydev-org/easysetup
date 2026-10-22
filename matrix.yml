@@ -201,7 +201,7 @@ setups:
     version: "8.5"
     apt_deps: [ca-certificates, curl, libxml2, libsqlite3-0, libssl3, zlib1g, libonig5, libcurl4, libsodium23, libargon2-1, libpcre2-8-0, libgcc-s1]
     artifact: php-8.5-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "b95b39437751043a71605b2ca250100e0719323274a38c3ba585062ed975147b"
 
   # ---------------------------------------------------------------- helm ---
   - tool: helm
