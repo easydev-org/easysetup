@@ -142,5 +142,27 @@ for d in $("$PY" matrixlib.py list); do
 done
 ok "build scripts exist for every tool"
 
+echo "== apt_deps cover every soname the ELFs ask for =="
+# Guessing one missing library per CI round is how php took three rounds
+# (libsodium, then libargon2). If a staged tree is present, check it properly;
+# otherwise verify the checker itself still runs.
+if [ -d /tmp/stagetree ]; then
+  for d in $("$PY" matrixlib.py list); do
+    if ! "$PY" tools/check-deps.py "/tmp/stagetree/$d" "$d"; then
+      bad "$d is missing apt_deps entries"
+    fi
+  done
+  ok "apt_deps verified against real binaries"
+else
+  "$PY" - <<'PY' || bad "check-deps.py is broken"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("cd", "tools/check-deps.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+assert m.SONAME_PKG.get("libargon2.so.1") == "libargon2-1"
+print("ok   check-deps.py mapping loads")
+PY
+fi
+
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
