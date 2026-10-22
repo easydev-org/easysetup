@@ -139,6 +139,10 @@ jobs:
       # typo in apt_deps fails the build instead of shipping a broken tarball.
       - name: verify ${{ matrix.dir }}
         shell: bash
+        env:
+          # Word-split from this, not from a bare ${{ }} in the script: an empty
+          # substitution inside `for x in <expr>; do` is a syntax error.
+          REQS: ${{ matrix.requires }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/verify && cd /tmp/verify
@@ -164,7 +168,13 @@ jobs:
           # unpack it beside this tree. Without that, "run the tool" would only
           # ever pass for self-contained tools and the dependency path would go
           # untested until a consumer hit it.
-          for req in ${{ matrix.requires }}; do
+          # NOTE: writing the matrix expression directly in a for-list is a trap
+          # - it is only valid bash while the value is non-empty, so every entry
+          # WITHOUT dependencies would fail at verify time (this cost three
+          # Swift SDK builds, whose artifacts had already built fine). The list
+          # arrives through env: REQS instead, and is deliberately unquoted so a
+          # space-separated list word-splits; an empty value is a safe no-op.
+          for req in ${REQS:-}; do
             echo "--- building dependency $req"
             # The step is `cd /tmp/verify`, but matrixlib reads matrix.yml by a
             # RELATIVE path, so every lookup must run with the checkout as cwd.
