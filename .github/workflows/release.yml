@@ -58,7 +58,9 @@ jobs:
                   continue
               out.append({"dir": e["dir"], "tool": e["tool"],
                           "version": e["version"], "artifact": e["artifact"],
-                          "target": e.get("target", "")})
+                          # Space-separated so it survives as one matrix field
+                          # and can be split again in the build script.
+                          "components": " ".join(e["components"])})
           print(json.dumps({"include": out}))
           PY
           echo "list=$(cat /tmp/list.json)" >> "$GITHUB_OUTPUT"
@@ -111,7 +113,7 @@ jobs:
           # node-22 and node-24 do not overwrite each other.
           bash "tools/build-${{ matrix.tool }}.sh" \
             "${{ matrix.dir }}" "${{ matrix.version }}" /tmp/out \
-            "${{ matrix.target }}"
+            "${{ matrix.components }}"
           ls -lh /tmp/out
 
       # Verify in a clean directory: unpack, then run the tool by absolute path.
@@ -145,8 +147,8 @@ jobs:
           # (no `target:` field) are held to the ldd check.
           echo "--- shared library check"
           missing=0
-          if [ -n "${{ matrix.target }}" ]; then
-            echo "cross target ${{ matrix.target }}: skipping ldd (its libraries are not for linux)"
+          if [ -n "${{ matrix.components }}" ]; then
+            echo "components [${{ matrix.components }}]: skipping ldd (their libraries are not for linux)"
           else
             # Some trees ship their own .so (ruby bundles libruby.so.4.0 inside
             # lib/). ldd must run with the same LD_LIBRARY_PATH the consumer's
@@ -171,15 +173,18 @@ jobs:
             exit 1; }
 
           echo "--- run the tool"
-          if [ -n "${{ matrix.target }}" ]; then
-            # A cross target has no runnable binary of its own: windows-gnu ships
-            # .exe/.dll and windows-msvc ships only std. Assert the std for that
-            # triple is actually there, which is the deliverable.
-            found=$(find "/tmp/verify/opt/setup/${{ matrix.dir }}" -type d \
-                      -path "*rustlib/${{ matrix.target }}*" | head -1)
-            [ -n "$found" ] || {
-              echo "cross target ${{ matrix.target }} is not in the tree" >&2; exit 1; }
-            echo "cross target ${{ matrix.target }} present: $found"
+          if [ -n "${{ matrix.components }}" ]; then
+            # A component-only entry has no runnable binary of its own: a rust
+            # windows-gnu std ships .dll/.exe, a windows-msvc std ships only
+            # std. Assert each component is actually present, which is the
+            # deliverable.
+            for c in ${{ matrix.components }}; do
+              found=$(find "/tmp/verify/opt/setup/${{ matrix.dir }}" -type d \
+                        -path "*rustlib/$c*" | head -1)
+              [ -n "$found" ] || {
+                echo "component $c is not in the tree" >&2; exit 1; }
+              echo "component $c present: $found"
+            done
           else
             case "${{ matrix.tool }}" in
               node)   "$B/node" --version ;;
