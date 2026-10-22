@@ -45,12 +45,22 @@ def scripts_from(text):
 
 def main():
     files = sorted(pathlib.Path(".github/workflows").glob("*.yml"))
+    # The composite action's own `run:` blocks are just as capable of holding a
+    # syntax error, and it is the thing consumers actually invoke.
+    files.append(pathlib.Path("action.yml"))
     bad = 0
     checked = 0
     for f in files:
         for name, script in scripts_from(f.read_text()):
-            # A composite action's `run:` has no shell of its own; workflows do.
-            s = re.sub(r"\$\{\{[^}]*\}\}", "GH_EXPR", script)
+            # Substitute GitHub expressions with a value full of shell
+            # metacharacters - not a tidy placeholder, not empty.
+            #
+            # The bug this exists for: matrix.requires holds "swift@>=6.4 <7",
+            # so writing it inline put a bare `>` and `<` into the script and
+            # bash died with "syntax error near unexpected token `>`" - after
+            # three Swift SDK artifacts had already been built correctly. A
+            # plain "GH_EXPR" placeholder is shell-safe and hid it completely.
+            s = re.sub(r"\$\{\{[^}]*\}\}", "X>Y <Z", script)
             with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as t:
                 t.write(s)
                 tmp = t.name
