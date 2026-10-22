@@ -104,36 +104,24 @@ def load(path=MATRIX):
     for e in entries:
         if "tool" not in e or "version" not in e:
             raise ValueError(f"matrixlib: entry without tool/version: {e}")
-        # `components` is the general mechanism for "optional add-ons installed
-        # alongside a tool". Today the only user is rust, where a cross-compile
-        # std is a component of the toolchain:
-        #
-        #   tool: rust, version: 1.99.1,
-        #   components: [x86_64-pc-windows-gnu]
-        #
-        # The directory (and release tag) carries them as `+<c1>+<c2>`, so two
-        # entries sharing tool+version stay distinguishable:
-        #
-        #   rust-1.99.1
-        #   rust-1.99.1+x86_64-pc-windows-gnu
-        #
-        # `target` is accepted as the old single-value spelling; it is folded
-        # into `components` here so nothing downstream has to know both names.
-        comps = e.get("components")
-        if comps is None:
-            comps = []
-        elif isinstance(comps, str):
-            comps = [comps]
-        if e.get("target"):
-            comps = list(comps) + [e["target"]]
-            del e["target"]
-        e["components"] = list(comps)
+        # A setup is <tool>-<version>. Nothing else goes into the name: an
+        # add-on that used to be a `+component` is now its own setup with its
+        # own tool name (`rust-toolchain-x86_64-pc-windows-gnu`), and its
+        # dependency on the host toolchain is declared with `requires`.
+        e["dir"] = f'{e["tool"]}-{e["version"]}'
+        e["tag"] = e["dir"]
 
-        base = f'{e["tool"]}-{e["version"]}'
-        for c in e["components"]:
-            base += f'+{c}'
-        e["dir"] = base
-        e["tag"] = base
+        # `requires` lists setups that must be installed first. Each entry is
+        # itself a resolvable name (`erlang-28.0.0`), so a version prefix works.
+        reqs = e.get("requires") or []
+        if isinstance(reqs, str):
+            reqs = [reqs]
+        e["requires"] = list(reqs)
+
+        # `builder` names the script that produces the tarball, defaulting to
+        # the tool name. It exists because several setups can share one build
+        # script: rust-toolchain-* are all produced by build-rust.sh.
+        e["builder"] = e.get("builder") or e["tool"]
     return entries
 
 
@@ -148,6 +136,16 @@ class Ambiguous(Exception):
     """A name matched more than one entry and no rule picked a winner."""
 
 
+class _Seen:
+    """Carries the two sets resolve_chain needs across recursive calls."""
+
+    __slots__ = ("done", "active")
+
+    def __init__(self, done, active):
+        self.done = done
+        self.active = active
+
+
 def _vkey(version):
     """Numeric sort key for a version string ("22.23.4", "21.0.12+101")."""
     main, _, build = version.partition("+")
@@ -159,29 +157,19 @@ def _vkey(version):
 def resolve(name, path=MATRIX):
     """Resolve a setup name to one entry.
 
-    Two independent things may be abbreviated, and they use different syntax:
-
-    VERSION is a dot-separated PREFIX, because people write `node-22`:
+    A VERSION is a dot-separated PREFIX, because people write `node-22`:
 
         node-22       -> node-22.23.4     (the newest 22.x we publish)
         node-22.23    -> node-22.23.4
         node-22.23.4  -> node-22.23.4     (exact always wins)
 
-    A COMPONENT is named after the version with `@`, and only its FULL name is
-    accepted - no partial matching:
-
-        rust-1.99.1@x86_64-pc-windows-gnu  -> that entry
-        rust-1.99.1@windows-gnu            -> no match (not a full component name)
-
     Version matching is by whole segments, not characters: `node-2` does NOT
     match `node-22.23.4`, because "2" is not a segment of "22". A character
     prefix would silently install the wrong major version.
 
-    With no `@`, only entries WITHOUT components are considered, so a bare
-    `rust-1.99.1` is always the host toolchain and never a cross-compile one.
+    Anything requiring another setup says so with `requires`; see resolve_chain.
 
-    Returns None when nothing matches. Raises Ambiguous if two entries match
-    equally, which the manifest should never contain.
+    Returns None when nothing matches. Raises Ambiguous if two entries match equally.
     """
     entries = load(path)
 
@@ -191,27 +179,18 @@ def resolve(name, path=MATRIX):
         if e["dir"] == name:
             return e
 
-    # 2) `tool-<version prefix>@<component>`
-    base, sep, comp = name.partition("@")
-    if sep:
-        want_comps = [comp]
-    else:
-        want_comps = []
-
-    tool, _, want = base.partition("-")
-    if not tool or not want:
-        return None
-    want_segments = want.split(".")
-
+    # A tool name may itself contain dashes (`rust-toolchain-x86_64-pc-windows-gnu`),
+    # so the split is not "up to the first dash". Match every entry by asking
+    # whether the name is `<its tool>-<a version prefix>`.
     matches = []
     for e in entries:
-        if e["tool"] != tool:
+        prefix = e["tool"] + "-"
+        if not name.startswith(prefix):
             continue
-        # The component set must match EXACTLY: a bare name selects only
-        # component-free entries; `@x` selects only entries whose components are
-        # exactly ["x"].
-        if sorted(e["components"]) != sorted(want_comps):
+        want = name[len(prefix):]
+        if not want:
             continue
+        want_segments = want.split(".")
         have_segments = e["version"].split("+")[0].split(".")
         if len(want_segments) > len(have_segments):
             continue
@@ -233,6 +212,43 @@ def resolve(name, path=MATRIX):
         raise Ambiguous(
             f"{name!r} matches {newest['dir']} and {matches[1]['dir']} equally")
     return newest
+
+
+def resolve_chain(name, path=MATRIX, _seen=None):
+    """Resolve a name AND everything it requires, dependencies first.
+
+    `elixir-1` requires `erlang-28.0.0`, so installing elixir must install
+    erlang first. The result is a list of entries in install order, each entry
+    appearing once even if two setups share a dependency.
+
+    Raises ValueError on an unknown name, a cycle, or a `requires` entry that
+    does not resolve - all of which would otherwise produce a half-installed
+    tree.
+    """
+    if _seen is None:
+        done, active = set(), set()
+    else:
+        done, active = _seen.done, _seen.active
+
+    e = resolve(name, path)
+    if e is None:
+        raise ValueError(f"no setup matches {name!r}")
+    if e["dir"] in done:
+        return []                    # already scheduled by another branch
+    if e["dir"] in active:
+        # Marking nodes only AFTER recursion cannot detect a cycle: the second
+        # visit happens before the first one finishes. Track the ACTIVE path.
+        raise ValueError(f"requires cycle through {e['dir']!r}")
+
+    active.add(e["dir"])
+    out = []
+    for req in e["requires"]:
+        out.extend(resolve_chain(req, path, _Seen(done, active)))
+    active.discard(e["dir"])
+
+    done.add(e["dir"])
+    out.append(e)
+    return out
 
 
 def main(argv):
@@ -267,12 +283,24 @@ def main(argv):
         if cmd == "resolve":
             # Print the concrete directory a name resolves to, and why when it
             # cannot: this is what makes `install.sh node-22` self-explanatory.
-            e = resolve(argv[2])
-            if e is None:
+            try:
+                chain = resolve_chain(argv[2])
+            except ValueError as ex:
                 avail = ", ".join(x["dir"] for x in load())
-                sys.exit(f"matrixlib: no setup matches '{argv[2]}'\n"
-                         f"  available: {avail}")
-            print(e["dir"])
+                sys.exit(f"matrixlib: {ex}\n  available: {avail}")
+            print("\n".join(x["dir"] for x in chain))
+            return 0
+
+        if cmd == "plan":
+            # The same thing, but annotated: which entries come from a
+            # dependency rather than from the name given.
+            try:
+                chain = resolve_chain(argv[2])
+            except ValueError as ex:
+                sys.exit(f"matrixlib: {ex}")
+            for x in chain:
+                mark = "" if x["dir"] == resolve(argv[2])["dir"] else "  (required)"
+                print(f'{x["dir"]}{mark}')
             return 0
     except (ValueError, OSError) as e:
         sys.exit(f"matrixlib: {e}")
