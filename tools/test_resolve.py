@@ -46,7 +46,7 @@ setups:
     sha256: ""
   - tool: rust
     version: "1.99.1"
-    target: x86_64-pc-windows-gnu
+    components: [x86_64-pc-windows-gnu]
     artifact: rust-1.99.1-gnu.tar.xz
     sha256: ""
   - tool: python
@@ -93,11 +93,23 @@ ok("node-24", matrixlib.resolve("node-24", str(MATRIX))["dir"], "node-24.22.1")
 ok("java-21", matrixlib.resolve("java-21", str(MATRIX))["dir"], "java-21.0.12+101")
 ok("java-21.0.12", matrixlib.resolve("java-21.0.12", str(MATRIX))["dir"], "java-21.0.12+101")
 
-# A bare rust version must pick the HOST build, not a cross target.
+# A bare rust version must pick the HOST build, not a component entry.
 ok("rust-1.99.1 picks host",
    matrixlib.resolve("rust-1.99.1", str(MATRIX))["dir"], "rust-1.99.1")
-ok("rust cross is still exact",
-   matrixlib.resolve("rust-1.99.1+x86_64-pc-windows-gnu", str(MATRIX))["dir"],
+
+# A component is named with @ and only its FULL name is accepted.
+ok("rust-1.99.1@<full component>",
+   matrixlib.resolve("rust-1.99.1@x86_64-pc-windows-gnu", str(MATRIX))["dir"],
+   "rust-1.99.1+x86_64-pc-windows-gnu")
+
+# No partial component matching: these must NOT resolve.
+err("rust-1.99.1@windows-gnu")
+err("rust-1.99.1@x86_64")
+err("rust-1.99.1@gnu")
+
+# The version part of an @-name may still be a prefix.
+ok("rust-1@<full component>",
+   matrixlib.resolve("rust-1@x86_64-pc-windows-gnu", str(MATRIX))["dir"],
    "rust-1.99.1+x86_64-pc-windows-gnu")
 
 # "2" must not be treated as a prefix of "22" — segments, not strings.
