@@ -219,6 +219,7 @@ echo "== every run: block in the workflows is valid bash =="
 # job executes it - which is how a broken `case` arm failed all three Swift SDK
 # builds at verify time, after their artifacts had built fine.
 "$PY" tools/check-workflow-shell.py || fail=1
+"$PY" tools/test_workflow_shell_check.py >/dev/null || fail=1
 
 echo "== the example workflow names only setups that exist =="
 "$PY" - <<'PY' || fail=1
