@@ -66,6 +66,7 @@ def load(path=MATRIX):
     cur = None
     in_setups = False
     list_key = None          # the key whose block list we are currently inside
+    cont_key = None          # a flow list that wrapped onto more lines
 
     for raw in open(path, encoding="utf-8"):
         line = raw.rstrip("\n")
@@ -106,14 +107,27 @@ def load(path=MATRIX):
                 # `components:` with a block list of `      - item` lines.
                 cur[k] = []
                 list_key = k
+                cont_key = None
             else:
                 cur[k] = _scalar(v)
                 list_key = None
+                # A flow list opened but not closed on this line keeps reading.
+                cont_key = k if v.strip().startswith("[") and not v.strip().endswith("]") else None
             continue
 
         # `      - item` continues the block list opened at indent 4.
         if indent == 6 and stripped.startswith("- ") and cur is not None and list_key:
             cur[list_key].append(_scalar(stripped[2:]))
+            continue
+
+        # A flow list may wrap onto a continuation line, which YAML indents past
+        # the key. Without this, `apt_deps: [a, b,` / `            c, d]`
+        # failed to parse at all with "unsupported line".
+        if indent >= 6 and cur is not None and cont_key:
+            acc = (cur.get(cont_key) or "") + " " + stripped
+            cur[cont_key] = _scalar(acc) if acc.rstrip().endswith("]") else acc
+            if acc.rstrip().endswith("]"):
+                cont_key = None
             continue
 
         raise ValueError(f"matrixlib: unsupported line in matrix.yml: {raw!r}")
