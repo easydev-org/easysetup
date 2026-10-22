@@ -247,6 +247,35 @@ echo "== matrixlib needs no third-party module =="
 "$PY" -S matrixlib.py list >/dev/null || bad "matrixlib fails without site-packages"
 ok "matrixlib runs on the standard library alone"
 
+echo "== every setup can be selected with --only =="
+# The release job filters its matrix with `only=`. It used to compare that
+# string to the directory verbatim, so `only: swift-sdk-wasm` (a name, not a
+# directory) selected NOTHING - setup and publish both reported success while
+# zero build jobs ran. Every entry must be selectable by the name a user types.
+"$PY" - <<'PY' || fail=1
+import sys
+sys.path.insert(0, ".")
+import matrixlib
+
+bad = 0
+entries = matrixlib.load()
+for e in entries:
+    for spelling in (e["dir"], e["tool"]):
+        got = matrixlib.resolve_requirement(spelling)
+        if got is None or got["dir"] != e["dir"]:
+            # A bare tool name is ambiguous when several versions exist; only
+            # require that it resolves to SOME entry of that tool.
+            if spelling == e["tool"] and got is not None and got["tool"] == e["tool"]:
+                continue
+            print("FAIL only=%r resolves to %r, not %r"
+                  % (spelling, got and got["dir"], e["dir"]))
+            bad = 1
+if not bad:
+    print("ok   every setup is reachable by dir and by tool name")
+sys.exit(bad)
+PY
+
+
 echo "== which build scripts compile, and is that intended =="
 # The model is "repack a prebuilt tarball, bundling any library whose ABI the
 # target lacks" - NOT "compile from source". Two scripts are exceptions, both
