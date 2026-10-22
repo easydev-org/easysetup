@@ -1,60 +1,88 @@
 #!/bin/bash
 # install.sh — install one or more easysetup toolchains into /opt/setup.
 #
-#   ./install.sh node              # just node
-#   ./install.sh node python       # two setups, stacked
+#   ./install.sh node-22                     # node 22
+#   ./install.sh node-22 python-312          # node 22 and python 3.12, stacked
 #
-# This is what a CI job runs. It:
-#   1. apt-installs the base runtime packages that setup needs,
-#   2. downloads the PREBUILT tarball for the pinned version from Releases,
-#   3. verifies its sha256,
-#   4. unpacks it at / (the archive carries opt/setup/<tool>/...),
-#   5. writes /opt/setup/env.sh.
+# Each setup extracts into its own versioned directory, so two versions of the
+# same tool coexist:
 #
-# It never compiles and never resolves a version at run time: the version is the
-# one recorded in matrix.yml when the release was built.
+#   /opt/setup/node-22/bin/node
+#   /opt/setup/node-24/bin/node
+#
+# The script then writes /opt/setup/env.sh, which prepends exactly what this run
+# installed. Two versions of one tool: the LAST one listed wins on PATH (put the
+# one you want first at the end of the list), and both stay addressable by their
+# absolute paths.
 set -euo pipefail
 
 REPO="${EASYSETUP_REPO:-easydev-org/easysetup}"
+RAW="https://raw.githubusercontent.com/${REPO}/main/matrix.yml"
 BASE="https://github.com/${REPO}/releases/download"
-MANIFEST="${EASYSETUP_MANIFEST:-https://raw.githubusercontent.com/${REPO}/main/matrix.yml}"
 
-[ "$#" -gt 0 ] || { echo "install.sh: name at least one setup (node python go java)" >&2; exit 2; }
+[ "$#" -gt 0 ] || {
+  echo "install.sh: name at least one setup, e.g. node-22 python-312" >&2
+  echo "            run 'install.sh --list' to see what exists" >&2
+  exit 2
+}
 
 command -v curl >/dev/null || { echo "install.sh: curl is required" >&2; exit 1; }
 
-# Read one field for a setup out of matrix.yml without needing PyYAML: the file
-# has a fixed, simple shape, so a targeted awk is enough and keeps the installer
-# dependency-free.
-manifest_get() {  # manifest_get <setup> <field>
-  curl -fsSL "$MANIFEST" | awk -v want="$1" -v field="$2" '
-    /^  [a-z]+:$/ { name=$1; sub(":","",name) }
+# The manifest is fetched ONCE: every lookup reads the same snapshot, so a
+# matrix.yml edit mid-run cannot make the checksum and the artefact disagree.
+MANIFEST=$(mktemp)
+trap 'rm -f "$MANIFEST"' EXIT
+curl -fsSL --retry 3 --retry-delay 2 -o "$MANIFEST" "$RAW" || {
+  echo "install.sh: cannot read the manifest at $RAW" >&2; exit 1; }
+
+# manifest_get <id> <field> — read one field of one setup.
+#
+# The manifest has a fixed, flat shape (two-space setup ids, four-space fields),
+# so a targeted awk is enough and keeps the installer dependency-free. A setup
+# id containing a dot (node-22.1) would break the section regex, which is why
+# ids are dashes only.
+manifest_get() {
+  awk -v want="$1" -v field="$2" '
+    /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
     name==want && $1==field":" { sub(/^[^:]*:[ ]*/,""); gsub(/"/,""); print; exit }
-  '
+  ' "$MANIFEST"
 }
+
+# manifest_ids — every setup id, in file order.
+manifest_ids() {
+  awk '/^  [a-z0-9-]+:$/ { n=$1; sub(":","",n); print n }' "$MANIFEST"
+}
+
+if [ "$1" = "--list" ]; then
+  for id in $(manifest_ids); do
+    printf '%-14s %s\n' "$id" "$(manifest_get "$id" version)"
+  done
+  exit 0
+fi
 
 mkdir -p /opt/setup
 installed=""
 
-for tool in "$@"; do
-  case "$tool" in
-    node|python|go|java) ;;
-    *) echo "install.sh: unsupported setup '$tool' (have: node python go java)" >&2; exit 2 ;;
-  esac
+for id in "$@"; do
+  tool=$(manifest_get "$id" tool)
+  version=$(manifest_get "$id" version)
+  artifact=$(manifest_get "$id" artifact)
+  sha=$(manifest_get "$id" sha256)
 
-  version=$(manifest_get "$tool" version)
-  artifact=$(manifest_get "$tool" artifact)
-  sha=$(manifest_get "$tool" sha256)
-  [ -n "$version" ] && [ -n "$artifact" ] || {
-    echo "install.sh: '$tool' is not in the manifest" >&2; exit 1; }
+  if [ -z "$tool" ] || [ -z "$version" ] || [ -z "$artifact" ]; then
+    echo "install.sh: '$id' is not a setup in the manifest" >&2
+    echo "            known setups: $(manifest_ids | tr '\n' ' ')" >&2
+    exit 2
+  fi
 
-  echo "==> $tool $version"
+  echo "==> $id ($tool $version)"
 
-  # 1) base packages (shared libs), via apt.
-  deps=$(curl -fsSL "$MANIFEST" | awk -v want="$tool" '
-    /^  [a-z]+:$/ { name=$1; sub(":","",name) }
+  # 1) base packages (shared libraries), via apt. Only the libraries: the tool
+  #    itself always comes from the release, so its version is exactly the pin.
+  deps=$(awk -v want="$id" '
+    /^  [a-z0-9-]+:$/ { name=$1; sub(":","",name); next }
     name==want && /apt_deps:/ { sub(/^[^[]*\[/,""); sub(/\].*/,""); gsub(/,/," "); print; exit }
-  ')
+  ' "$MANIFEST")
   if [ -n "${deps// /}" ]; then
     echo "    apt: $deps"
     if command -v apt-get >/dev/null; then
@@ -63,38 +91,47 @@ for tool in "$@"; do
       # shellcheck disable=SC2086
       apt-get install -y -qq --no-install-recommends $deps >/dev/null
     else
-      echo "install.sh: this setup requires debian (apt-get not found)" >&2; exit 1
+      echo "install.sh: this setup needs debian (apt-get not found)" >&2; exit 1
     fi
   fi
 
   # 2) the prebuilt tarball.
-  url="$BASE/$tool-$version/$artifact"
+  url="$BASE/$id-$version/$artifact"
   tmp=$(mktemp -d)
   echo "    fetch: $url"
-  curl -fsSL --retry 3 --retry-delay 2 -o "$tmp/asset" "$url"
+  curl -fsSL --retry 3 --retry-delay 2 -o "$tmp/asset" "$url" || {
+    echo "install.sh: download failed for $artifact" >&2; exit 1; }
 
-  # 3) checksum. An empty pin means the release has not been cut yet; refuse
-  #    rather than trust whatever came over the wire.
+  # 3) checksum. An empty pin means the release has not been cut for this entry;
+  #    refuse rather than unpack whatever arrived.
   if [ -n "$sha" ]; then
     echo "$sha  $tmp/asset" | sha256sum -c - >/dev/null || {
       echo "install.sh: sha256 mismatch for $artifact" >&2; exit 1; }
   else
-    echo "install.sh: no pinned sha256 for $tool; refusing to unpack" >&2; exit 1
+    echo "install.sh: no pinned sha256 for $id; refusing to unpack" >&2; exit 1
   fi
 
-  # 4) unpack at / — the archive already carries opt/setup/<tool>/.
+  # 4) unpack at / — the archive already carries opt/setup/<id>/.
   tar -xJf "$tmp/asset" -C /
   rm -rf "$tmp"
-  installed="$installed $tool"
+  [ -d "/opt/setup/$id" ] || {
+    echo "install.sh: $artifact did not produce /opt/setup/$id" >&2; exit 1; }
+  installed="$installed $id"
 done
 
-# 5) env.sh: prepend exactly what was installed in THIS run.
+# 5) env.sh: prepend what was installed, in the order given. JAVA_HOME points at
+#    the LAST java installed, matching what wins on PATH.
 {
   echo "# generated by easysetup install.sh"
-  for t in $installed; do
-    echo "[ -d /opt/setup/$t/bin ] && PATH=\"/opt/setup/$t/bin:\$PATH\""
+  for id in $installed; do
+    echo "[ -d /opt/setup/$id/bin ] && PATH=\"/opt/setup/$id/bin:\$PATH\""
   done
-  echo '[ -d /opt/setup/java ] && { JAVA_HOME=/opt/setup/java; export JAVA_HOME; }'
+  for id in $installed; do
+    case "$id" in
+      java-*)
+        echo "[ -d /opt/setup/$id ] && { JAVA_HOME=/opt/setup/$id; export JAVA_HOME; }" ;;
+    esac
+  done
   echo "export PATH"
 } > /opt/setup/env.sh
 
