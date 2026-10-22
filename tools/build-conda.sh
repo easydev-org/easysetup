@@ -23,7 +23,26 @@ chmod +x /tmp/miniforge.sh
 bash /tmp/miniforge.sh -b -p "$ROOT" 2>&1 | tail -3
 rm -f /tmp/miniforge.sh
 
-"$ROOT/bin/conda" --version
+# Miniforge writes ABSOLUTE paths into the tree: the `conda` entrypoint is a
+# script whose shebang points at the prefix it was installed to (a /tmp staging
+# path here). Rewrite every such script to the prefix this tarball will live at,
+# exactly as build-ruby does - otherwise `conda` fails with
+# "cannot execute: required file not found" once the tree moves.
+PREFIX="/opt/setup/$DIR"
+fixed=0
+for f in "$ROOT"/bin/* "$ROOT"/condabin/*; do
+  [ -f "$f" ] || continue
+  head -c 2 "$f" 2>/dev/null | grep -q '#!' || continue
+  if head -1 "$f" | grep -q "$ROOT"; then
+    sed -i "1s|.*|#!$PREFIX/bin/python|" "$f"
+    fixed=$((fixed + 1))
+  fi
+done
+echo "conda: rewrote $fixed shebang(s) to $PREFIX"
+
+# Run it the way a consumer will. The rewritten shebang names $PREFIX, which
+# does not exist during the build, so call through the interpreter here.
+"$ROOT/bin/python" "$ROOT/bin/conda" --version
 
 mkdir -p "$OUT"
 ASSET="$OUT/conda-${VERSION}-debian-trixie-amd64.tar.xz"
