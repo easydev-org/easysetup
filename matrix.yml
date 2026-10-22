@@ -393,7 +393,7 @@ setups:
     # and a cmake whose GUI cannot start is a broken tree.
     apt_deps: [ca-certificates, curl, libxcb1, libfontconfig1, libfreetype6, libx11-6, libxext6, libxrender1]
     artifact: cmake-4.4.4-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "e6089f53d4d96fe2fe3895304c1bd46de51b575d3451035475acbe5e7d4a99aa"
 
   # ---------------------------------------------------------------
   # The build backend cmake generates for by default. One static binary.
