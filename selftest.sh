@@ -62,8 +62,13 @@ for e in matrixlib.load():
         if req == e["dir"]:
             print(f"FAIL {e['dir']} requires itself")
             bad = 1
-        elif matrixlib.resolve(req) is None:
-            print(f"FAIL {e['dir']} requires unknown setup {req!r}")
+            continue
+        # A requirement may be a range (`erlang@>=29 <30`) or a bare tool, so
+        # judging it needs the same resolver the installer uses.
+        try:
+            matrixlib.resolve_requirement(req)
+        except ValueError as ex:
+            print(f"FAIL {e['dir']} requires {req!r}: {ex}")
             bad = 1
 if not bad:
     print("ok   every directory derives from tool+version, is unique, requires resolve")
@@ -125,6 +130,13 @@ echo "== setup name resolution =="
 # `install.sh node-22` must work; `node-2` must NOT silently pick node 22.
 "$PY" tools/test_resolve.py | tail -3
 "$PY" tools/test_resolve.py >/dev/null || fail=1
+
+echo "== requires: exact names, prefixes, and version ranges =="
+# A hard-coded `requires: [erlang-29.1.2]` has to be edited in every dependent
+# entry when the tool moves on, and forgetting it installs the wrong runtime.
+# A range lets the dependency follow the published versions.
+"$PY" tools/test_requires.py | tail -4
+"$PY" tools/test_requires.py >/dev/null || fail=1
 
 echo "== pin-checksums.sh edits the matching entry =="
 tmp=$(mktemp -d); mkdir -p "$tmp/assets"
