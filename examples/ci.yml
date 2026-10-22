@@ -1,0 +1,84 @@
+# Copy this into .github/workflows/ of YOUR repository.
+#
+# The one thing that is not optional is `container: debian:trixie-slim`:
+# easysetup ships binaries linked against trixie's glibc 2.41, and
+# ubuntu-latest (glibc 2.39) cannot load them. A newer distro would also work;
+# an older one cannot.
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # trixie-slim is the same glibc as trixie, just with fewer packages, so the
+    # artifacts run unchanged. It is ~28 MB; the action installs the four
+    # packages the installer itself needs (curl, xz-utils, python3, ca-certs).
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: easydev-org/easysetup@main
+        with:
+          # A name may be a version prefix: node-22 -> newest 22.x published.
+          tools: node-22 python-3.12
+
+      - name: the tools are on PATH without any extra step
+        run: |
+          node --version
+          npm --version
+          python3 --version
+
+      - run: npm ci
+      - run: pytest -q
+
+  # Two different toolchains in one job: each call accumulates, it does not
+  # replace what the previous call installed.
+  two-calls:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: easydev-org/easysetup@main
+        with: { tools: node-22 }
+
+      - uses: easydev-org/easysetup@main
+        with: { tools: python-3.12 }
+
+      - name: both are available
+        run: |
+          node --version
+          python3 --version
+
+  # Toolchains that need environment variables, not just PATH.
+  java-and-r:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: easydev-org/easysetup@main
+        with: { tools: "java-21 r-4" }
+
+      - name: JAVA_HOME and R's bundled libs come from env.sh
+        run: |
+          . "$EASYSETUP_ENV"
+          java -version
+          Rscript -e 'cat(R.version.string, "\n")'
+
+  # A setup with a dependency: asking for an SDK installs the compiler too.
+  swift-wasm:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: easydev-org/easysetup@main
+        with:
+          # swift-sdk-wasm requires swift, so both land.
+          tools: swift-sdk-wasm
+
+      - run: |
+          swift --version
+          swift build --swift-sdk wasm32-unknown-wasip1
