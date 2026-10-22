@@ -137,6 +137,11 @@ jobs:
           if [ -n "${{ matrix.target }}" ]; then
             echo "cross target ${{ matrix.target }}: skipping ldd (its libraries are not for linux)"
           else
+            # Some trees ship their own .so (ruby bundles libruby.so.4.0 inside
+            # lib/). ldd must run with the same LD_LIBRARY_PATH the consumer's
+            # env.sh sets, or it reports "not found" for a library that IS in
+            # the tarball.
+            export LD_LIBRARY_PATH="/tmp/verify/opt/setup/${{ matrix.dir }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             for f in "$B"/*; do
               [ -f "$f" ] || continue
               case "$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')" in
