@@ -382,3 +382,69 @@ setups:
     apt_deps: [ca-certificates, curl]
     artifact: swift-sdk-android-6.4.1-debian-trixie-amd64.tar.xz
     sha256: "be043035052e87417e6e9362df23732d24919b0eb15c3362d4f34ed4a9015fd1"
+
+  # ---------------------------------------------------------------
+  # Build system that almost every native project drives. The tarball is
+  # relocatable; CMake_ROOT is exported by env.sh so it finds its modules.
+  - tool: cmake
+    version: "4.4.4"
+    apt_deps: [ca-certificates, curl]
+    artifact: cmake-4.4.4-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ---------------------------------------------------------------
+  # The build backend cmake generates for by default. One static binary.
+  - tool: ninja
+    version: "1.13.2"
+    apt_deps: [ca-certificates, curl, unzip]
+    artifact: ninja-1.13.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------
+  # JSON on the command line; CI scripts reach for it constantly.
+  - tool: jq
+    version: "1.8.2"
+    apt_deps: [ca-certificates, curl]
+    artifact: jq-1.8.2-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # ------------------------------------------------------------------
+  # The YAML equivalent of jq.
+  - tool: yq
+    version: "4.54.1"
+    apt_deps: [ca-certificates, curl]
+    artifact: yq-4.54.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -------------------------------------------------------------
+  # The client for the gitlfs protocol easyblobs exercises.
+  - tool: git-lfs
+    version: "3.8.1"
+    apt_deps: [ca-certificates, curl]
+    artifact: git-lfs-3.8.1-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -----------------------------------------------------------------
+  # One 55 MB tree that is both a Zig compiler and, via `zig cc`, a C/C++
+  # cross compiler - the cheap route to native builds without LLVM's 1.9 GB.
+  - tool: zig
+    version: "0.17.0"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: zig-0.17.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -------------------------------------------------------------
+  # The -bundled flavour, which carries the LLVM and libraries it needs.
+  - tool: crystal
+    version: "1.22.0"
+    apt_deps: [ca-certificates, curl, libgc1, libevent-2.1-7t64, libssl3, libxml2, zlib1g]
+    artifact: crystal-1.22.0-debian-trixie-amd64.tar.xz
+    sha256: ""
+
+  # -----------------------------------------------------------------
+  # Prebuilt tree; nim finds its lib/ through a relative nim.cfg.
+  - tool: nim
+    version: "2.2.12"
+    apt_deps: [ca-certificates, curl, xz-utils]
+    artifact: nim-2.2.12-debian-trixie-amd64.tar.xz
+    sha256: ""
