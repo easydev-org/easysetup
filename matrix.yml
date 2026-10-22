@@ -253,7 +253,7 @@ setups:
     version: "4.6.1"
     apt_deps: [ca-certificates, curl, libssl3, zlib1g, libreadline8, liblzma5, libbz2-1.0, libpcre2-8-0, libcurl4, libblas3, liblapack3, libgomp1, libcairo2, libglib2.0-0t64, libpango-1.0-0, libpangocairo-1.0-0, libpng16-16t64, libtcl8.6, libtk8.6, libtiff6, libx11-6, libxt6t64, libdeflate0, libtirpc3t64]
     artifact: r-4.6.1-debian-trixie-amd64.tar.xz
-    sha256: "6a9262e6bee816298d8e62ccde27517a3d0a19d58a595b1418b86fdcdcbce6a9"
+    sha256: ""
 
   # --------------------------------------------------------------- julia ---
   - tool: julia
