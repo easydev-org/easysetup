@@ -25,7 +25,8 @@ rm -f /tmp/bazel.sh
 
 mkdir -p "$ROOT/bin"
 ln -sf "$ROOT/bin/bazel-real" "$ROOT/bin/bazel-real-real" 2>/dev/null || true
-"$ROOT/bin/bazel" --version 2>&1 | head -1
+"$ROOT/bin/bazel" --version 2>&1 | head -1 \
+  || { echo "bazel: --version failed" >&2; exit 1; }
 
 mkdir -p "$OUT"
 ASSET="$OUT/bazel-${VERSION}-debian-trixie-amd64.tar.xz"
