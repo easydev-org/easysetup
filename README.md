@@ -1,29 +1,30 @@
 # easysetup
 
-Prebuilt toolchains for easydev CI, installed on demand into `/opt/setup`.
+Prebuilt toolchains for CI, installed into `/opt/setup`.
 
-**One setup per (tool, version). No combinations.** A job that needs node *and*
-python installs two setups; each extracts into its own versioned directory, so
-nothing collides. Combining them is the consumer's business.
+**One entry per (tool, version).** No combination images: a job that needs node
+*and* python installs two entries, and each lands in its own directory.
 
 ```bash
-./install.sh node-22                 # /opt/setup/node-22
-./install.sh node-22 python-312      # both, side by side
-./install.sh --list                  # what exists
+./install.sh --list
+./install.sh node-22.23.4 python-3.12.15
 ```
 
-## What is published
+## The install contract
 
-| setup id | version | source |
-|---|---|---|
-| `node-22` / `node-24` / `node-26` | 22.23.4 / 24.22.1 / 26.12.1 | nodejs.org dist (linux-x64) |
-| `python-312` / `-313` / `-314` / `-315` | 3.12.15 / 3.13.17 / 3.14.9 / 3.15.1 | astral-sh/python-build-standalone |
-| `go-124` / `-125` / `-126` / `-127` | 1.24.13 / 1.25.14 / 1.26.10 / 1.27.3 | go.dev/dl |
-| `java-17` / `-21` / `-25` / `-27` | 17.0.20+101 / 21.0.12+101 / 25.0.4+101 / 27.0.0+35 | Adoptium Temurin |
+For every entry, installing is exactly:
 
-**Platform: debian trixie, amd64 only.**
+1. `apt-get install` the entry's `apt_deps` (shared libraries only),
+2. download the **one** prebuilt tarball the entry names,
+3. verify its `sha256`,
+4. unpack it at `/`.
 
-## How a CI job uses it
+**Nothing is compiled or resolved at install time.** Ruby and PHP ship source
+only, so those are compiled once when the release is cut — the tarball carries
+the built tree. `./selftest.sh` fails if `install.sh` ever grows a step that
+would need the network (`cargo install`, `pip install`, `rustup`, `make`, …).
+
+## Usage
 
 ```yaml
 # .easy-platform/ci.yml
@@ -32,120 +33,133 @@ on: [rr_opened, rr_synced]
 jobs:
   test:
     image: debian:trixie
-    setup: [node-22, python-312]
+    setup: [node-22.23.4, python-3.12.15]
     commands:
       - . /opt/setup/env.sh
       - node --version && python3 --version
-      - npm ci && pytest
 ```
 
-### Two versions of the same tool
+### Two versions of one tool
 
 ```yaml
-    setup: [node-22, node-24]
+    setup: [node-22.23.4, node-24.22.1]
     commands:
       - . /opt/setup/env.sh
-      - node --version                   # 24 (last on the list wins PATH)
-      - /opt/setup/node-22/bin/node -v   # 22, addressable by absolute path
+      - node --version                          # 24 — last on the list wins PATH
+      - /opt/setup/node-22.23.4/bin/node -v     # 22, by absolute path
 ```
-
-Both are installed; `env.sh` prepends them in the order given, so the last one
-wins `PATH`. The other stays reachable by its absolute path.
 
 ## Layout
 
 ```
-/opt/setup/node-22/bin/node
-/opt/setup/node-24/bin/node      <- coexist
-/opt/setup/python-312/bin/python3
-/opt/setup/java-21/
-/opt/setup/env.sh                <- written by install.sh
+/opt/setup/node-22.23.4/bin/node
+/opt/setup/node-24.22.1/bin/node     <- coexist
+/opt/setup/java-21.0.12+101/bin/java
+/opt/setup/env.sh                    <- written by install.sh
 ```
 
-The tarball's root is `opt/setup/<id>/...`, so it extracts at `/` with no
-special flags. `env.sh` exports `JAVA_HOME` for the last java installed.
+The directory name is **derived** (`<tool>-<version>`), never stored in the
+manifest — there is no second place to keep in sync. `env.sh` also exports
+`JAVA_HOME` for the last java installed.
 
-## distro support
+## matrix.yml
 
-**debian trixie, amd64.** The assets are built inside `debian:trixie` and
-contain binaries linked against trixie's glibc; they expect trixie's shared
-libraries at run time. `install.sh` fails on a non-debian host rather than
-installing something subtly broken.
-
-The apt layer installs only the *shared libraries* a tool needs
-(`ca-certificates`, `libssl3`, ... - see `apt_deps` in `matrix.yml`). The tool
-itself is never an apt package, so its version is exactly the pin.
-
-## matrix.yml is the authority
+`setups` is a **list**; `version` is its own field:
 
 ```yaml
 setups:
-  node-22:
-    tool: node
+  - tool: node
     version: "22.23.4"
-    apt_deps: [ca-certificates, curl, xz-utils]
+    apt_deps: [ca-certificates, curl, xz-utils, libatomic1]
     artifact: node-22.23.4-debian-trixie-amd64.tar.xz
-    sha256: "…"            # written by the release workflow
+    sha256: "…"          # written by the release workflow
 ```
 
 | field | meaning |
 |---|---|
 | `tool` | which build script installs it (`tools/build-<tool>.sh`) |
-| `version` | hand-pinned upstream version - never "latest" |
+| `version` | the exact upstream version, pinned by hand |
+| `target` | optional, for a cross-compilation toolchain (rust) |
 | `apt_deps` | base packages installed with apt before unpacking |
 | `artifact` | the release asset carrying the complete tree |
 | `sha256` | checksum; `install.sh` refuses to unpack on mismatch |
 
+`matrixlib.py` is the only parser. `install.sh`, `bump.py`, the release
+workflow and `selftest.sh` all go through it, so they cannot disagree about what
+an entry is called.
+
+## What is published
+
+| tool | versions | notes |
+|---|---|---|
+| `node` | 22.23.4, 24.22.1, 26.12.1 | |
+| `python` | 3.12.15, 3.13.17, 3.14.9, 3.15.1 | |
+| `go` | 1.24.13, 1.25.14, 1.26.10, 1.27.3 | |
+| `java` | 17.0.20+101, 21.0.12+101, 25.0.4+101, 27.0.0+35 | Temurin JDK |
+| `maven` | 3.10.0 | needs a `java-*` beside it |
+| `gradle` | 9.8.2, 8.14.6 | needs a `java-*` beside it |
+| `ruby` | 4.0.7, 3.4.9 | compiled at release time |
+| `rust` | 1.99.1 | rustc + cargo + host std; **no rustup** |
+| `rust` +`x86_64-pc-windows-gnu` | 1.99.1 | cross-compiles real .exe via mingw |
+| `rust` +`x86_64-pc-windows-msvc` | 1.99.1 | std only — `cargo check`, not linking |
+| `dotnet` | 10.0.402 | LTS |
+| `php` | 8.5.12 | compiled at release time |
+| `helm` | 4.3.1 | |
+| `bazel` | 9.3.1 | needs a JRE (`openjdk-21-jre-headless` in apt_deps) |
+| `buf` | 1.75.0 | |
+
+**Platform: debian trixie, amd64.**
+
+## rust is different, on purpose
+
+A rust toolchain is ~379 MB per version, so there is no `rust-<v>` set of
+images like the other tools. Instead:
+
+- `rust-1.99.1` — the host toolchain: `rustc` + `cargo` + the host `rust-std`,
+  merged from the three upstream components into one tree.
+- `rust-1.99.1+x86_64-pc-windows-gnu` — the Windows GNU std, for cross-compiling
+  a real `.exe` from linux (mingw is in `apt_deps`).
+- `rust-1.99.1+x86_64-pc-windows-msvc` — std only. Linking needs MSVC on
+  Windows, so on linux this supports `cargo check`, not a finished binary.
+
+`rustup` is never involved: components are unpacked directly.
+
 ## Releases
 
-One release per setup id + version:
+One release per entry, tagged with the derived directory name:
 
 ```
-releases/download/node-22-22.23.4/node-22.23.4-debian-trixie-amd64.tar.xz
+releases/download/node-22.23.4/node-22.23.4-debian-trixie-amd64.tar.xz
 ```
 
-`.github/workflows/release.yml` builds each inside `debian:trixie`, unpacks it
-in a clean directory and **runs the tool**, then publishes and commits the
-resulting `sha256` back into `matrix.yml`.
+`.github/workflows/release.yml` builds each inside `debian:trixie`, runs an
+`ldd` check on every ELF (a missing entry in `apt_deps` fails the build rather
+than shipping a broken tarball), publishes, and commits the resulting `sha256`
+back into `matrix.yml` — editing the *latest* main so a long build cannot lose
+the race with another push.
 
-## Adding a version
-
-Append to `setups:` in `matrix.yml` with a new id, version and artifact name,
-leave `sha256: ""`. Commit. The workflow builds and publishes it and fills the
-checksum. Adding a *tool* means also adding `tools/build-<tool>.sh`.
-
-A pinned version is deliberate: a CI that silently upgrades runtimes breaks
-builds nobody touched.
-
-## Keeping the pins current
-
-`tools/bump.py` compares every setup against its own upstream release line and
-reports anything stale:
+## Keeping pins current
 
 ```bash
-python3 tools/bump.py --check     # exit 1 if any pin is behind
-python3 tools/bump.py --apply     # rewrite matrix.yml
+python3 tools/bump.py --check     # exit 1 if any pin is behind upstream
+python3 tools/bump.py --apply
 ```
 
-Each id tracks only its own line, so `node-22`, `node-24` and `node-26` never
-overwrite each other:
+Each entry tracks its own line, derived from its pinned version: `node 22.23.4`
+follows 22.x, `python 3.12.15` follows 3.12.x. Bumping rewrites the version and
+the artifact name and **clears the sha256**; the release workflow re-pins it.
 
-| id | tracks |
-|---|---|
-| `node-22` | newest `22.x` |
-| `python-312` | newest `3.12.x` |
-| `go-124` | newest `1.24.x` |
-| `java-17` | newest `17` GA |
+`.github/workflows/refresh.yml` runs the check weekly and opens a **pull
+request** with the diff. It never pushes to main: a bump changes the runtime
+every consuming pipeline gets.
 
-A bump rewrites the version **and the artifact name** (the asset carries the
-version) and **clears `sha256`**, because the old digest cannot match a
-different file. The release workflow re-pins it once the new asset is built, so
-`install.sh` never unpacks something it cannot verify.
+## Checking it without building
 
-`.github/workflows/refresh.yml` runs `--check` weekly and, when something is
-stale, runs `--apply` and opens a **pull request** with the diff. It never
-pushes to main: a bump changes the runtime every consuming CI pipeline gets.
+```bash
+./selftest.sh
+```
 
-The rewrite rules have offline tests (`tools/test_bump.py`, run by
-`./selftest.sh`): bumping one id must leave its siblings untouched, and a
-malformed block must fail the whole file rather than half-write it.
+Covers: the manifest parses, directories derive from fields, `install.sh` has no
+build/network step, `bump.py` rewrites one version without touching siblings and
+refuses a malformed block, `pin-checksums.sh` writes into the matching entry,
+and the workflows are valid YAML that uses the list shape.
