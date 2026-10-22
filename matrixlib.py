@@ -146,6 +146,92 @@ class _Seen:
         self.active = active
 
 
+def _cmp_ok(version, op, want):
+    """Compare a version against `want` using a numeric, component-wise order."""
+    a = _vkey(version)[0]
+    b = _vkey(want)[0]
+    # Pad so 29 < 29.1 and 29.1.0 == 29.1
+    n = max(len(a), len(b))
+    a = a + [0] * (n - len(a))
+    b = b + [0] * (n - len(b))
+    if op == ">=":
+        return a >= b
+    if op == ">":
+        return a > b
+    if op == "<=":
+        return a <= b
+    if op == "<":
+        return a < b
+    if op == "==":
+        return a == b
+    if op == "!=":
+        return a != b
+    raise ValueError(f"unknown operator {op!r}")
+
+
+def _matches_range(version, spec):
+    """Does `version` satisfy a range spec like '>=29 <30' or '>=29,<30'?"""
+    for part in spec.replace(",", " ").split():
+        m = __import__("re").match(r"^(>=|<=|==|!=|>|<)?\s*(\d[\w.]*)$", part)
+        if not m:
+            raise ValueError(f"cannot parse version constraint {part!r}")
+        op = m.group(1) or "=="
+        if not _cmp_ok(version, op, m.group(2)):
+            return False
+    return True
+
+
+def resolve_requirement(req, path=MATRIX):
+    """Resolve one `requires` entry to a concrete setup.
+
+    Accepted forms, all resolved against what the manifest actually publishes:
+
+        erlang-29.1.2     exactly that directory
+        erlang-29         that tool, newest 29.x   (version prefix)
+        erlang>=29 <30    any version in the range  (newest wins)
+        erlang>=29,<30    same, comma-separated
+        erlang            newest of that tool
+
+    `@` separates a tool from a constraint (`erlang@>=29 <30`) so the two are
+    unambiguous - without it, `erlang-29` and `erlang` would have to be told
+    apart by guessing.
+
+    Raises ValueError when nothing matches. A dependency that silently resolves
+    to nothing would leave the dependent installed with no runtime, which fails
+    much later and far from the cause.
+    """
+    text = req.strip()
+
+    # Exact directory name wins (this is the old behaviour, still valid).
+    for e in load(path):
+        if e["dir"] == text:
+            return e
+
+    tool, sep, spec = text.partition("@")
+    spec = spec.strip()
+    if not sep:
+        # No constraint. A bare `<tool>-<version-ish>` is still tried as a
+        # prefix by `resolve`; otherwise treat the text as a tool name.
+        e = resolve(text, path)
+        if e is not None:
+            return e
+
+    candidates = [x for x in load(path) if x["tool"] == tool]
+    if not candidates:
+        raise ValueError(f"requires {text!r}: no setup has tool {tool!r}")
+
+    if not spec:
+        chosen = max(candidates, key=lambda x: _vkey(x["version"]))
+        return chosen
+
+    ok = [x for x in candidates if _matches_range(x["version"], spec)]
+    if not ok:
+        have = ", ".join(x["version"] for x in candidates)
+        raise ValueError(
+            f"requires {text!r}: no {tool} satisfies {spec!r} (published: {have})")
+    return max(ok, key=lambda x: _vkey(x["version"]))
+
+
 def _vkey(version):
     """Numeric sort key for a version string ("22.23.4", "21.0.12+101")."""
     main, _, build = version.partition("+")
@@ -230,9 +316,10 @@ def resolve_chain(name, path=MATRIX, _seen=None):
     else:
         done, active = _seen.done, _seen.active
 
-    e = resolve(name, path)
-    if e is None:
-        raise ValueError(f"no setup matches {name!r}")
+    # A `requires` entry is not just a name: it may carry a version constraint
+    # (`erlang@>=29 <30`). resolve_requirement understands both, and raises a
+    # message that names the published versions when a range matches nothing.
+    e = resolve_requirement(name, path)
     if e["dir"] in done:
         return []                    # already scheduled by another branch
     if e["dir"] in active:
