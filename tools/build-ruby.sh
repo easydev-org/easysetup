@@ -70,7 +70,22 @@ export GEM_PATH="$GEM_HOME"
 require "openssl"; require "zlib"; require "json"
 puts "ruby ok: openssl=#{OpenSSL::OPENSSL_VERSION} json=#{JSON.generate({ok: true})}"
 '
-"$ROOT/bin/gem" --version
+
+# `gem` and the other bin/ scripts now carry a shebang pointing at the FINAL
+# install path (/opt/setup/<dir>/bin/ruby), which does not exist while the tree
+# is still staged under /tmp. Running them by that shebang therefore fails here
+# — but that is only a staging artefact, not a defect in the tarball. Invoke the
+# script THROUGH the staged interpreter instead, which is what the consumer's
+# `gem` ends up doing anyway.
+"$ROOT/bin/ruby" "$ROOT/bin/gem" --version
+
+# Prove the shebang the tarball ships is the final path, not the staging one.
+if head -1 "$ROOT/bin/gem" | grep -q "^#!${PREFIX}/bin/ruby$"; then
+  echo "ruby: gem shebang is $PREFIX/bin/ruby (final path) ok"
+else
+  echo "ruby: gem shebang is wrong: $(head -1 "$ROOT/bin/gem")" >&2
+  exit 1
+fi
 
 mkdir -p "$OUT"
 ASSET="$OUT/ruby-${VERSION}-debian-trixie-amd64.tar.xz"
