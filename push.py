@@ -1,8 +1,7 @@
-"""push.py — upload a local tree to a GitHub repo through the contents API.
+"""push.py - upload /tmp/es into easydev-org/easysetup via the contents API.
 
-`git push` to github.com does not survive this sandbox (the TLS connection is
-reset mid-transfer), but the REST API does. This walks the working tree and
-creates/updates every file, which is equivalent for a first import.
+`git push` to github.com is reset mid-transfer in this sandbox; the REST API
+works, and for a first import it is equivalent.
 """
 
 import base64
@@ -21,10 +20,9 @@ for line in open(os.path.expanduser("~/.config/gh/hosts.yml")):
 if not TOKEN:
     sys.exit("push.py: no oauth_token")
 
-OWNER, REPO = "easydev-org", "easysetup"
-API = f"https://api.github.com/repos/{OWNER}/{REPO}"
+API = "https://api.github.com/repos/easydev-org/easysetup"
 ROOT = pathlib.Path("/tmp/es")
-SKIP_DIRS = {".git", "tmp", "__pycache__"}
+SKIP = {".git", "tmp", "__pycache__"}
 
 
 def call(method, url, payload=None):
@@ -42,23 +40,27 @@ def call(method, url, payload=None):
         return e.code, json.loads(e.read() or b"{}")
 
 
-def should_skip(p: pathlib.Path) -> bool:
-    return any(part in SKIP_DIRS for part in p.parts) or p.suffix in {".xz", ".gz"}
-
+# Files removed from the repository in this revision must go too, otherwise the
+# stale Dockerfile/build.sh keep building combinations that no longer exist.
+for stale in ("Dockerfile", "build.sh", "env.sh.in",
+              "tools/node.sh", "tools/python.sh", "tools/go.sh", "tools/java.sh",
+              ".github/workflows/build.yml", "tools/build-node.sh.bak"):
+    status, info = call("GET", f"{API}/contents/{stale}")
+    if status == 200:
+        call("DELETE", f"{API}/contents/{stale}",
+             {"message": f"remove {stale}", "sha": info["sha"], "branch": "main"})
+        print(f"del {stale}")
 
 uploaded = 0
 for path in sorted(ROOT.rglob("*")):
     rel = path.relative_to(ROOT)
-    if should_skip(rel) or not path.is_file():
+    if any(p in SKIP for p in rel.parts) or not path.is_file():
         continue
     remote = str(rel).replace(os.sep, "/")
     content = base64.b64encode(path.read_bytes()).decode()
-
-    # An existing file needs its blob sha to be replaced.
     status, info = call("GET", f"{API}/contents/{remote}")
     sha = info.get("sha") if status == 200 and isinstance(info, dict) else None
-
-    payload = {"message": f"add {remote}", "content": content, "branch": "main"}
+    payload = {"message": f"write {remote}", "content": content, "branch": "main"}
     if sha:
         payload["sha"] = sha
     status, out = call("PUT", f"{API}/contents/{remote}", payload)
@@ -68,5 +70,4 @@ for path in sorted(ROOT.rglob("*")):
         uploaded += 1
     else:
         print("   ", out)
-
-print(f"push.py: {uploaded} file(s) uploaded")
+print(f"push.py: {uploaded} uploaded")
