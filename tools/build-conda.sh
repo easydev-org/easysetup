@@ -34,7 +34,8 @@ for f in "$ROOT"/bin/* "$ROOT"/condabin/*; do
   [ -f "$f" ] || continue
   head -c 2 "$f" 2>/dev/null | grep -q '#!' || continue
   if head -1 "$f" | grep -q "$ROOT"; then
-    sed -i "1s|.*|#!$PREFIX/bin/python|" "$f"
+    # The interpreter is bin/python3; there is no `python` in a miniforge root.
+    sed -i "1s|.*|#!$PREFIX/bin/python3|" "$f"
     fixed=$((fixed + 1))
   fi
 done
@@ -42,7 +43,7 @@ echo "conda: rewrote $fixed shebang(s) to $PREFIX"
 
 # Run it the way a consumer will. The rewritten shebang names $PREFIX, which
 # does not exist during the build, so call through the interpreter here.
-"$ROOT/bin/python" "$ROOT/bin/conda" --version
+"$ROOT/bin/python3" "$ROOT/bin/conda" --version
 
 mkdir -p "$OUT"
 ASSET="$OUT/conda-${VERSION}-debian-trixie-amd64.tar.xz"
