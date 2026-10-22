@@ -104,10 +104,23 @@ if grep -qE 'matrix\.id\b|doc\["setups"\]\.items' .github/workflows/*.yml; then
 else
   ok "no stale matrix.id / dict-style access"
 fi
-for f in .github/workflows/release.yml .github/workflows/refresh.yml; do
-  "$PY" -c "import yaml,sys;yaml.safe_load(open('$f'))" || bad "$f is not valid YAML"
-done
-ok "workflow YAML parses"
+# PyYAML is not installed everywhere (it is absent in debian:trixie, which is
+# why matrixlib has its own parser). Validate the workflows when it is
+# available, and say so when it is not rather than pretending.
+if "$PY" -c "import yaml" 2>/dev/null; then
+  for f in .github/workflows/release.yml .github/workflows/refresh.yml; do
+    "$PY" -c "import yaml;yaml.safe_load(open('$f'))" || bad "$f is not valid YAML"
+  done
+  ok "workflow YAML parses"
+else
+  echo "skip YAML parse check (PyYAML not installed)"
+fi
+
+echo "== matrixlib needs no third-party module =="
+# The release job runs in debian:trixie without PyYAML, so the parser must work
+# with the stdlib alone. -S disables site-packages and proves it.
+"$PY" -S matrixlib.py list >/dev/null || bad "matrixlib fails without site-packages"
+ok "matrixlib runs on the standard library alone"
 
 if [ "$fail" -ne 0 ]; then echo "selftest: FAILED"; exit 1; fi
 echo "selftest: ok"
