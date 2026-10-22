@@ -165,6 +165,11 @@ jobs:
   publish:
     needs: [setup, build]
     runs-on: ubuntu-latest
+    # Publish whatever DID build. The default is to skip this whole job when any
+    # build fails, which means one flaky download costs the other fourteen their
+    # release. Publishing the rest is safe: each release is per-setup and
+    # install.sh only ever fetches the asset its matrix entry names.
+    if: always() && needs.setup.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
@@ -190,6 +195,14 @@ jobs:
           PY
           while IFS=$'\t' read -r id version artifact; do
             tag="$id-$version"
+            # A build that failed upstream has no asset here. Skipping it keeps
+            # the other releases going; the entry's sha256 stays empty, and
+            # install.sh refuses to unpack an unverified asset, so a missing
+            # artefact fails loudly at install time instead of silently.
+            if [ ! -s "/tmp/assets/$artifact" ]; then
+              echo "=== skip $tag (no asset: its build failed)"
+              continue
+            fi
             echo "=== release $tag"
             gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
             gh release create "$tag" \
