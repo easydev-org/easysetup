@@ -431,7 +431,7 @@ setups:
     version: "0.17.0"
     apt_deps: [ca-certificates, curl, xz-utils]
     artifact: zig-0.17.0-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "f3739b1fc23b854f871d16d48e1ba4c4aa2b1e067523ef47bd3687262e8ad959"
 
   # -------------------------------------------------------------
   # The -bundled flavour, which carries the LLVM and libraries it needs.
