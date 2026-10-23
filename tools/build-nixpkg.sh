@@ -64,6 +64,20 @@ case "$NAME" in
 esac
 
 echo "nixpkg: building"
+# Print what the flake can actually see before building. A mismatch between the
+# file on disk and the attribute nix resolves means nix is evaluating a different
+# tree than the checkout - which is what happens when flake evaluation is pinned
+# to a git revision that predates the file.
+if ! "$NIX" eval --raw ".#versions.\"$NAME\"" >/dev/null 2>&1; then
+  echo "nixpkg: the flake cannot see setups/$NAME.nix" >&2
+  echo "nixpkg: setup files on disk: $(ls setups/*.nix 2>/dev/null | wc -l)" >&2
+  echo "nixpkg: attributes the flake exposes (first 5):" >&2
+  "$NIX" eval --impure --json ".#versions" 2>/dev/null \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); ks=sorted(d); print("   ", ks[:5])' >&2 || true
+  echo "nixpkg: is the working tree dirty?" >&2
+  git status --short 2>/dev/null | head -5 >&2 || true
+fi
+
 # `set -e` aborts on a failing command substitution BEFORE the `if` can inspect
 # it, so a build failure produced no message at all - the log just stopped after
 # "nixpkg: building". Capturing the status explicitly is what makes the error
