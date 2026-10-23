@@ -20,6 +20,13 @@
 # buildable by hand because we assembled upstream tarballs; a pure nix pipeline
 # cannot conjure an attribute that does not exist.
 setups:
+  # The shared base every other setup subtracts. It is not a toolchain - it is
+  # the store paths most setups need (glibc and its companions), published once so
+  # they are not duplicated into 50 tarballs. tools/compute-deps.py decides which
+  # paths those are; build-nixpkg.sh packages exactly that list for this entry.
+  #
+  # An entry is needed here only so install.sh has something to fetch by name.
+  - { tool: base,      attr: "nixpkgs#glibc", version: "2.44" }
   # One version per tool: the newest nixpkgs exposes. Older ones are
   # deliberately not published - keeping every version meant 63
   # tarballs where 40 do, and nothing pinned an old one on purpose.

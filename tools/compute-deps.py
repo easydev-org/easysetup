@@ -159,9 +159,31 @@ def main(argv):
                 runtime.append(cand)
         deps[name] = sorted(runtime)
 
+    # `base` has to be a REAL setup, not just a node in this file: install.sh can
+    # only fetch things that were published. So every setup that contains any base
+    # path depends on the `base` setup, and `base` itself carries exactly those
+    # paths (see build-nixpkg.sh, which special-cases it).
+    if base:
+        for name, c in clos.items():
+            if (set(base) & c) and name != "base":
+                if "base" not in deps[name]:
+                    deps[name] = sorted(deps[name] + ["base"])
+
+    # What each tarball carries.
+    #
+    # base is shared by MANY setups, not by all, so a given setup may not contain
+    # some of its paths at all - subtracting unconditionally is still correct
+    # because subtracting an absent path is a no-op, but the reconstruction check
+    # below compares against the ORIGINAL closure and would see a mismatch if the
+    # arithmetic were sloppy. Intersecting with the setup's own closure keeps the
+    # two consistent.
     own = {}
     for name, c in clos.items():
-        cut = set(base)
+        if name == "base":
+            # base ships the whole shared set; it has nothing to subtract from.
+            own[name] = sorted(set(base) & c)
+            continue
+        cut = (set(base) & c)
         for d in deps[name]:
             cut |= clos[d]
         own[name] = sorted(c - cut)
@@ -180,7 +202,7 @@ def main(argv):
     # Sanity: base + deps + own must rebuild the original closure exactly.
     bad = 0
     for name, c in clos.items():
-        rebuilt = set(base)
+        rebuilt = set(base) & c          # only the base paths this setup has
         for d in deps[name]:
             rebuilt |= clos[d]
         rebuilt |= set(own[name])

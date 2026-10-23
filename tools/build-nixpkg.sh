@@ -133,9 +133,14 @@ if [ -f "$CLOSURES" ] && command -v python3 >/dev/null 2>&1; then
   paths=$(python3 - "$CLOSURES" "$DIR" <<'PY'
 import json, sys
 doc = json.load(open(sys.argv[1]))
-entry = doc.get("setups", {}).get(sys.argv[2])
+name = sys.argv[2]
+entry = doc.get("setups", {}).get(name)
 if not entry:
     sys.exit(0)                      # unknown here: fall back to the full closure
+
+# The `base` setup is different: it does not ship "what its closure adds", it
+# ships the shared set itself. compute-deps.py records that set in `own["base"]`,
+# so the same field works - but only if `base` is present in the manifest.
 for p in entry.get("own", []):
     print(p)
 PY
