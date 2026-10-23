@@ -82,7 +82,10 @@ fi
 # it, so a build failure produced no message at all - the log just stopped after
 # "nixpkg: building". Capturing the status explicitly is what makes the error
 # visible.
-if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#$NAME" 2>/tmp/nixpkg-err.log | tail -1); then
+# The attribute name contains dots (jq-1.8.2), and nix reads an UNQUOTED dot as an
+# attribute path separator: `.#jq-1.8.2` looks for jq-1."8"."2". Every setup name
+# here has that shape, so this quoting is what makes the build resolve at all.
+if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log | tail -1); then
   echo "nixpkg: nix build failed" >&2
   tail -40 /tmp/nixpkg-err.log >&2
   exit 1

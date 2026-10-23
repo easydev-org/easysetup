@@ -112,7 +112,9 @@ jobs:
           # started - so the count is captured without letting the exit status
           # escape.
           echo "::group::what nix will do"
-          dry=$(nix build --dry-run ".#${{ matrix.name }}" 2>&1 || true)
+          # The name has dots in it (jq-1.8.2) and an unquoted dot is an attribute
+          # path separator to nix, so the segment must be quoted.
+          dry=$(nix build --dry-run ".#\"${{ matrix.name }}\"" 2>&1 || true)
           built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
           echo "paths built locally: $built"
           printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
