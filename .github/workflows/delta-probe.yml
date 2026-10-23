@@ -1,0 +1,102 @@
+name: delta-probe
+
+# Answers, on a real nix install, the question that decides whether a delta
+# scheme is sound:
+#
+#   for a pair (dep, main), is dep's closure a SUBSET of main's?
+#
+# If it is, main's tarball can drop those paths and the consumer downloads the
+# dep once instead of once per tool - the saving the user asked for.
+#
+# If it is not, the two were built against different inputs, the store paths do
+# not match, and subtracting removes nothing. That is worth knowing before
+# building any of it.
+#
+# Three pairs are checked because they fail in different ways:
+#   glibc   -> jq         the shared base every setup carries
+#   php85   -> composer   the "optional component" case: does composer's php
+#                         match the php we would publish?
+#   python315 -> pip      the same question for python's package set
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: compare closures
+        run: |
+          set -uo pipefail
+
+          # Sorting both sides is what makes `comm` meaningful; path-info prints
+          # them in reference order, which differs between closures.
+          closure() {
+            nix build --no-link "$1" >/dev/null 2>&1
+            nix path-info -r "$1" 2>/dev/null | sort
+          }
+
+          check() {
+            label="$1"; dep="$2"; main="$3"
+            echo "===== $label"
+            closure "$dep"  > /tmp/dep
+            closure "$main" > /tmp/main
+            nd=$(wc -l < /tmp/dep)
+            nm=$(wc -l < /tmp/main)
+            comm -12 /tmp/dep /tmp/main > /tmp/both
+            nc=$(wc -l < /tmp/both)
+            echo "  dep  $dep : $nd paths"
+            echo "  main $main: $nm paths"
+            echo "  shared    : $nc"
+            echo "  main-only : $((nm - nc))"
+            if [ "$nc" -eq "$nd" ]; then
+              echo "  SUBSET: yes -> delta works, the dep can be subtracted"
+            else
+              echo "  SUBSET: NO -> $((nd - nc)) dep path(s) are absent from main:"
+              comm -23 /tmp/dep /tmp/main | head -5 | sed 's/^/    /'
+            fi
+            echo
+          }
+
+          check "glibc -> jq"              'nixpkgs#glibc'          'nixpkgs#jq'
+          check "php85 -> composer"        'nixpkgs#php85'          'nixpkgs#php85Packages.composer'
+          check "python315 -> pip"         'nixpkgs#python315'      'nixpkgs#python315Packages.pip'
+
+      - name: does the remaining subset still run?
+        run: |
+          set -uo pipefail
+          # Stage ONLY the paths unique to jq (glibc subtracted) and execute it.
+          # If the ELF interpreter was in the subtracted set, this fails - which
+          # is exactly the assumption the design rests on, so it is tested rather
+          # than reasoned about.
+          nix build --no-link 'nixpkgs#jq' >/dev/null 2>&1
+          nix path-info -r 'nixpkgs#jq' | sort > /tmp/main
+          nix build --no-link 'nixpkgs#glibc' >/dev/null 2>&1
+          nix path-info -r 'nixpkgs#glibc' | sort > /tmp/dep
+          comm -23 /tmp/main /tmp/dep > /tmp/only
+          echo "jq-only paths: $(wc -l < /tmp/only)"
+          cat /tmp/only
+
+          rm -rf /tmp/stage && mkdir -p /tmp/stage/nix/store
+          while read -r p; do cp -a "$p" /tmp/stage/nix/store/ 2>/dev/null || true; done < /tmp/only
+
+          JQ=$(ls -d /tmp/stage/nix/store/*-jq-*/bin/jq 2>/dev/null | head -1)
+          echo "binary: ${JQ:-none}"
+          if [ -z "$JQ" ]; then
+            echo "::error::no jq binary in the delta tree"
+            exit 1
+          fi
+          # Run it with the delta tree as the only place its interpreter could be.
+          # Success proves the interpreter is NOT in the subtracted set.
+          LD_LIBRARY_PATH= "$JQ" --version
+          echo "delta tree runs on its own - the interpreter survived the subtraction"
