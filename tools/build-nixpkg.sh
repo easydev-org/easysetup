@@ -250,8 +250,16 @@ if [ "${DIR%%-[0-9]*}" = "base" ]; then
   echo "nixpkg: base carries libraries only; skipping the execute check"
 else
   echo "nixpkg: verifying the staged tree in a chroot with no nix"
+  # The whole check is advisory: it reports, it never fails the build. That has
+  # to be enforced here rather than per-command, because a copy or an `ls` on a
+  # missing path would otherwise abort under `set -e` and hide the real reason.
+  set +e
   first=$(ls "$STAGE$REAL/bin" 2>/dev/null | head -1)
-  [ -n "$first" ] || { echo "nixpkg: bin/ is empty in the staged copy" >&2; exit 1; }
+  if [ -z "$first" ]; then
+    echo "nixpkg: bin/ is empty in the staged copy" >&2
+    set -e
+    exit 1
+  fi
   if command -v chroot >/dev/null 2>&1; then
     # A delta tarball is NOT self-sufficient on its own - that is the point of
     # the scheme. Its glibc lives in the base tarball and its libraries may come
@@ -261,9 +269,25 @@ else
     #
     # This still catches the failure the check exists for: a path that the setup
     # needs but neither it nor its dependencies provide.
-    for extra in $COMPANION_PATHS; do
-      [ -e "$extra" ] && cp -a "$extra" "$STAGE/nix/store/" 2>/dev/null || true
-    done
+    #
+    # Those paths are usually not in the store yet - `nix build` realised only
+    # this setup, and base comes from a different tarball. Realise them first,
+    # or the copy below silently copies nothing and the chroot run fails on a
+    # missing interpreter.
+    if [ -n "$COMPANION_PATHS" ]; then
+      echo "nixpkg: staging $(echo $COMPANION_PATHS | wc -w) companion path(s) for the chroot"
+      NIXSTORE_C="$(dirname "$NIX")/nix-store"
+      if [ -x "$NIXSTORE_C" ]; then
+        "$NIXSTORE_C" --realise $COMPANION_PATHS >/dev/null 2>&1 || true
+      else
+        "$NIX" build --no-link $COMPANION_PATHS >/dev/null 2>&1 || true
+      fi
+      for extra in $COMPANION_PATHS; do
+        [ -e "$extra" ] && cp -a "$extra" "$STAGE/nix/store/" 2>/dev/null
+      done
+      staged=$(ls "$STAGE/nix/store" | wc -l)
+      echo "nixpkg: chroot root holds $staged store path(s)"
+    fi
     chroot "$STAGE" "$REAL/bin/$first" --version >/dev/null 2>&1 \
       || chroot "$STAGE" "$REAL/bin/$first" >/dev/null 2>&1 \
       || echo "nixpkg: note - $first did not answer; not fatal"
@@ -271,6 +295,9 @@ else
   else
     echo "nixpkg: chroot unavailable; skipping the isolation check"
   fi
+  # Restore the strict behaviour for the packaging that follows; only the
+  # advisory check above runs unguarded.
+  set -e
 fi
 
 mkdir -p "$OUT"
