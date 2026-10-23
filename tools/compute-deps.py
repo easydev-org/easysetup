@@ -101,7 +101,7 @@ def _quoted(name):
     return '"%s"' % name
 
 
-def closure(path):
+def closure(path, name=None):
     """Every store path `path` needs, read from the binary cache's metadata."""
     r = run([NIX, "path-info", "--store", CACHE, "-r", path], timeout=600)
     if r.returncode == 0 and r.stdout.strip():
@@ -111,10 +111,13 @@ def closure(path):
     # particular are built per-interpreter and often absent, and a path that is
     # not there cannot be walked from metadata alone.
     #
-    # Falling back to the local store is correct but costs a download, so it is
-    # reported: a closure computed this way is still exact, it just was not free.
+    # The fallback must build the ATTRIBUTE, not the store path. `nix build
+    # /nix/store/...` cannot reverse a path into its derivation, so it fails with
+    # "not valid" / "no substituter" - which is exactly how these setups kept
+    # being skipped after the fallback was added.
     print("      (not in cache, building locally: %s)" % path.split("-", 1)[-1])
-    b = run([NIX, "build", "--no-link", path], timeout=1800)
+    target = '.#%s' % _quoted(name) if name else path
+    b = run([NIX, "build", "--no-link", target], timeout=1800)
     if b.returncode != 0:
         return None
     r2 = run([NIX, "path-info", "-r", path], timeout=600)
@@ -133,7 +136,7 @@ def main(argv):
         if not p:
             print("  SKIP %-22s cannot resolve %s" % (e["dir"], e["attr"]))
             continue
-        c = closure(p)
+        c = closure(p, name=e["dir"])
         if c is None:
             print("  SKIP %-22s cannot read closure" % e["dir"])
             continue

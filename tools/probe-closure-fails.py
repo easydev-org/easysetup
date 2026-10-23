@@ -46,10 +46,10 @@ def main(argv):
             print("%-24s CACHE MISS      %s" % (e["dir"], p))
             for l in (c.stderr or "").strip().splitlines()[-2:]:
                 print("      ", l[:150])
-            # Then can it even be built here? If not, the setup cannot be
-            # packaged at all and belongs out of the manifest rather than being
-            # skipped quietly on every run.
-            b = run([NIX, "build", "--no-link", p], timeout=1800)
+            # Then can it even be built here? Build the ATTRIBUTE, not the store
+            # path - a path cannot be reversed into its derivation, so that form
+            # fails with "not valid" and would wrongly report "cannot build".
+            b = run([NIX, "build", "--no-link", '.#"%s"' % e["dir"]], timeout=1800)
             if b.returncode == 0:
                 print("         builds locally: yes")
             else:
