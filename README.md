@@ -1,122 +1,158 @@
 # easysetup
 
-Prebuilt toolchains for CI, shipped as portable tarballs.
+Toolchains for Debian 13 CI, as prebuilt nix closures.
 
 ```yaml
 - uses: easydev-org/easysetup@main
   with:
-    tools: node python swift
+    tools: node python jq
 ```
 
-## What a setup is
+That is the whole interface. Each tool arrives as a complete nix store closure,
+unpacked and put on `PATH` for the following steps - no apt, no dependency
+resolution, no compilation, no version pinning to maintain.
 
-One nixpkgs attribute, declared as one file:
+Supported: node, python, go, java, rust, cargo, swift, clang, php, ruby, perl,
+r, julia, crystal, dart, deno, elixir, erlang, ghc, dotnet, lua, nim, opam, zig,
+bazel, cmake, ninja, maven, gradle, sbt, cabal, conan, micromamba, pixi, luarocks,
+pip, virtualenv, black, ruff, mypy, pytest, composer, php-cs-fixer, psalm, phpmd,
+phing, box, kubectl, opentofu, helm, jenkins, shellcheck, ripgrep, fd, jq, yq,
+git-lfs, protobuf, buf, nix.
 
-```nix
-# setups/swift.nix
-{ pkgs }:
-pkgs.swift
-```
+## Why this exists
 
-The build is `nix build`, then the closure is exported and packed. There is no
-per-tool script, no apt list and no dependency resolution of our own, because
-nix computes the closure and cache.nixos.org already has it built:
+The usual CI toolchain install is `apt install`, `curl | tar`, or a language's
+own version manager. Each of those reconstructs, at run time, a decision that
+ought to have been made once: which versions, which system libraries, which
+patches. The work is repeated on every job and every machine.
 
-```
-$ nix build --dry-run .#swift
-these 90 paths will be fetched (1470.23 MiB download, 5843.57 MiB unpacked)
-paths built locally: 0
-```
-
-## What installing costs
-
-One download and one unpack:
-
-```
-curl the tarball  ->  verify sha256  ->  tar --zstd -xf -C /
-```
-
-Nothing is compiled at install time, and **nix is not needed to run the result**.
-A chroot containing only the unpacked tarball runs the tool - no `/usr`, no
-shell, no nix. That is the property the whole design rests on.
-
-## Where things land
-
-```
-/nix/store/<hash>-<name>/        the tree, exactly as nix built it
-/nix/setup-root-<tool>-<ver>     one line: "<store-path>|<bin dirs>"
-/opt/setup/env.sh                puts every tool on PATH
-```
-
-The store path is kept verbatim because every binary in the closure has it baked
-in as the ELF interpreter and rpath. Moving the tree to `/opt/setup` is possible
-- it was tested with `patchelf --force-rpath` - but it means rewriting every
-binary and every `.la`/`.pc` file, and it discards nix's integrity check.
-
-Two setups can each ship a different build of the same library without
-interfering: the hash is the isolation. `libssl` from one closure and `libssl`
-from another are different paths, so neither can shadow the other.
+Here that work happens once, in a workflow, and its result is a tarball. nix
+already knows a package's exact closure - the transitive set of store paths it
+needs - so "which system libraries" is answered by the package manager rather
+than by a hand-maintained list that goes stale.
 
 ## Requirements
 
-The action needs `debian:trixie-slim` (or anything with glibc >= 2.41):
+Debian 13 (trixie). The artifacts are built against its glibc 2.41 and carry
+absolute `/nix/store` interpreter paths, so they cannot run on an older libc. The
+action checks this up front and refuses rather than installing 300 MB of
+unusable files.
 
 ```yaml
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    container: debian:trixie-slim
+    container: debian:trixie-slim     # the one requirement
 ```
 
-Ubuntu 24.04 has glibc 2.39 and cannot load the artifacts; the action detects
-that and says so instead of installing something that will not start.
+## Use without the action
 
-The four bootstrap packages (`curl`, `zstd`, `python3`, `ca-certificates`)
-are installed by the action. They are the only apt call; after that every setup
-is pure download.
+The action is a convenience wrapper; the script stands alone.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/easydev-org/easysetup/main/install.sh | bash -s -- node jq
+```
+
+Needs `curl`, `zstd`, `python3` and CA certificates. It resolves dependencies
+itself (see below), verifies each tarball's SHA-256 against one published beside
+it, and unpacks at `/`.
+
+## What actually gets downloaded
+
+A tarball does not contain its whole closure. Two things are removed first,
+because someone else already supplies them:
+
+* **the shared base** - the ~15 store paths that most setups need, glibc above
+  all. Published once as `base-2.44`, subtracted from everything else.
+* **anything a dependency provides** - `composer`'s closure contains `php`'s
+  entirely, so composer's tarball holds only its own 14 paths and `php` is
+  fetched separately.
+
+Measured, on the published artifacts:
+
+| setup | alone | with the scheme |
+|---|---|---|
+| `jq` | 11.4 MB | **0.4 MB** |
+| `psalm` (a php tool) | 78 MB | **5.5 MB** |
+| `pip` | ~85 MB | **3.2 MB** |
+| `composer` | 78 MB | **34 MB** |
+
+The dependency graph is not written down anywhere. `tools/compute-deps.py` reads
+it from nix: a setup depends on another when the other's closure is a strict
+subset of its own AND the other's output is reachable from its output at run
+time (`nix why-depends`). That second test matters - without it, `dotnet`
+appears to depend on `perl`, because perl was needed to *build* it.
+
+`install.sh` then installs dependencies first. `tools: composer` gets you php
+without naming it:
+
+```
+--> base-2.44  (required by composer-2.10.3)
+--> php-8.5.11 (required by composer-2.10.3)
+==> composer-2.10.3
+```
+
+## Package managers need a venv
+
+`pip install` against this python fails with `externally-managed-environment`.
+That is PEP 668 working as intended, not a defect: the interpreter is in the
+read-only `/nix/store`. Use `python3 -m venv`. See [docs/pip.md](docs/pip.md) for
+what is happening and the four options.
+
+## Things that are deliberately absent
+
+* **conda** - nixpkgs' `conda` is a bubblewrap FHS sandbox whose only executable
+  is `conda-shell`; it does not start in an Actions container at all. `micromamba`
+  and `pixi` are here instead, with `micromamba create -n x python=3.12` working
+  as expected.
+* **terraform** - BUSL-licensed, and Hydra does not build unfree packages, so
+  every build would compile it. `opentofu` (command `tofu`) is the cached MPL
+  fork.
+* **swift's wasm / static-linux / android SDKs, rust's cross toolchains,
+  jenkins-plugin-manager** - there is no nixpkgs attribute for them. They were
+  buildable when upstream tarballs were assembled by hand; a closure-based
+  pipeline cannot invent an attribute that does not exist.
+* **python 3.15** - `python315Packages.*` is not in the binary cache at our pin,
+  so every setup would compile from source. 3.14 is, and is one minor behind.
 
 ## Adding a setup
 
-```nix
-# setups/kotlin.nix
-{ pkgs }:
-pkgs.kotlin
-```
-
-then add it to `matrix-nix.yml` so it has a friendly name:
+One line in `matrix-nix.yml`:
 
 ```yaml
-  - tool: kotlin
-    attr: nixpkgs#kotlin
-    version: "2.2.0"
+- { tool: ripgrep, attr: "nixpkgs#ripgrep", version: "15.2.0" }
 ```
 
-`tools/gen-setups.py` writes the `.nix` files from the manifest, so in practice
-only the manifest changes. Give a setup a hand-written `.nix` when it needs an
-override; the generator leaves those alone.
+Then:
 
-## Building a release
-
-`.github/workflows/nix-release.yml`, manually:
-
-```
-only: swift        # one setup
-only: ""           # all of them
+```bash
+tools/gen-setups.py                                    # setups/<name>.nix
+# run the compute-closures workflow                    # closures.json
+# run the release workflow                             # build + publish
 ```
 
-Each setup becomes one release tagged `<tool>-<version>`, holding the tarball and
-its `.sha256`. The checksum is computed from the file being uploaded, so it
-cannot describe a tarball that was never published.
+`gen-setups.py` writes `setups/<dir>.nix` containing `pkgs.<attr>`. If a package
+needs its `bin` output named explicitly - `jq` and `shellcheck` both default to
+their `man` output, which produces a binary-less tarball - delete the "Generated"
+line from that file and it will be left alone on regeneration.
+
+## Verifying a release
+
+Every release carries `<name>-debian-trixie-amd64.tar.zst` and a `.sha256`
+computed by the publishing job from the file it is about to upload, so the
+checksum cannot describe a tarball that was never produced. The build job also
+unpacks each tarball into an empty chroot and runs the binary there, which is the
+only way to catch a delta that subtracted something it needed.
 
 ## Layout
 
-```
-setups/*.nix           one expression per setup
-matrix-nix.yml         names, attributes, versions
-matrixlib2.py          the manifest parser (stdlib only)
-flake.nix              one nixpkgs pin for every setup
-install.sh             resolve, download, verify, unpack
-tools/build-nixpkg.sh  nix build -> export closure -> tarball
-tools/gen-env.sh       write env.sh from /nix/setup-root-*
-tools/gen-setups.py    manifest -> setups/*.nix
-action.yml             the composite action
+| path | what |
+|---|---|
+| `matrix-nix.yml` | the manifest: one line per setup |
+| `setups/*.nix` | generated; one nixpkgs attribute each |
+| `closures.json` | generated: base set, derived dependencies, per-setup paths |
+| `install.sh` | resolver + downloader + unpacker |
+| `action.yml` | the composite action |
+| `tools/compute-deps.py` | derives the dependency graph from nix closures |
+| `tools/build-nixpkg.sh` | builds one setup into a tarball |
+| `flake.nix` / `flake.lock` | pinned nixpkgs; the lock is what makes a rebuild reproducible |

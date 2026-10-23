@@ -24,6 +24,8 @@ inputs:
       Where to write env.sh. Later steps rarely need it: the action appends the
       tool directories to GITHUB_PATH, so plain `run: node -v` works.
     required: false
+    # The path keeps its historical name; nothing puts a tree there any more -
+    # setups unpack into /nix/store. It is just a file the caller can source.
     default: /opt/setup/env.sh
 
 outputs:
