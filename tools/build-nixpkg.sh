@@ -107,5 +107,10 @@ fi
 mkdir -p "$OUT"
 ASSET="$OUT/$DIR-debian-trixie-amd64.tar.xz"
 tar -cJf "$ASSET" -C "$STAGE" .
+# Nix store paths are read-only (mode 0555 on directories), so a plain `rm -rf`
+# fails on the copy with "Permission denied". The copy kept those modes, which is
+# correct for the artifact - a consumer unpacking it gets the same protections -
+# but the staging tree has to be made writable before it can be removed.
+chmod -R u+w "$STAGE" 2>/dev/null || true
 rm -rf "$STAGE"
 echo "nixpkg: wrote $ASSET ($(du -h "$ASSET" | cut -f1))"
