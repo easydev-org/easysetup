@@ -23,9 +23,9 @@
 #   * each tarball writes /nix/setup-root-<dir>, which is how gen-env.sh finds
 #     the binaries. One file per setup, so several setups can coexist.
 #
-# The bootstrap packages (curl, xz, python3, ca-certificates) are the caller's
+# The bootstrap packages (curl, zstd, python3, ca-certificates) are the caller's
 # job: this script cannot download anything without curl, and cannot unpack a
-# .tar.xz without xz. The provided action installs them first.
+# .tar.zst without zstd. The provided action installs them first.
 set -euo pipefail
 
 REPO="${EASYSETUP_REPO:-easydev-org/easysetup}"
@@ -34,6 +34,7 @@ BASE="https://github.com/${REPO}/releases/download"
 
 command -v curl >/dev/null || { echo "install.sh: curl is required" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "install.sh: python3 is required" >&2; exit 1; }
+command -v zstd >/dev/null || { echo "install.sh: zstd is required to unpack .tar.zst" >&2; exit 1; }
 
 # The manifest and its parser are fetched together and used by the SAME code the
 # release pipeline uses. An awk re-implementation here is what let the two drift
@@ -98,7 +99,12 @@ for name in "$@"; do
 
   # Unpack at /. The archive carries nix/store/... and nix/setup-root-<dir>;
   # both must land at the root exactly as recorded.
-  tar -xJf "$WORK/asset" -C /
+  # --long=27 must match what the tarball was compressed with; without it zstd
+  # refuses the stream (the window is part of the frame header). tar is told to
+  # use zstd rather than being handed an already-decompressed stream, so it can
+  # extract while decompressing instead of buffering the whole tree.
+  tar --zstd -xf "$WORK/asset" -C / --use-compress-program="zstd -d --long=27" 2>/dev/null \
+    || zstd -d --long=27 --quiet -c "$WORK/asset" | tar -xf - -C /
   rm -f "$WORK/asset" "$WORK/sha"
 
   [ -f "/nix/setup-root-$id" ] || {

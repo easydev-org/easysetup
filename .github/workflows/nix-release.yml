@@ -124,7 +124,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: setup-${{ matrix.name }}
-          path: out/*.tar.xz
+          path: out/*.tar.zst
           retention-days: 1
           if-no-files-found: error
 
@@ -151,14 +151,14 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          assets=(/tmp/assets/*.tar.xz)
+          assets=(/tmp/assets/*.tar.zst)
           if [ "${#assets[@]}" -eq 0 ]; then
             echo "no assets were produced; nothing to publish"
             exit 0
           fi
           for a in "${assets[@]}"; do
             base=$(basename "$a")
-            dir=${base%-debian-trixie-amd64.tar.xz}
+            dir=${base%-debian-trixie-amd64.tar.zst}
             echo "== $dir"
             # The checksum is computed HERE, from the file about to be uploaded.
             # A pin written anywhere else could describe a tarball that was never

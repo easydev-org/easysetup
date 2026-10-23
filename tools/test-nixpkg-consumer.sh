@@ -7,7 +7,7 @@
 # Method: unpack the asset into an otherwise EMPTY root and chroot into it. Any
 # /nix the host has is invisible from inside, so a pass cannot be an accident.
 #
-# Usage: test-nixpkg-consumer.sh <asset.tar.xz> [binary] [args...]
+# Usage: test-nixpkg-consumer.sh <asset.tar.zst> [binary] [args...]
 set -uo pipefail
 
 TARBALL="$1"; shift || true
@@ -18,7 +18,7 @@ rm -rf "$W"
 mkdir -p "$W/root"
 
 echo "== unpacking into an empty root =="
-tar -xJf "$TARBALL" -C "$W/root"
+tar --zstd -xf "$TARBALL" -C "$W/root"
 echo "   top level: $(ls "$W/root" | tr '\n' ' ')"
 
 echo

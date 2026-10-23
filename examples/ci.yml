@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     # trixie-slim is the same glibc as trixie, just with fewer packages, so the
     # artifacts run unchanged. It is ~28 MB; the action installs the four
-    # packages the installer itself needs (curl, xz-utils, python3, ca-certs).
+    # packages the installer itself needs (curl, zstd, python3, ca-certs).
     container: debian:trixie-slim
     steps:
       - uses: actions/checkout@v4

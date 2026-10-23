@@ -1,4 +1,4 @@
 /tmp/
 *.tar.gz
-*.tar.xz
+*.tar.zst
 .idea/

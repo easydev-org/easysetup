@@ -151,8 +151,23 @@ else
 fi
 
 mkdir -p "$OUT"
-ASSET="$OUT/$DIR-debian-trixie-amd64.tar.xz"
-tar -cJf "$ASSET" -C "$STAGE" .
+ASSET="$OUT/$DIR-debian-trixie-amd64.tar.zst"
+
+# zstd, not xz. Measured on swift (5.8 GB unpacked): `tar -cJf` spent 34m49s in
+# single-threaded xz compression while the download and unpack took 23s and the
+# copy 32s - so 97% of the job was the compressor. zstd with -T0 uses every core
+# and lands within a few percent of xz on ratio.
+#
+# Level 19 is the "ultra" tier: slower than the default 3 but still parallel, and
+# on a toolchain closure it buys a noticeably smaller artifact. --long=27 widens
+# the window so the many near-identical object files in a compiler tree match
+# each other; it costs memory, not time. The decompressor must be told the same
+# window, which is why install.sh passes --long=27.
+#
+# tar piped into zstd rather than `tar --zstd`: the pipe avoids staging a second
+# multi-GB file on disk, which on the swift closure would be 5.8 GB written twice.
+tar -cf - -C "$STAGE" . \
+  | zstd -19 --long=27 -T0 --quiet --force -o "$ASSET"
 # Nix store paths are read-only (mode 0555 on directories), so a plain `rm -rf`
 # fails on the copy with "Permission denied". The copy kept those modes, which is
 # correct for the artifact - a consumer unpacking it gets the same protections -

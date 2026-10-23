@@ -6,7 +6,7 @@ dependencies were ours to track. None of that survives the move to nix:
 
   * a setup IS one nixpkgs attribute, so there is nothing to resolve;
   * the dependency closure comes from `nix path-info -r`, not from `requires`;
-  * the artifact name is `${tool}-${version}-debian-trixie-amd64.tar.xz`, derived.
+  * the artifact name is `${tool}-${version}-debian-trixie-amd64.tar.zst`, derived.
 
 So this parser does one thing: turn the manifest into a list of dicts with a
 stable `dir` field, and answer `get <id> <field>`. Keeping it small is the point
@@ -107,7 +107,7 @@ def load(path=MATRIX):
         # carries the version so two versions of one tool can coexist.
         e["dir"] = "%s-%s" % (e["tool"], e["version"])
         e.setdefault("bins", "bin")
-        e["artifact"] = "%s-debian-trixie-amd64.tar.xz" % e["dir"]
+        e["artifact"] = "%s-debian-trixie-amd64.tar.zst" % e["dir"]
     return entries
 
 

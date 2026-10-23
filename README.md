@@ -33,7 +33,7 @@ paths built locally: 0
 One download and one unpack:
 
 ```
-curl the tarball  ->  verify sha256  ->  tar -xJf -C /
+curl the tarball  ->  verify sha256  ->  tar --zstd -xf -C /
 ```
 
 Nothing is compiled at install time, and **nix is not needed to run the result**.
@@ -71,7 +71,7 @@ jobs:
 Ubuntu 24.04 has glibc 2.39 and cannot load the artifacts; the action detects
 that and says so instead of installing something that will not start.
 
-The four bootstrap packages (`curl`, `xz-utils`, `python3`, `ca-certificates`)
+The four bootstrap packages (`curl`, `zstd`, `python3`, `ca-certificates`)
 are installed by the action. They are the only apt call; after that every setup
 is pure download.
 

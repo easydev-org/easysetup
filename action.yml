@@ -54,21 +54,21 @@ runs:
         echo "platform ok: debian ${VERSION_ID}"
 
     # debian:trixie-slim ships none of these, and install.sh needs all four:
-    # curl to fetch, xz to unpack, python3 to read the manifest, and the CA
+    # curl to fetch, zstd to unpack, python3 to read the manifest, and the CA
     # bundle because the image has no /etc/ssl/certs at all (verified - without
     # it every HTTPS request fails with curl error 77).
     - name: install the installer's own prerequisites
       shell: bash
       run: |
         set -euo pipefail
-        if command -v curl >/dev/null && command -v xz >/dev/null \
+        if command -v curl >/dev/null && command -v zstd >/dev/null \
            && command -v python3 >/dev/null && [ -d /etc/ssl/certs ]; then
           echo "prerequisites present"
           exit 0
         fi
         apt-get update -qq
         apt-get install -y -qq --no-install-recommends \
-          curl xz-utils python3 ca-certificates
+          curl zstd python3 ca-certificates
         echo "prerequisites installed"
 
     # Keyed on the setup list. The store is content-addressed, so a hit is
