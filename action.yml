@@ -1,51 +1,43 @@
 name: easysetup
 description: >-
-  Install pinned node / python / go / java / rust / swift / ... toolchains into
-  /opt/setup. Prebuilt for debian trixie, unpacked rather than compiled.
-author: easydev
-
-branding:
-  icon: package
-  color: blue
+  Install pinned toolchains from prebuilt nix closures: node, python, go, java,
+  rust, swift, clang, cmake and more. Each tarball is a complete nix store
+  closure, so installing is one download and one unpack - no apt, no dependency
+  resolution, no compilation.
+author: easydev-org
 
 inputs:
   tools:
     description: >-
-      Space-separated setup ids, e.g. "node-22 python-3.12". A name may be a
-      version prefix: node-22 selects the newest 22.x published.
+      Space-separated setup names, e.g. "node python swift". A name resolves to
+      exactly one setup; if several versions exist, name the version too.
     required: true
   cache:
     description: >-
-      Cache /opt/setup between runs, keyed on the exact setup list. Leave on
-      unless you are debugging the installer itself.
+      Reuse /nix between runs. The store is content-addressed, so a cache hit is
+      always the exact tree that was published - good for keeping repeat runs
+      fast.
     required: false
     default: "true"
-  repo:
+  env-script:
     description: >-
-      Where install.sh and matrix.yml are read from. Override only to test a
-      fork.
+      Where to write env.sh. Later steps rarely need it: the action appends the
+      tool directories to GITHUB_PATH, so plain `run: node -v` works.
     required: false
-    default: easydev-org/easysetup
+    default: /opt/setup/env.sh
 
 outputs:
   env-script:
-    description: >-
-      Path to the generated env.sh. Later steps normally don't need it: the
-      action already adds every bin directory to $GITHUB_PATH.
-    value: ${{ steps.install.outputs.env-script }}
+    description: Path to the generated env.sh
+    value: ${{ steps.env.outputs.env-script }}
 
 runs:
   using: composite
   steps:
-    # ------------------------------------------------------------------ 1 ---
-    # Why this exists, and why it is not optional:
-    #
-    # The artifacts are built for debian trixie (glibc 2.41). The container a
-    # job runs in MUST be trixie-based, or glibc is too old and every binary
-    # dies at the loader. We cannot fix that here - it is a hard limit of
-    # prebuilt binaries - so we detect it and say so plainly instead of
-    # installing 300 MB of toolchain that cannot start.
-    - name: check the platform matches the artifacts
+    # The artifacts carry an absolute /nix/store interpreter, so they need the
+    # glibc they were built against. Checking up front turns "the tool is
+    # missing" into "this runner's libc is too old", which is a different fix.
+    - name: check the platform
       shell: bash
       run: |
         set -euo pipefail
@@ -55,94 +47,61 @@ runs:
         fi
         . /etc/os-release
         if [ "${ID:-}" != "debian" ] || [ "${VERSION_ID:-}" != "13" ]; then
-          cat >&2 <<EOF
-        ::error::easysetup artifacts are built for debian 13 (trixie); this is
-        ${ID:-?} ${VERSION_ID:-?}.
-
-        Add this to the job that uses the action:
-
-            runs-on: ubuntu-latest
-            container: debian:trixie-slim
-
-        The binaries are linked against trixie's glibc 2.41. A newer distro is
-        fine; an older one (ubuntu 24.04 is glibc 2.39) cannot load them at all.
-        EOF
+          echo "::error::easysetup artifacts are built for debian 13 (trixie); this is ${ID:-?} ${VERSION_ID:-?}."
+          echo "::error::Add 'container: debian:trixie-slim' to the job, or use a trixie-based image."
           exit 1
         fi
         echo "platform ok: debian ${VERSION_ID}"
 
-    # ------------------------------------------------------------------ 2 ---
     # debian:trixie-slim ships none of these, and install.sh needs all four:
-    # curl to download, xz-utils for `tar -xJf`, python3 for matrixlib, and
-    # ca-certificates for the TLS to github.com.
+    # curl to fetch, xz to unpack, python3 to read the manifest, and the CA
+    # bundle because the image has no /etc/ssl/certs at all (verified - without
+    # it every HTTPS request fails with curl error 77).
     - name: install the installer's own prerequisites
       shell: bash
       run: |
         set -euo pipefail
-        missing=""
-        for c in curl python3 tar; do
-          command -v "$c" >/dev/null 2>&1 || missing="$missing $c"
-        done
-        xz_missing=0; command -v xz >/dev/null 2>&1 || xz_missing=1
-        if [ -n "$missing" ] || [ "$xz_missing" = 1 ]; then
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -qq
-          apt-get install -y -qq --no-install-recommends \
-            curl ca-certificates xz-utils python3
+        if command -v curl >/dev/null && command -v xz >/dev/null \
+           && command -v python3 >/dev/null && [ -d /etc/ssl/certs ]; then
+          echo "prerequisites present"
+          exit 0
         fi
-        echo "prerequisites present"
+        apt-get update -qq
+        apt-get install -y -qq --no-install-recommends \
+          curl xz-utils python3 ca-certificates
+        echo "prerequisites installed"
 
-    # ------------------------------------------------------------------ 3 ---
-    # The cache key is the setup list itself. Two jobs asking for
-    # "node-22 python-3.12" share one entry; a job asking for anything else gets
-    # its own. That is coarse but correct: the artifact for a given id is
-    # immutable (its sha256 is pinned), so a hit can never be stale in a way
-    # that matters.
-    - name: restore /opt/setup
+    # Keyed on the setup list. The store is content-addressed, so a hit is
+    # bit-for-bit what was published; a miss costs one download.
+    - name: restore the nix store
       if: inputs.cache == 'true'
-      id: cache
       uses: actions/cache@v4
       with:
-        path: /opt/setup
-        key: easysetup-${{ inputs.tools }}-${{ inputs.repo }}
+        path: /nix
+        key: easysetup-nix-${{ inputs.tools }}
 
-    # ------------------------------------------------------------------ 4 ---
     - name: install
-      id: install
       shell: bash
       env:
-        TOOLS: ${{ inputs.tools }}
-        ES_REPO: ${{ inputs.repo }}
+        EASYSETUP_TOOLS: ${{ inputs.tools }}
       run: |
         set -euo pipefail
-        # cache-hit means the whole tree came back; install.sh is idempotent and
-        # would skip each entry anyway, but this also skips the round trip that
-        # fetches matrix.yml.
-        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
-          echo "restored /opt/setup from cache"
-        else
-          EASYSETUP_REPO="$ES_REPO" \
-            bash -c "curl -fsSL https://raw.githubusercontent.com/$ES_REPO/main/install.sh | bash -s -- $TOOLS"
-        fi
-        test -f /opt/setup/env.sh
-        echo "env-script=/opt/setup/env.sh" >> "$GITHUB_OUTPUT"
+        curl -fsSL --retry 3 \
+          https://raw.githubusercontent.com/easydev-org/easysetup/main/install.sh \
+          -o /tmp/easysetup-install.sh
+        # Word-splitting the list is intended: it is space-separated by contract.
+        # shellcheck disable=SC2086
+        bash /tmp/easysetup-install.sh $EASYSETUP_TOOLS
 
-    # ------------------------------------------------------------------ 5 ---
-    # install.sh already appends the bin dirs to $GITHUB_PATH when it detects
-    # Actions. Re-assert it here so a cache HIT (where install.sh never ran)
-    # also reaches later steps. This is the difference between "the action
-    # installed node" and "your next step can run node".
-    - name: expose the toolchain to later steps
+    # A cache hit means install.sh never ran, so GITHUB_PATH was never written.
+    # Regenerating env.sh and re-appending the paths is what makes "installed"
+    # and "usable in the next step" the same thing.
+    - name: expose the tools to later steps
+      id: env
       shell: bash
+      env:
+        OUT: ${{ inputs.env-script }}
       run: |
         set -euo pipefail
-        # shellcheck disable=SC2013
-        for d in /opt/setup/*/bin; do
-          [ -d "$d" ] || continue
-          echo "$d" >> "$GITHUB_PATH"
-        done
-        # Variables that are not PATH (JAVA_HOME, GEM_HOME, LD_LIBRARY_PATH for
-        # R's bundled libs, the BEAM locale) live in env.sh; GITHUB_ENV cannot
-        # express "source this file", so hand later steps the path instead.
-        echo "EASYSETUP_ENV=/opt/setup/env.sh" >> "$GITHUB_ENV"
-        echo "Later steps: source \$EASYSETUP_ENV if you need JAVA_HOME etc."
+        bash "$GITHUB_ACTION_PATH/tools/gen-env.sh" "$OUT"
+        echo "env-script=$OUT" >> "$GITHUB_OUTPUT"
