@@ -160,14 +160,22 @@ def main(argv):
         deps[name] = sorted(runtime)
 
     # `base` has to be a REAL setup, not just a node in this file: install.sh can
-    # only fetch things that were published. So every setup that contains any base
-    # path depends on the `base` setup, and `base` itself carries exactly those
-    # paths (see build-nixpkg.sh, which special-cases it).
-    if base:
+    # only fetch things that were published.
+    #
+    # Its directory is `<tool>-<version>` like every other entry, so the name is
+    # not the literal "base" - deriving it from the manifest avoids the bug where
+    # both "base" and "base-2.44" ended up in deps, one of which is not a
+    # directory that exists.
+    base_name = None
+    for e in entries:
+        if e["tool"] == "base":
+            base_name = e["dir"]
+            break
+    if base and base_name:
         for name, c in clos.items():
-            if (set(base) & c) and name != "base":
-                if "base" not in deps[name]:
-                    deps[name] = sorted(deps[name] + ["base"])
+            if (set(base) & c) and name != base_name:
+                if base_name not in deps[name]:
+                    deps[name] = sorted(deps[name] + [base_name])
 
     # What each tarball carries.
     #
@@ -188,12 +196,12 @@ def main(argv):
     # `base + deps + own` equal to the original closure - which is what the
     # assertion below checks, and what install.sh depends on.
     def dep_paths(name, own_closure):
-        if name == "base":
+        if name == base_name:
             return set(base) & own_closure
         return clos[name]
 
     for name, c in clos.items():
-        if name == "base":
+        if name == base_name:
             # base ships the shared set ITSELF, not "what its own attribute adds".
             #
             # The base entry's attribute is glibc, whose closure is 4 paths - but
@@ -223,8 +231,10 @@ def main(argv):
     # Sanity: base + deps + own must rebuild the original closure exactly.
     bad = 0
     for name, c in clos.items():
-        if name == "base":
-            # base ships the shared set verbatim, and nothing else is subtracted.
+        if name == base_name:
+            # base ships the shared set verbatim, so its payload is exactly that
+            # set - not "what its glibc closure adds". Checking it against the
+            # closure would be checking the wrong thing.
             if set(own[name]) != set(base):
                 print("  BROKEN base: ships %d of %d shared paths"
                       % (len(own[name]), len(set(base))))
