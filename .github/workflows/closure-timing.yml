@@ -1,0 +1,97 @@
+name: closure-timing
+
+# How expensive is computing dependency closures for every setup?
+#
+# The delta design needs, for each setup, the exact list of store paths in its
+# closure. Doing that by building every setup first costs one full download per
+# setup - which is what made the delta-probe run take 28 minutes.
+#
+# But nix records each path's references in the .narinfo that the binary cache
+# serves, so the closure can be walked WITHOUT downloading the content. If that
+# works, the whole dependency graph for 40 setups is a few minutes of metadata
+# queries instead of gigabytes of downloads.
+#
+# This measures both paths so the design is chosen on numbers:
+#   A. evaluate + query the remote store  (no content download)
+#   B. build locally, then path-info      (the current approach)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  timing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: A. closure from the remote cache, without downloading content
+        run: |
+          set -uo pipefail
+          echo "== does path-info work against the binary cache directly? =="
+          start=$(date +%s)
+          if nix path-info --store https://cache.nixos.org -r 'nixpkgs#php85Packages.composer' > /tmp/a.txt 2>/tmp/a.err; then
+            end=$(date +%s)
+            echo "  OK  $(wc -l < /tmp/a.txt) paths in $((end - start))s"
+            echo "  first 3:"
+            head -3 /tmp/a.txt | sed 's/^/    /'
+          else
+            end=$(date +%s)
+            echo "  FAILED after $((end - start))s"
+            tail -5 /tmp/a.err | sed 's/^/    /'
+          fi
+
+      - name: A2. how long for a heavy closure (swift) via the cache?
+        run: |
+          set -uo pipefail
+          start=$(date +%s)
+          nix path-info --store https://cache.nixos.org -r 'nixpkgs#swift' > /tmp/b.txt 2>/tmp/b.err || true
+          end=$(date +%s)
+          echo "swift: $(wc -l < /tmp/b.txt) paths in $((end - start))s"
+          tail -3 /tmp/b.err | sed 's/^/  /'
+
+      - name: A3. all 40 setups from the manifest, via the cache
+        run: |
+          set -uo pipefail
+          start=$(date +%s)
+          ok=0; failed=0
+          python3 - <<'PY' > /tmp/list.txt
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print(e["dir"], e["attr"])
+          PY
+          while read -r dir attr; do
+            if nix path-info --store https://cache.nixos.org -r "$attr" > "/tmp/c-$dir" 2>/dev/null; then
+              ok=$((ok + 1))
+            else
+              failed=$((failed + 1))
+              echo "  unresolved: $dir ($attr)"
+            fi
+          done < /tmp/list.txt
+          end=$(date +%s)
+          echo "40 setups: $ok ok, $failed failed, $((end - start))s total"
+          echo "total distinct paths: $(cat /tmp/c-* 2>/dev/null | sort -u | wc -l)"
+
+      - name: B. the same for two setups by building them
+        run: |
+          set -uo pipefail
+          start=$(date +%s)
+          nix build --no-link 'nixpkgs#php85' >/dev/null 2>&1
+          mid=$(date +%s)
+          nix build --no-link 'nixpkgs#php85Packages.composer' >/dev/null 2>&1
+          end=$(date +%s)
+          echo "building php85            : $((mid - start))s"
+          echo "building composer (on php): $((end - mid))s"
+          start2=$(date +%s)
+          nix path-info -r 'nixpkgs#php85Packages.composer' > /dev/null
+          end2=$(date +%s)
+          echo "path-info once realised   : $((end2 - start2))s"
