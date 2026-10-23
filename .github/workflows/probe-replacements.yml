@@ -1,0 +1,99 @@
+name: probe-replacements
+
+# Three questions, all asked of the real nixpkgs:
+#   1. micromamba: does it exist, and is it a working conda-compatible CLI?
+#   2. pip: we already ship it - does it run?
+#   3. cargo: do we ship it at all, and is it a working CLI?
+#
+# The cargo question matters because `rust` was added as `nixpkgs#rustc`, which is
+# the compiler only - cargo is a separate output in nixpkgs and may not be in it.
+#
+# Every probe writes to a file and is printed afterwards: `cmd | head` under
+# `pipefail` killed two earlier probes before they reported anything.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: micromamba
+        run: |
+          set -uo pipefail
+          out=$(nix build --no-link --print-out-paths 'nixpkgs#micromamba' 2>/dev/null | tail -1) || out=""
+          echo "output: ${out:-<cannot resolve>}"
+          [ -n "$out" ] || exit 0
+          echo "== bin/ =="
+          ls "$out/bin"
+          echo
+          echo "== --version =="
+          timeout 90 "$out/bin/micromamba" --version > /tmp/mm1.out 2>&1
+          echo "exit=$?"
+          cat /tmp/mm1.out
+          echo
+          echo "== does it resolve a real install (dry-run)? =="
+          # This is the operation conda users actually need. If it can plan a
+          # python install, the CLI is functional, not just present.
+          timeout 180 "$out/bin/micromamba" create -n t python=3.12 --dry-run > /tmp/mm2.out 2>&1
+          echo "exit=$?"
+          tail -12 /tmp/mm2.out
+
+      - name: pip
+        run: |
+          set -uo pipefail
+          out=$(nix eval --raw '.#"pip-26.1.2".outPath' 2>/dev/null) || out=""
+          echo "output: ${out:-<cannot resolve>}"
+          [ -n "$out" ] || exit 0
+          nix build --no-link '.#"pip-26.1.2"' >/dev/null 2>&1 || true
+          echo "== bin/ =="
+          ls "$out/bin"
+          echo
+          echo "== pip --version =="
+          timeout 120 "$out/bin/pip" --version > /tmp/p1.out 2>&1
+          echo "exit=$?"
+          cat /tmp/p1.out
+
+      - name: cargo and rust
+        run: |
+          set -uo pipefail
+          echo "== what does our rust setup ship? =="
+          out=$(nix eval --raw '.#"rust-1.99.0".outPath' 2>/dev/null) || out=""
+          echo "rust output: ${out:-<cannot resolve>}"
+          if [ -n "$out" ]; then
+            nix build --no-link '.#"rust-1.99.0"' >/dev/null 2>&1 || true
+            echo "bin/:"; ls "$out/bin" 2>/dev/null || echo "  (no bin/)"
+          fi
+          echo
+          echo "== is there a separate cargo attribute? =="
+          for a in cargo rustc rust cargo-bin; do
+            printf '  %-10s ' "$a"
+            nix eval --raw "nixpkgs#$a.name" 2>/dev/null || echo "-"
+          done
+          echo
+          echo "== what does nixpkgs#cargo give? =="
+          co=$(nix build --no-link --print-out-paths 'nixpkgs#cargo' 2>/dev/null | tail -1) || co=""
+          if [ -n "$co" ]; then
+            echo "output: $co"
+            ls "$co/bin"
+            timeout 90 "$co/bin/cargo" --version > /tmp/c1.out 2>&1; echo "exit=$?"; cat /tmp/c1.out
+          else
+            echo "  cargo not resolvable on its own"
+          fi
+          echo
+          echo "== and nixpkgs#rustc: is cargo inside it? =="
+          ro=$(nix build --no-link --print-out-paths 'nixpkgs#rustc' 2>/dev/null | tail -1) || ro=""
+          if [ -n "$ro" ]; then
+            echo "output: $ro"
+            ls "$ro/bin"
+          fi
