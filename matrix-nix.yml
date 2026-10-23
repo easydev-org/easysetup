@@ -104,6 +104,23 @@ setups:
   - { tool: ripgrep,    attr: "nixpkgs#ripgrep", version: "15.2.0" }
   - { tool: fd,         attr: "nixpkgs#fd", version: "10.5.0" }
 
+  # ---- the basics ---------------------------------------------------------
+  # git and make were simply absent, which made the whole set unusable for a
+  # real build despite 94 toolchains being present.
+  - { tool: git,        attr: "nixpkgs#git", version: "2.56.0" }
+  - { tool: gh,         attr: "nixpkgs#gh", version: "2.102.0" }
+  - { tool: glab,       attr: "nixpkgs#glab", version: "1.114.0" }
+  - { tool: make,       attr: "nixpkgs#gnumake", version: "4.4.1" }
+  - { tool: curl,       attr: "nixpkgs#curl", version: "8.22.0" }
+  - { tool: wget,       attr: "nixpkgs#wget", version: "1.25.0" }
+  - { tool: rsync,      attr: "nixpkgs#rsync", version: "3.5.0" }
+  - { tool: openssh,    attr: "nixpkgs#openssh", version: "10.6p1" }
+  - { tool: gnupg,      attr: "nixpkgs#gnupg", version: "2.4.9" }
+  - { tool: unzip,      attr: "nixpkgs#unzip", version: "6.0" }
+  - { tool: zip,        attr: "nixpkgs#zip", version: "3.0" }
+  - { tool: xz,         attr: "nixpkgs#xz", version: "5.8.4" }
+  - { tool: zstd,       attr: "nixpkgs#zstd", version: "1.5.7" }
+
   # ---- batch 1: the JS/TS and linting tools a modern CI reaches for ---------
   # Every one of these was probed before being added: attribute exists, the
   # output is in cache.nixos.org (a 404 means compiling from source on every
@@ -126,8 +143,14 @@ setups:
   # they build with, and both are cached, so carrying both costs no download for
   # anyone who asks for only one.
   - { tool: gcc,        attr: "nixpkgs#gcc", version: "16.2.0" }
-  - { tool: llvm,       attr: "nixpkgs#llvm", version: "21.1.8" }
-  - { tool: lldb,       attr: "nixpkgs#lldb", version: "21.1.8" }
+  # llvm/lldb come from the SAME package set as clang above, not from the
+  # default `llvm`. Otherwise a project on clang 23 is told llvm is 21, and
+  # mixing two LLVM releases in one build is the kind of mismatch that shows
+  # up as a confusing linker error much later.
+  - { tool: llvm,       attr: "nixpkgs#llvmPackages_23.llvm", version: "23.1.3" }
+  - { tool: lldb,       attr: "nixpkgs#llvmPackages_23.lldb", version: "23.1.3" }
+  - { tool: clang-tools, attr: "nixpkgs#llvmPackages_23.clang-tools", version: "23.1.3" }
+  - { tool: bintools,   attr: "nixpkgs#llvmPackages_23.bintools", version: "23.1.3" }
   - { tool: gdb,        attr: "nixpkgs#gdb", version: "17.2" }
   - { tool: valgrind,   attr: "nixpkgs#valgrind", version: "3.27.1" }
   - { tool: ccache,     attr: "nixpkgs#ccache", version: "4.14.1" }
@@ -168,3 +191,78 @@ setups:
   - { tool: swift,     attr: "nixpkgs#swift", version: "6.3.3" }
   - { tool: yq,        attr: "nixpkgs#yq-go", version: "4.54.1" }
   - { tool: zig,       attr: "nixpkgs#zig", version: "0.17.0" }
+
+  # ---- language tooling: linters, formatters, language servers -------------
+  # Each language gets its own lint/format/LSP setups so a project can install
+  # exactly the ones it uses. compute-deps.py derives the overlap with the
+  # runtime, so `typescript-language-server` pulls node and ships only its own
+  # path.
+
+  # TypeScript / JavaScript
+  - { tool: typescript-language-server, attr: "nixpkgs#typescript-language-server", version: "6.0.2" }
+  - { tool: vscode-langservers, attr: "nixpkgs#vscode-langservers-extracted", version: "1.140.0" }
+
+  # Python - lint, format, type-check, test, REPL, language server
+  - { tool: pylint,     attr: "nixpkgs#python314Packages.pylint", version: "4.0.7" }
+  - { tool: flake8,     attr: "nixpkgs#python314Packages.flake8", version: "7.3.0" }
+  - { tool: isort,      attr: "nixpkgs#python314Packages.isort", version: "8.0.1" }
+  - { tool: coverage,   attr: "nixpkgs#python314Packages.coverage", version: "7.16.2" }
+  - { tool: ipython,    attr: "nixpkgs#python314Packages.ipython", version: "9.16.1" }
+  - { tool: pyright,    attr: "nixpkgs#pyright", version: "1.1.414" }
+  - { tool: basedpyright, attr: "nixpkgs#basedpyright", version: "1.39.8" }
+
+  # Go
+  - { tool: gopls,      attr: "nixpkgs#gopls", version: "0.24.0" }
+  - { tool: gotools,    attr: "nixpkgs#gotools", version: "0.44.0" }
+  - { tool: go-tools,   attr: "nixpkgs#go-tools", version: "2026.2.2" }
+  - { tool: gofumpt,    attr: "nixpkgs#gofumpt", version: "0.12.0" }
+  - { tool: delve,      attr: "nixpkgs#delve", version: "1.27.2" }
+  - { tool: goreleaser, attr: "nixpkgs#goreleaser", version: "2.17.1" }
+
+  # Rust - clippy and rustfmt are separate outputs of the rust toolchain, and
+  # rust-analyzer is its language server.
+  - { tool: rust-analyzer, attr: "nixpkgs#rust-analyzer", version: "2026-10-12" }
+  - { tool: rustfmt,    attr: "nixpkgs#rustfmt", version: "1.99.0" }
+  - { tool: clippy,     attr: "nixpkgs#clippy", version: "1.99.0" }
+  - { tool: cargo-watch, attr: "nixpkgs#cargo-watch", version: "8.5.3" }
+  - { tool: cargo-nextest, attr: "nixpkgs#cargo-nextest", version: "0.9.146" }
+  - { tool: cargo-audit, attr: "nixpkgs#cargo-audit", version: "0.22.2" }
+
+  # PHP - psalm already ships psalm-language-server, so the LSP needs no entry.
+  - { tool: phan,       attr: "nixpkgs#php85Packages.phan", version: "6.0.7" }
+
+  # Ruby
+  - { tool: rubocop,    attr: "nixpkgs#rubyPackages.rubocop", version: "1.80.2" }
+  - { tool: ruby-lsp,   attr: "nixpkgs#rubyPackages.ruby-lsp", version: "0.26.3" }
+  - { tool: solargraph, attr: "nixpkgs#rubyPackages.solargraph", version: "0.57.0" }
+  - { tool: rake,       attr: "nixpkgs#rubyPackages.rake", version: "13.3.1" }
+
+  # Lua
+  - { tool: lua-language-server, attr: "nixpkgs#lua-language-server", version: "3.19.2" }
+  - { tool: stylua,     attr: "nixpkgs#stylua", version: "2.6.0" }
+
+  # C / C++
+  - { tool: cppcheck,   attr: "nixpkgs#cppcheck", version: "2.22.0" }
+  - { tool: cpplint,    attr: "nixpkgs#cpplint", version: "2.0.2" }
+  - { tool: iwyu,       attr: "nixpkgs#include-what-you-use", version: "0.26" }
+  - { tool: gcovr,      attr: "nixpkgs#gcovr", version: "8.4" }
+  - { tool: lcov,       attr: "nixpkgs#lcov", version: "2.4" }
+  - { tool: ccls,       attr: "nixpkgs#ccls", version: "0.20250815" }
+
+  # JVM
+  - { tool: pmd,        attr: "nixpkgs#pmd", version: "6.55.0" }
+  - { tool: google-java-format, attr: "nixpkgs#google-java-format", version: "1.37.0" }
+  - { tool: jdtls,      attr: "nixpkgs#jdt-language-server", version: "1.61.0" }
+
+  # shell / config / CI
+  - { tool: shfmt,      attr: "nixpkgs#shfmt", version: "3.14.1" }
+  - { tool: yamllint,   attr: "nixpkgs#yamllint", version: "1.37.1" }
+  - { tool: yamlfmt,    attr: "nixpkgs#yamlfmt", version: "0.21.0" }
+  - { tool: taplo,      attr: "nixpkgs#taplo", version: "0.10.0" }
+  - { tool: actionlint, attr: "nixpkgs#actionlint", version: "1.7.12" }
+  - { tool: pre-commit, attr: "nixpkgs#pre-commit", version: "4.7.0" }
+
+  # data
+  - { tool: jqp,        attr: "nixpkgs#jqp", version: "0.8.0" }
+  - { tool: dasel,      attr: "nixpkgs#dasel", version: "3.11.2" }
+  - { tool: miller,     attr: "nixpkgs#miller", version: "6.22.0" }

@@ -4,4 +4,4 @@
 # this file, unless the setup genuinely needs an override - in which case delete
 # the "Generated" line above so regeneration leaves it alone.
 { pkgs }:
-pkgs.lldb
+pkgs.llvmPackages_23.lldb
