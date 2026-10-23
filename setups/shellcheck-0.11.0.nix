@@ -1,7 +1,4 @@
-# Generated from matrix-nix.yml by tools/gen-setups.py.
-#
-# A setup is a nixpkgs attribute plus the name users type. Edit the manifest, not
-# this file, unless the setup genuinely needs an override - in which case delete
-# the "Generated" line above so regeneration leaves it alone.
 { pkgs }:
-pkgs.shellcheck
+# `pkgs.shellcheck` resolves to the package's DEFAULT output, which here is
+# `man` - documentation, no binary. Same trap as jq. Naming the output is the fix.
+pkgs.shellcheck.bin

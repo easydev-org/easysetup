@@ -214,16 +214,24 @@ printf '%s|%s\n' "$REAL" "$bins" > "$STAGE/nix/setup-root-$DIR"
 
 # Prove the STAGED copy runs, using nothing from /nix. A stale store on the build
 # machine would otherwise make a broken closure look fine.
-echo "nixpkg: verifying the staged tree in a chroot with no nix"
-first=$(ls "$STAGE$REAL/bin" 2>/dev/null | head -1)
-[ -n "$first" ] || { echo "nixpkg: bin/ is empty in the staged copy" >&2; exit 1; }
-if command -v chroot >/dev/null 2>&1; then
-  chroot "$STAGE" "$REAL/bin/$first" --version >/dev/null 2>&1 \
-    || chroot "$STAGE" "$REAL/bin/$first" >/dev/null 2>&1 \
-    || echo "nixpkg: note - $first did not answer --version; not fatal"
-  echo "nixpkg: chroot check done ($first)"
+#
+# `base` is skipped: it is a library set with no executables, so there is nothing
+# to execute. The check that matters for it is that its paths were collected at
+# all, which the counts above already show.
+if [ "${DIR%%-[0-9]*}" = "base" ]; then
+  echo "nixpkg: base carries libraries only; skipping the execute check"
 else
-  echo "nixpkg: chroot unavailable; skipping the isolation check"
+  echo "nixpkg: verifying the staged tree in a chroot with no nix"
+  first=$(ls "$STAGE$REAL/bin" 2>/dev/null | head -1)
+  [ -n "$first" ] || { echo "nixpkg: bin/ is empty in the staged copy" >&2; exit 1; }
+  if command -v chroot >/dev/null 2>&1; then
+    chroot "$STAGE" "$REAL/bin/$first" --version >/dev/null 2>&1 \
+      || chroot "$STAGE" "$REAL/bin/$first" >/dev/null 2>&1 \
+      || echo "nixpkg: note - $first did not answer --version; not fatal"
+    echo "nixpkg: chroot check done ($first)"
+  else
+    echo "nixpkg: chroot unavailable; skipping the isolation check"
+  fi
 fi
 
 mkdir -p "$OUT"
