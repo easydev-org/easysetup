@@ -36,8 +36,12 @@ NIX=$(command -v nix || echo /nix/var/nix/profiles/default/bin/nix)
 
 # The version is nix's to decide, not ours. Reading it from the expression means
 # the tag, the directory name and the asset name all agree with what is inside.
+#
+# `.#<name>.version` does not work: a plain package derivation has no `version`
+# attribute at the flake level. flake.nix exposes a `versions.<name>` tree for
+# exactly this, built from the same expression the package comes from.
 echo "nixpkg: resolving version of ./setups/$NAME.nix"
-VERSION=$("$NIX" eval --raw ".#$NAME.version" 2>/dev/null) || VERSION=""
+VERSION=$("$NIX" eval --raw ".#versions.$NAME" 2>/dev/null) || VERSION=""
 [ -n "$VERSION" ] || { echo "nixpkg: cannot evaluate $NAME.version" >&2; exit 1; }
 DIR="$NAME-$VERSION"
 echo "nixpkg: $NAME -> $DIR"
