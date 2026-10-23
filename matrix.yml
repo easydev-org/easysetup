@@ -474,7 +474,7 @@ setups:
     # the C++ HEADERS (not just the .so) that #include <iostream> needs.
     apt_deps: [ca-certificates, curl, xz-utils, binutils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
     artifact: clang-23.1.4-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "2aa1b5d1f5cdd03bc911fd05ad430677c6bd46ed10d1c591b6619ac34beb4f40"
 
   # ----------------------------------------------------------------- nix ---
   # Single-user Nix: no daemon, no systemd, no root service. Everything lives
