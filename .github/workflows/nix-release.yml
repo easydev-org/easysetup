@@ -103,10 +103,16 @@ jobs:
       - name: build ${{ matrix.name }} with nix
         run: |
           set -euo pipefail
+          # Report whether nix will DOWNLOAD or COMPILE, because that is the
+          # property the design depends on. `grep -c` exits 1 when it counts
+          # zero, which under `set -e` aborted this step before the build even
+          # started - so the count is captured without letting the exit status
+          # escape.
           echo "::group::what nix will do"
-          nix build --dry-run ".#${{ matrix.name }}" 2>&1 | tail -5 || true
-          nix build --dry-run ".#${{ matrix.name }}" 2>&1 \
-            | grep -c 'will be built' | xargs -I{} echo "paths built locally: {}"
+          dry=$(nix build --dry-run ".#${{ matrix.name }}" 2>&1 || true)
+          built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
+          echo "paths built locally: $built"
+          printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
           echo "::endgroup::"
           bash tools/build-nixpkg.sh "${{ matrix.name }}" out
 
