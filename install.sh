@@ -99,12 +99,10 @@ for name in "$@"; do
 
   # Unpack at /. The archive carries nix/store/... and nix/setup-root-<dir>;
   # both must land at the root exactly as recorded.
-  # --long=27 must match what the tarball was compressed with; without it zstd
-  # refuses the stream (the window is part of the frame header). tar is told to
-  # use zstd rather than being handed an already-decompressed stream, so it can
-  # extract while decompressing instead of buffering the whole tree.
-  tar --zstd -xf "$WORK/asset" -C / --use-compress-program="zstd -d --long=27" 2>/dev/null \
-    || zstd -d --long=27 --quiet -c "$WORK/asset" | tar -xf - -C /
+  # Plain zstd: the tarballs are compressed at the default window, so any zstd
+  # can read them. Piping zstd into tar extracts while decompressing instead of
+  # buffering a multi-GB tree first.
+  zstd -d --quiet -c "$WORK/asset" | tar -xf - -C /
   rm -f "$WORK/asset" "$WORK/sha"
 
   [ -f "/nix/setup-root-$id" ] || {
