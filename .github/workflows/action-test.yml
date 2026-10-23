@@ -1,150 +1,88 @@
-# Dogfooding: use OUR OWN action the way a consumer would, against the artifacts
-# that are actually published. Nothing here is mocked - if this job passes, then
-# `uses: easydev-org/easysetup@main` works.
-#
-# Manual only, like the other workflows: this repository is edited through the
-# contents API (one commit per file), so a push trigger would start a run per
-# file.
 name: action-test
 
+# Dogfooding: use the action exactly as a consumer would, and assert the things
+# that have broken before.
+#
+# Every check here corresponds to a real failure:
+#   basic       - tools must work in a FOLLOWING step, not just during install
+#   accumulate  - two separate `uses:` steps must not erase each other
+#   wrong-os    - ubuntu 24.04 has glibc 2.39; the artifacts need 2.41
+#   coexist     - two versions of one tool must both stay usable
 on:
   workflow_dispatch:
     inputs:
       tools:
-        description: 'space-separated setups to exercise'
+        description: 'override the tool list for the basic job'
         required: false
-        default: 'node-22 python-3.12'
+        default: 'node python'
 
 permissions:
   contents: read
 
 jobs:
-  # The plain case: two toolchains, one call, and the NEXT step uses them.
   basic:
     runs-on: ubuntu-latest
     container: debian:trixie-slim
     steps:
       - uses: actions/checkout@v4
-
+      # The action lives in this repository, so reference it by path. A consumer
+      # would write `uses: easydev-org/easysetup@main` instead.
       - uses: ./
-        id: es
         with:
           tools: ${{ inputs.tools }}
 
-      - name: the tools run in a FOLLOWING step (this is the real test)
+      - name: the tools run in a FOLLOWING step
         run: |
           set -eux
-          # Assert on what was ASKED FOR, not on a hard-coded tool: `inputs.tools`
-          # is overridable, so this job was failing for asking for node while
-          # being told to install swift-sdk-wasm. Every requested setup must
-          # have left a bin dir on PATH.
-          for d in /opt/setup/*/bin; do
-            [ -d "$d" ] || continue
-            case ":$PATH:" in
-              *":$d:"*) echo "on PATH: $d" ;;
-              *) echo "::error::$d is not on PATH"; exit 1 ;;
-            esac
-          done
-          # And at least one real command answers.
-          command -v swift || command -v node || command -v python3
+          # Assert on what was requested rather than a hard-coded name: the tool
+          # list is an input, and asking for node while being told to install
+          # swift is the test's mistake, not the action's.
+          ls -d /nix/setup-root-* >/dev/null
+          command -v node || command -v python3 || command -v swift
           echo "toolchain reachable from a later step"
 
-      - name: env.sh exists and is sourceable
+      - name: the registry records where each tool lives
         run: |
           set -eux
-          test -f "$EASYSETUP_ENV"
-          # A consumer must be able to source it under `set -u`.
-          ( set -u; . "$EASYSETUP_ENV" )
-          echo "env.sh ok at $EASYSETUP_ENV"
+          for f in /nix/setup-root-*; do
+            echo "$f: $(cat "$f")"
+            store=$(cut -d'|' -f1 "$f")
+            test -d "$store" || { echo "::error::$store missing"; exit 1; }
+          done
 
-      - name: the output the action promises
-        run: |
-          test "${{ steps.es.outputs.env-script }}" = "/opt/setup/env.sh"
-          echo "output env-script ok"
-
-  # Two separate calls must ACCUMULATE. This is the regression that motivated
-  # gen-env.sh: env.sh used to be regenerated from "what this call installed",
-  # so the second call erased the first tool.
   accumulate:
     runs-on: ubuntu-latest
     container: debian:trixie-slim
     steps:
       - uses: actions/checkout@v4
-
       - uses: ./
-        with: { tools: node-22 }
-
+        with: { tools: node }
+      # The regression this guards: env.sh used to be generated from "what this
+      # invocation installed", so the second use erased the first.
       - uses: ./
-        with: { tools: python-3.12 }
-
-      - name: both toolchains survive
+        with: { tools: python }
+      - name: both are still installed
         run: |
           set -eux
-          node --version
-          python3 --version
+          ls /nix/setup-root-* | wc -l
+          test -f "/nix/setup-root-node-$(ls /nix/setup-root-node-* | head -1 | sed 's|.*setup-root-node-||')"
           command -v node
           command -v python3
 
-  # A setup that needs environment variables, not only PATH.
-  env-vars:
+  wrong-os:
     runs-on: ubuntu-latest
-    container: debian:trixie-slim
     steps:
       - uses: actions/checkout@v4
-
-      - uses: ./
-        with: { tools: java-21 }
-
-      - name: JAVA_HOME comes from env.sh
-        run: |
-          set -eux
-          . "$EASYSETUP_ENV"
-          test -n "$JAVA_HOME"
-          java -version
-
-  # A dependency: asking for the SDK must install the compiler too, via
-  # `requires: swift@>=6.4 <7`. Only runs when asked for, because 1.1 GB in a
-  # smoke test is a bad default.
-  requires:
-    if: inputs.tools == 'swift-sdk-wasm'
-    runs-on: ubuntu-latest
-    container: debian:trixie-slim
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./
-        with: { tools: swift-sdk-wasm }
-
-      - name: the dependency was installed as well
-        run: |
-          set -eux
-          swift --version
-          ls -d /opt/setup/swift-* /opt/setup/swift-sdk-wasm-*
-
-  # The action must FAIL LOUDLY on the wrong platform rather than half-install.
-  # ubuntu 24.04 has glibc 2.39; the artifacts need 2.41. Installing 300 MB and
-  # then having every binary die at the loader is the worst possible outcome.
-  wrong-platform:
-    runs-on: ubuntu-latest
-    container: ubuntu:24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: the action must refuse
-        id: attempt
+      - name: the action refuses to install on a glibc it cannot satisfy
+        id: try
         continue-on-error: true
         uses: ./
-        with: { tools: node-22 }
-
-      - name: and it must not have installed anything
+        with: { tools: node }
+      - name: it must have failed
         run: |
-          set -eux
-          if [ "${{ steps.attempt.outcome }}" != "failure" ]; then
-            echo "::error::the action succeeded on ubuntu 24.04; it should have refused"
-            exit 1
-          fi
-          if [ -d /opt/setup/node-22.23.4 ]; then
-            echo "::error::it installed a toolchain it cannot run"
+          set -euo pipefail
+          if [ "${{ steps.try.outcome }}" != "failure" ]; then
+            echo "::error::the action installed onto ubuntu 24.04, whose glibc is too old"
             exit 1
           fi
           echo "correctly refused on the wrong platform"

@@ -116,3 +116,48 @@ jobs:
           path: out/*.tar.xz
           retention-days: 1
           if-no-files-found: error
+
+  publish:
+    needs: [setup, build]
+    if: always() && needs.setup.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: setup-*
+          path: /tmp/assets
+          merge-multiple: true
+        # A setup whose build failed has no artifact. Failing the whole publish
+        # job would hide the setups that DID build, so tolerate an empty result
+        # and report it instead.
+        continue-on-error: true
+
+      - name: publish every built asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(/tmp/assets/*.tar.xz)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "no assets were produced; nothing to publish"
+            exit 0
+          fi
+          for a in "${assets[@]}"; do
+            base=$(basename "$a")
+            dir=${base%-debian-trixie-amd64.tar.xz}
+            echo "== $dir"
+            # The checksum is computed HERE, from the file about to be uploaded.
+            # A pin written anywhere else could describe a tarball that was never
+            # published - which is how the old pipeline once shipped empty pins.
+            sha=$(sha256sum "$a" | cut -d' ' -f1)
+            echo "$sha  $base" > "/tmp/assets/$base.sha256"
+            if gh release view "$dir" >/dev/null 2>&1; then
+              gh release upload "$dir" "$a" "/tmp/assets/$base.sha256" --clobber
+            else
+              gh release create "$dir" "$a" "/tmp/assets/$base.sha256" \
+                --title "$dir" --notes "nix closure, prebuilt for linux/amd64"
+            fi
+          done
