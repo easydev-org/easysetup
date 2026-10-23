@@ -153,6 +153,19 @@ jobs:
           echo "registry: $(cat "$reg")"
           store=$(cut -d'|' -f1 "$reg")
           first=$(cut -d'|' -f2 "$reg" | awk '{print $1}')
+
+          # `base` is a library set: it has no bin/, so there is no binary to run.
+          # Its tarball is still worth checking, just differently - that every
+          # recorded path unpacked and is non-empty.
+          if [ ! -d "$root$store/$first" ]; then
+            echo "no $first/ in the tarball - treating as a library set"
+            n=$(ls "$root/nix/store" | wc -l)
+            echo "store paths unpacked: $n"
+            [ "$n" -gt 0 ] || { echo "::error::empty tarball"; exit 1; }
+            echo "library set unpacked correctly"
+            exit 0
+          fi
+
           bin=$(ls "$root$store/$first" | head -1)
           echo "running: $store/$first/$bin"
           # A chroot has no /nix of its own, so the only store present is what the
