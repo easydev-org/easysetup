@@ -178,6 +178,14 @@ def main(argv):
     # arithmetic were sloppy. Intersecting with the setup's own closure keeps the
     # two consistent.
     own = {}
+    # `base` is special: deps lists it, but it is not in clos under that name -
+    # clos["base"] would be glibc's FULL closure (build deps included), which is
+    # not what the base setup ships. The shared set is in `base`.
+    def dep_paths(name):
+        if name == "base":
+            return set(base)
+        return clos[name]
+
     for name, c in clos.items():
         if name == "base":
             # base ships the whole shared set; it has nothing to subtract from.
@@ -185,7 +193,7 @@ def main(argv):
             continue
         cut = (set(base) & c)
         for d in deps[name]:
-            cut |= clos[d]
+            cut |= dep_paths(d)
         own[name] = sorted(c - cut)
 
     print()
@@ -204,7 +212,7 @@ def main(argv):
     for name, c in clos.items():
         rebuilt = set(base) & c          # only the base paths this setup has
         for d in deps[name]:
-            rebuilt |= clos[d]
+            rebuilt |= dep_paths(d)
         rebuilt |= set(own[name])
         if rebuilt != c:
             print("  BROKEN %s: differs by %d path(s)" % (name, len(c ^ rebuilt)))
