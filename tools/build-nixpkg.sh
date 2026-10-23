@@ -41,7 +41,10 @@ NIX=$(command -v nix || echo /nix/var/nix/profiles/default/bin/nix)
 # attribute at the flake level. flake.nix exposes a `versions.<name>` tree for
 # exactly this, built from the same expression the package comes from.
 echo "nixpkg: resolving version of ./setups/$NAME.nix"
-VERSION=$("$NIX" eval --raw ".#versions.$NAME" 2>/dev/null) || VERSION=""
+# The attribute name carries a version with DOTS in it (nix-2.34.9), and nix
+# reads an unquoted dot as an attribute path separator - so `.#versions.nix-2.34.9`
+# looks for versions.nix."2"."34"."9" and fails. Quoting the segment is required.
+VERSION=$("$NIX" eval --raw ".#versions.\"$NAME\"" 2>/dev/null) || VERSION=""
 [ -n "$VERSION" ] || { echo "nixpkg: cannot evaluate $NAME.version" >&2; exit 1; }
 DIR="$NAME-$VERSION"
 echo "nixpkg: $NAME -> $DIR"

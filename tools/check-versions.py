@@ -32,8 +32,10 @@ NIX = (os.environ.get("NIX_BIN")
 def actual_version(name):
     # flake.nix exposes a `versions.<name>` tree because a plain package has no
     # flake-level `version` attribute; `.#<name>.version` simply does not resolve.
+    # The name contains dots (nix-2.34.9); unquoted, nix reads them as attribute
+    # path separators and the lookup fails. Quoting the segment fixes it.
     r = subprocess.run(
-        [NIX, "eval", "--raw", ".#versions.%s" % name],
+        [NIX, "eval", "--raw", '.#versions."%s"' % name],
         cwd=str(ROOT), capture_output=True, text=True, timeout=600)
     if r.returncode != 0:
         return None
