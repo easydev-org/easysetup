@@ -141,7 +141,11 @@ setups:
   # ---- batch 3: neighbouring ecosystems ------------------------------------
   - { tool: kotlin,     attr: "nixpkgs#kotlin", version: "2.4.20" }
   - { tool: scala,      attr: "nixpkgs#scala", version: "3.9.0" }
-  - { tool: clojure,    attr: "nixpkgs#clojure", version: "1.12.6.16" }
+  # nix reports this as 1.12.6.1673: the trailing 16 is the Clojure release and
+  # 73 the nixpkgs revision suffix, and `.version` includes both. The build
+  # refuses to proceed when the manifest disagrees with nix, which is how this
+  # was caught rather than published under a wrong name.
+  - { tool: clojure,    attr: "nixpkgs#clojure", version: "1.12.6.1673" }
   - { tool: podman,     attr: "nixpkgs#podman", version: "5.8.9" }
   - { tool: skopeo,     attr: "nixpkgs#skopeo", version: "1.24.1" }
   - { tool: kustomize,  attr: "nixpkgs#kustomize", version: "5.8.2" }

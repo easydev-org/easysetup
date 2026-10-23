@@ -162,6 +162,34 @@ if [ -z "$paths" ]; then
   paths=$("$NIX" path-info -r "$REAL" 2>/dev/null)
 fi
 
+# The paths needed to RUN this setup but not shipped in its tarball: the base and
+# whatever its dependencies provide. install.sh fetches these separately, so the
+# verification below has to stage them too or it would fail a correct build.
+COMPANION_PATHS=""
+if [ -f "$CLOSURES" ] && command -v python3 >/dev/null 2>&1; then
+  COMPANION_PATHS=$(python3 - "$CLOSURES" "$DIR" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+name = sys.argv[2]
+entry = doc.get("setups", {}).get(name)
+if not entry:
+    sys.exit(0)
+seen = set()
+for p in doc.get("base", []):
+    seen.add(p)
+# Walk the dependency chain: install.sh would install all of it before this one.
+def add(n):
+    e = doc["setups"].get(n, {})
+    for d in e.get("deps", []):
+        add(d)
+        for q in doc["setups"].get(d, {}).get("own", []):
+            seen.add(q)
+add(name)
+print(" ".join(sorted(seen)))
+PY
+)
+fi
+
 echo "nixpkg: packaging $mode"
 
 # Ensure every path in the list exists locally. For a normal setup the closure is
@@ -225,9 +253,20 @@ else
   first=$(ls "$STAGE$REAL/bin" 2>/dev/null | head -1)
   [ -n "$first" ] || { echo "nixpkg: bin/ is empty in the staged copy" >&2; exit 1; }
   if command -v chroot >/dev/null 2>&1; then
+    # A delta tarball is NOT self-sufficient on its own - that is the point of
+    # the scheme. Its glibc lives in the base tarball and its libraries may come
+    # from a dependency, so running it in a root holding only this tarball would
+    # fail for a correct build. The chroot therefore also gets the base and dep
+    # paths, which is exactly what install.sh would have put on disk.
+    #
+    # This still catches the failure the check exists for: a path that the setup
+    # needs but neither it nor its dependencies provide.
+    for extra in $COMPANION_PATHS; do
+      [ -e "$extra" ] && cp -a "$extra" "$STAGE/nix/store/" 2>/dev/null || true
+    done
     chroot "$STAGE" "$REAL/bin/$first" --version >/dev/null 2>&1 \
       || chroot "$STAGE" "$REAL/bin/$first" >/dev/null 2>&1 \
-      || echo "nixpkg: note - $first did not answer --version; not fatal"
+      || echo "nixpkg: note - $first did not answer; not fatal"
     echo "nixpkg: chroot check done ($first)"
   else
     echo "nixpkg: chroot unavailable; skipping the isolation check"
