@@ -103,6 +103,51 @@ setups:
   - { tool: shellcheck, attr: "nixpkgs#shellcheck", version: "0.11.0" }
   - { tool: ripgrep,    attr: "nixpkgs#ripgrep", version: "15.2.0" }
   - { tool: fd,         attr: "nixpkgs#fd", version: "10.5.0" }
+
+  # ---- batch 1: the JS/TS and linting tools a modern CI reaches for ---------
+  # Every one of these was probed before being added: attribute exists, the
+  # output is in cache.nixos.org (a 404 means compiling from source on every
+  # build), and the build produces an executable.
+  - { tool: pnpm,       attr: "nixpkgs#pnpm", version: "12.9.0" }
+  - { tool: yarn,       attr: "nixpkgs#yarn", version: "1.22.22" }
+  - { tool: bun,        attr: "nixpkgs#bun", version: "1.4.2" }
+  - { tool: typescript, attr: "nixpkgs#typescript", version: "7.0.2" }
+  - { tool: esbuild,    attr: "nixpkgs#esbuild", version: "0.27.2" }
+  - { tool: biome,      attr: "nixpkgs#biome", version: "2.5.15" }
+  - { tool: prettier,   attr: "nixpkgs#prettier", version: "3.9.10" }
+  - { tool: eslint,     attr: "nixpkgs#eslint", version: "10.12.0" }
+  - { tool: hadolint,   attr: "nixpkgs#hadolint", version: "2.14.0" }
+  - { tool: golangci-lint, attr: "nixpkgs#golangci-lint", version: "2.15.0" }
+  - { tool: trivy,      attr: "nixpkgs#trivy", version: "0.76.0" }
+  - { tool: gitleaks,   attr: "nixpkgs#gitleaks", version: "8.30.1" }
+
+  # ---- batch 2: the C/C++ toolchain beyond clang/cmake/ninja ---------------
+  # gcc sits beside clang rather than replacing it: projects differ in which one
+  # they build with, and both are cached, so carrying both costs no download for
+  # anyone who asks for only one.
+  - { tool: gcc,        attr: "nixpkgs#gcc", version: "16.2.0" }
+  - { tool: llvm,       attr: "nixpkgs#llvm", version: "21.1.8" }
+  - { tool: lldb,       attr: "nixpkgs#lldb", version: "21.1.8" }
+  - { tool: gdb,        attr: "nixpkgs#gdb", version: "17.2" }
+  - { tool: valgrind,   attr: "nixpkgs#valgrind", version: "3.27.1" }
+  - { tool: ccache,     attr: "nixpkgs#ccache", version: "4.14.1" }
+  - { tool: meson,      attr: "nixpkgs#meson", version: "1.12.1" }
+  - { tool: mold,       attr: "nixpkgs#mold", version: "3.0.0" }
+  - { tool: autoconf,   attr: "nixpkgs#autoconf", version: "2.73" }
+  - { tool: automake,   attr: "nixpkgs#automake", version: "1.18.1" }
+  - { tool: libtool,    attr: "nixpkgs#libtool", version: "2.6.2" }
+  - { tool: pkg-config, attr: "nixpkgs#pkg-config", version: "0.29.2" }
+
+  # ---- batch 3: neighbouring ecosystems ------------------------------------
+  - { tool: kotlin,     attr: "nixpkgs#kotlin", version: "2.4.20" }
+  - { tool: scala,      attr: "nixpkgs#scala", version: "3.9.0" }
+  - { tool: clojure,    attr: "nixpkgs#clojure", version: "1.12.6.16" }
+  - { tool: podman,     attr: "nixpkgs#podman", version: "5.8.9" }
+  - { tool: skopeo,     attr: "nixpkgs#skopeo", version: "1.24.1" }
+  - { tool: kustomize,  attr: "nixpkgs#kustomize", version: "5.8.2" }
+  - { tool: kind,       attr: "nixpkgs#kind", version: "0.33.0" }
+  - { tool: awscli2,    attr: "nixpkgs#awscli2", version: "2.36.31" }
+  - { tool: uv,         attr: "nixpkgs#uv", version: "0.13.1" }
   - { tool: php,       attr: "nixpkgs#php85", version: "8.5.11" }
   - { tool: protobuf,  attr: "nixpkgs#protobuf", version: "36.2" }
   - { tool: python,    attr: "nixpkgs#python314", version: "3.14.8" }
