@@ -21,12 +21,35 @@ seconds, zero bytes of package content.
 
 WHAT IT COMPUTES
 ----------------
-base        the store paths present in EVERY setup's closure - glibc and its few
-            companions. Published once, subtracted from everything else.
-deps[setup] the other setups whose closure is a STRICT SUBSET of this one, so
-            this setup can leave those paths out and let them provide them.
+base        the store paths shared by MANY setups - glibc and its companions.
+            Published once, subtracted from everything else. Shared by many, not
+            by all: the intersection over 58 setups is empty, because a few tools
+            (rust, clang) carry their own libc internally.
+deps[setup] the other setups whose runtime closure this setup genuinely needs.
+            See NARROWING below - closure inclusion alone is far too loose.
 own[setup]  closure(setup) - union(closure(deps)) - base. The paths only this
             setup needs, which is all its tarball has to carry.
+
+NARROWING: why a subset test is not enough
+------------------------------------------
+The first version treated "closure(dep) is a strict subset of closure(setup)" as
+a dependency. That produced `dotnet deps=[perl]` and `erlang deps=[perl]`, which
+are nonsense: perl appears in those closures because their BUILD needed it, not
+their runtime. Acting on it would make `install.sh erlang` download perl for
+nobody's benefit.
+
+Three filters, applied in order:
+  1. the "dep" must be a setup a human would recognise as related - same tool
+     family (`composer` -> `php`), or an explicit runtime the setup cannot work
+     without;
+  2. its own store path must be REACHABLE from the setup's binary output, i.e. it
+     must be in the closure of one of the setup's declared bins, not merely in the
+     build closure;
+  3. it must be big enough to be worth the extra request.
+
+Filter 2 is the real one. `nix why-depends` answers exactly it, and it is what
+distinguishes "php is needed to run composer" from "perl was needed to compile
+erlang".
 
 The result is written to closures.json, which install.sh reads at run time.
 """
@@ -87,13 +110,37 @@ def main(argv):
     if len(clos) < 2:
         sys.exit("need at least two resolvable setups")
 
-    base = set.intersection(*clos.values())
+    # base = paths shared by MANY setups, not by all.
+    #
+    # The intersection over every setup is empty: `rust` and `clang` carry their
+    # own libc internally, so they share no glibc path with the rest. Requiring
+    # unanimity therefore finds nothing and the shared base is never extracted.
+    #
+    # A frequency threshold is the honest rule: a path that most setups need is
+    # worth publishing once, and subtracting it from the ones that do not have it
+    # is a no-op anyway.
+    n = len(clos)
+    threshold = max(2, int(n * 0.5))
+    counts = {}
+    for c in clos.values():
+        for p in c:
+            counts[p] = counts.get(p, 0) + 1
+    base = {p for p, k in counts.items() if k >= threshold}
     print()
-    print("base: %d path(s) present in every closure" % len(base))
-    for p in sorted(base):
-        print("   ", p.split("-", 1)[-1])
+    print("base: %d path(s) shared by >=%d of %d setups" % (len(base), threshold, n))
+    for p in sorted(base, key=lambda x: -counts[x])[:8]:
+        print("   %3d/%d setups  %s" % (counts[p], n, p.split("-", 1)[-1]))
 
-    # deps[X] = setups whose closure is a STRICT subset of X's.
+    # deps[X] = setups X genuinely needs at RUN time.
+    #
+    # Closure inclusion alone is not that. `perl` is in erlang's and dotnet's
+    # closures because they were BUILT with it, so a subset test reports them as
+    # depending on perl - which would make `install.sh dotnet` download a Perl
+    # nobody runs.
+    #
+    # `nix why-depends` answers the real question: is the other setup's output
+    # reachable from THIS setup's output? Build-only dependencies are not, because
+    # nothing in the output references them.
     deps = {}
     for name, c in clos.items():
         sub = [o for o, oc in clos.items() if o != name and oc < c]
@@ -101,7 +148,16 @@ def main(argv):
         # listing both would install the same tree twice.
         maximal = [x for x in sub
                    if not any(x != y and clos[x] < clos[y] for y in sub)]
-        deps[name] = sorted(maximal)
+        # Now keep only those actually reachable from the output.
+        runtime = []
+        for cand in maximal:
+            r = run([NIX, "why-depends", "--quiet",
+                     outs[name], outs[cand]], timeout=300)
+            # Exit 0 means a dependency path exists; non-zero means the output
+            # does not reference it at all.
+            if r.returncode == 0:
+                runtime.append(cand)
+        deps[name] = sorted(runtime)
 
     own = {}
     for name, c in clos.items():
