@@ -1,0 +1,118 @@
+name: audit-bins
+
+# Does every published setup actually contain executable programs?
+#
+# Two setups already shipped a tarball whose default output was documentation
+# (jq, shellcheck resolve to their `man` output). The build only failed because
+# build-nixpkg.sh refuses a tree with no bin/ - but that same rule cannot tell
+# "this setup has the right binaries" from "this setup has SOME binaries".
+#
+# This checks what each tarball really puts on PATH, so a setup that ships a
+# library, or a wrapper that needs another tool, is visible instead of implied.
+#
+# It reads the PUBLISHED artifacts, so it reflects what a consumer gets.
+on:
+  workflow_dispatch:
+    inputs:
+      download:
+        description: 'download and inspect tarballs (slower, complete)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: install zstd
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+
+      - name: audit every setup
+        run: |
+          set -uo pipefail
+          python3 - <<'PY' > /tmp/setups.txt
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print(e["dir"])
+          PY
+
+          printf '%-26s %6s %6s  %s\n' SETUP BINS PATHS "PROGRAMS (first few)"
+          printf '%-26s %6s %6s  %s\n' "--------------------------" "----" "-----" "-----------------------"
+
+          # Attribute names contain dots, so they are read from the flake with a
+          # jq-style accessor rather than spliced into an installable path.
+          inspect() {
+            local d="$1" out nb names np
+            # `.#"node-26.12.0"` - the quotes are part of the attribute path, so
+            # nix does not read the dots as separators. Resolving to outPath is
+            # free (input-addressed); only `nix build` downloads content.
+            out=$(nix eval --raw ".#\"$d\".outPath" 2>/dev/null) || out=""
+            if [ -z "$out" ]; then
+              printf '%-26s %6s %6s  %s\n' "$d" "-" "-" "cannot resolve"
+              return
+            fi
+            nix build --no-link ".#\"$d\"" >/dev/null 2>&1 || true
+            nb=0; names=""
+            if [ -d "$out/bin" ]; then
+              nb=$(ls "$out/bin" 2>/dev/null | wc -l)
+              names=$(ls "$out/bin" 2>/dev/null | head -4 | tr '\n' ' ')
+            else
+              names="(no bin/)"
+            fi
+            [ -d "$out/sbin" ] && nb=$((nb + $(ls "$out/sbin" 2>/dev/null | wc -l)))
+            np=$(nix path-info -r "$out" 2>/dev/null | wc -l)
+            printf '%-26s %6s %6s  %s\n' "$d" "$nb" "$np" "$names"
+          }
+
+          for d in $(cat /tmp/setups.txt); do
+            inspect "$d"
+          done
+
+      - name: can the key CLIs actually run?
+        run: |
+          set -uo pipefail
+          # Every entry here is a tool whose whole purpose is a command, so a
+          # missing or non-functional binary is a defect rather than a design
+          # choice. `conda` in particular: nixpkgs' conda is a Python package set,
+          # and whether it exposes a working `conda` launcher is exactly the
+          # question that prompted this audit.
+          check() {
+            local name="$1" exe="$2" args="${3:---version}"
+            local out
+            out=$(nix eval --raw ".#\"$name\".outPath" 2>/dev/null) || {
+              printf '  %-24s %s\n' "$name" "cannot resolve"; return; }
+            nix build --no-link ".#\"$name\"" >/dev/null 2>&1 || true
+            if [ ! -e "$out/bin/$exe" ]; then
+              printf '  %-24s %s\n' "$name" "NO $exe in bin/"
+              return
+            fi
+            line=$("$out/bin/$exe" $args 2>&1 | head -1)
+            printf '  %-24s %s\n' "$name" "${line:0:80}"
+          }
+
+          echo "== conda =="
+          check conda-26.7.1-1 conda
+          echo
+          echo "== others whose CLI is the point =="
+          check bazel-7.6.0 bazel
+          check helm-4.3.1 helm
+          check kubectl-1.37.1 kubectl
+          check terraform-1.16.5 terraform
+          check composer-2.10.3 composer
+          check pip-26.1.2 pip
+          check maven-3.9.16 mvn
+          check sbt-2.0.10 sbt
+          check julia-1.13.2 julia
+          check dotnet-10.0.401 dotnet
