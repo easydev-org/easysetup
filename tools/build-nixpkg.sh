@@ -158,19 +158,19 @@ ASSET="$OUT/$DIR-debian-trixie-amd64.tar.zst"
 # copy 32s - so 97% of the job was the compressor. zstd with -T0 uses every core
 # and lands within a few percent of xz on ratio.
 #
-# Level 9, not 19. The ratio curve flattens hard: on a closure like this, -19 is
-# roughly 20% smaller than -3 but an order of magnitude slower, which on the
-# 5.8 GB swift tree means 15+ minutes for a saving of ~50 MB. Level 9 sits at the
-# knee - close to -19 in size, minutes not tens of minutes in time.
+# Level 3, the zstd default. Higher levels cost far more time than they save
+# space on a tree this size: -19 is about 20% smaller than -3 and an order of
+# magnitude slower, which on the 5.8 GB swift closure meant 15+ minutes for
+# roughly 50 MB. Speed is the whole reason for choosing zstd, so the default
+# level is the right one.
 #
-# No --long window: with a high level it only helps by a few percent, and it makes
-# the frame require a matching decompressor setting. Plain -9 decompresses with
-# any zstd.
+# No --long window either: it makes the frame require a matching decompressor
+# flag, for a few percent at most.
 #
 # tar piped into zstd rather than `tar --zstd`: the pipe avoids staging a second
 # multi-GB file on disk, which on the swift closure would be 5.8 GB written twice.
 tar -cf - -C "$STAGE" . \
-  | zstd -9 -T0 --quiet --force -o "$ASSET"
+  | zstd -3 -T0 --quiet --force -o "$ASSET"
 # Nix store paths are read-only (mode 0555 on directories), so a plain `rm -rf`
 # fails on the copy with "Permission denied". The copy kept those modes, which is
 # correct for the artifact - a consumer unpacking it gets the same protections -
