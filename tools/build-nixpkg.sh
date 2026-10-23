@@ -86,15 +86,23 @@ fi
 # attribute path separator: `.#jq-1.8.2` looks for jq-1."8"."2". Every setup name
 # here has that shape, so this quoting is what makes the build resolve at all.
 #
-# `head -1`, not `tail -1`: a multi-output package prints one line per output, and
-# the last is not the one the setup asked for. jq's setup is `pkgs.jq.bin`, and
-# taking the last line gave the `man` output instead - a tarball of documentation
-# with no binary, which is the exact failure this project has hit twice before.
-if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log | head -1); then
+# A multi-output package prints one line per output, in no useful order: `head -1`
+# and `tail -1` both landed on `-man` for different setups. Neither end is the
+# answer, so the outputs are collected and the one that actually holds the
+# executables is chosen. A setup that overrides its output (`pkgs.jq.bin`) has
+# exactly one line, so this picks it trivially.
+OUTLIST=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log)
+if [ $? -ne 0 ] || [ -z "$OUTLIST" ]; then
   echo "nixpkg: nix build failed" >&2
   tail -40 /tmp/nixpkg-err.log >&2
   exit 1
 fi
+OUTPATH=""
+for cand in $OUTLIST; do
+  if [ -d "$cand/bin" ] || [ -d "$cand/sbin" ]; then OUTPATH="$cand"; break; fi
+done
+# No output has bin/: fall back to the first, so the error names a real path.
+[ -n "$OUTPATH" ] || OUTPATH=$(printf '%s\n' "$OUTLIST" | head -1)
 if [ -z "$OUTPATH" ] || [ ! -e "$OUTPATH" ]; then
   echo "nixpkg: nix build produced no output path" >&2
   tail -40 /tmp/nixpkg-err.log >&2

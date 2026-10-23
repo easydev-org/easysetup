@@ -92,19 +92,23 @@ def out_path(attr):
     path or nix reads the dots as separators.
     """
     name = attr.rsplit("#", 1)[-1]
-    r = run([NIX, "build", "--no-link", "--print-out-paths", '.#%s' % _quoted(name)],
-            timeout=1800)
-    if r.returncode == 0:
+    for ref in ('.#%s' % _quoted(name), attr):
+        r = run([NIX, "build", "--no-link", "--print-out-paths", ref],
+                timeout=1800)
+        if r.returncode != 0:
+            continue
         lines = [x for x in r.stdout.splitlines() if x.strip()]
-        if lines:
-            return lines[0]
-    # Fall back to the plain nixpkgs reference for anything the flake does not
-    # expose. Better a partial answer than a missing setup.
-    r = run([NIX, "build", "--no-link", "--print-out-paths", attr], timeout=1800)
-    if r.returncode == 0:
-        lines = [x for x in r.stdout.splitlines() if x.strip()]
-        if lines:
-            return lines[0]
+        if not lines:
+            continue
+        # A multi-output package lists one line per output and the order is not
+        # meaningful - both head and tail landed on `-man` for different setups,
+        # recording a documentation output as if it were the program. Prefer the
+        # output that actually holds executables.
+        for p in lines:
+            if os.path.isdir(os.path.join(p, "bin")) or \
+               os.path.isdir(os.path.join(p, "sbin")):
+                return p
+        return lines[0]
     return None
 
 
