@@ -52,12 +52,19 @@ jobs:
 
           miss=0
           while read -r d; do
-            out=$(nix eval --raw ".#\"$d\".outPath" 2>/dev/null) || out=""
-            if [ -z "$out" ]; then
-              printf '%-24s %5s %6s  %s\n' "$d" "-" "-" "CANNOT RESOLVE"
+            # Use `nix build --print-out-paths`, NOT `.outPath`.
+            #
+            # For most setups the two agree, but crystal's default output is a
+            # name-only path that does not exist while its real output is
+            # `-bin`. Reading `.outPath` therefore reported crystal as having 0
+            # binaries and 0 store paths, when its published tarball is 417 MB of
+            # real content. Asking what the build actually produces avoids that
+            # class of mistake entirely.
+            out=$(nix build --no-link --print-out-paths ".#\"$d\"" 2>/dev/null | tail -1) || out=""
+            if [ -z "$out" ] || [ ! -e "$out" ]; then
+              printf '%-24s %5s %6s  %s\n' "$d" "-" "-" "BUILD PRODUCED NOTHING"
               miss=$((miss+1)); continue
             fi
-            nix build --no-link ".#\"$d\"" >/dev/null 2>&1 || true
 
             nb=0; names=""
             for sub in bin sbin; do
@@ -91,9 +98,11 @@ jobs:
           run_one() {
             local d="$1" exe="$2"; shift 2
             local out line rc
-            out=$(nix eval --raw ".#\"$d\".outPath" 2>/dev/null) || {
-              printf '  %-22s %s\n' "$d" "cannot resolve"; return; }
-            nix build --no-link ".#\"$d\"" >/dev/null 2>&1 || true
+            # Same reason as the table: `.outPath` is not always where the build
+            # puts things (see crystal).
+            out=$(nix build --no-link --print-out-paths ".#\"$d\"" 2>/dev/null | tail -1) || {
+              printf '  %-22s %s\n' "$d" "build failed"; return; }
+            [ -n "$out" ] || { printf '  %-22s %s\n' "$d" "build produced nothing"; return; }
             local found=""
             for sub in bin sbin; do
               [ -x "$out/$sub/$exe" ] && found="$out/$sub/$exe" && break

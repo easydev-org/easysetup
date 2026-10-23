@@ -74,26 +74,38 @@ def run(args, timeout=300):
 
 
 def out_path(attr):
-    """Resolve a setup's store path without building it.
+    """Resolve a setup's REAL store path.
 
-    The attribute is resolved through OUR flake, not through `nixpkgs#...`.
-    That distinction is not cosmetic: `nixpkgs#...` evaluates the registry's
-    nixpkgs with its own config, where `allowUnfree` is false. terraform is BUSL,
-    so `nix eval nixpkgs#terraform.outPath` fails and the setup vanished from the
-    graph. flake.nix sets allowUnfree, so `.#<name>` resolves it.
+    Two decisions here, both from observed failures:
 
-    The setup name contains dots (jq-1.8.2), so it has to be quoted inside the
-    attribute path or nix reads the dots as separators.
+    Resolved through OUR flake, not `nixpkgs#...`: the registry's nixpkgs has
+    allowUnfree false, so anything unfree resolved to nothing and vanished from
+    the graph. flake.nix sets allowUnfree.
+
+    Read with `nix build --print-out-paths`, not `.outPath`: for a few packages
+    the two disagree, and `.outPath` gives a path that is not valid. crystal is
+    the case in point - `.outPath` yields `.../crystal-1.21.1` which does not
+    exist, while the build produces `.../crystal-1.21.1-bin`. Asking the build
+    what it makes is the only form that is true for every setup.
+
+    The setup name contains dots (jq-1.8.2), so it is quoted inside the attribute
+    path or nix reads the dots as separators.
     """
     name = attr.rsplit("#", 1)[-1]
-    r = run([NIX, "eval", "--raw", '.#%s.outPath' % _quoted(name)])
-    if r.returncode != 0 or not r.stdout.strip():
-        # Fall back to the plain nixpkgs reference, which works for anything the
-        # registry can evaluate - better a partial answer than none.
-        r = run([NIX, "eval", "--raw", attr + ".outPath"])
-        if r.returncode != 0 or not r.stdout.strip():
-            return None
-    return r.stdout.strip()
+    r = run([NIX, "build", "--no-link", "--print-out-paths", '.#%s' % _quoted(name)],
+            timeout=1800)
+    if r.returncode == 0:
+        lines = [x for x in r.stdout.splitlines() if x.strip()]
+        if lines:
+            return lines[-1]
+    # Fall back to the plain nixpkgs reference for anything the flake does not
+    # expose. Better a partial answer than a missing setup.
+    r = run([NIX, "build", "--no-link", "--print-out-paths", attr], timeout=1800)
+    if r.returncode == 0:
+        lines = [x for x in r.stdout.splitlines() if x.strip()]
+        if lines:
+            return lines[-1]
+    return None
 
 
 def _quoted(name):
