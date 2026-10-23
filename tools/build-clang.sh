@@ -1,5 +1,5 @@
 #!/bin/bash
-# build-llvm.sh <dir> <version> <outdir>
+# build-clang.sh <dir> <version> <outdir>
 #
 # clang/LLVM from the official linux release, PRUNED.
 #
@@ -31,14 +31,14 @@ ROOT="$STAGE/opt/setup/$DIR"
 mkdir -p "$ROOT/bin" "$ROOT/lib"
 
 URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/LLVM-${VERSION}-Linux-X64.tar.xz"
-echo "llvm: $DIR $VERSION <- $URL"
+echo "clang: $DIR $VERSION <- $URL"
 fetch "$URL" /tmp/llvm.tar.xz
 
 rm -rf /tmp/llvm-x && mkdir -p /tmp/llvm-x
 tar -xJf /tmp/llvm.tar.xz -C /tmp/llvm-x
 rm -f /tmp/llvm.tar.xz
 SRC=$(find /tmp/llvm-x -maxdepth 1 -mindepth 1 -type d | head -1)
-[ -n "$SRC" ] || { echo "llvm: unexpected tarball layout" >&2; exit 1; }
+[ -n "$SRC" ] || { echo "clang: unexpected tarball layout" >&2; exit 1; }
 
 # --- the tools a build calls, plus the CI conveniences ---------------------
 CORE="clang clang++ clang-23 clang-cpp clang-cl lld ld.lld lld-link wasm-ld \
@@ -84,7 +84,7 @@ fi
 cp -a "$SRC/lib/clang" "$ROOT/lib/"
 rm -rf /tmp/llvm-x
 
-echo "llvm: kept $(ls "$ROOT/bin" | wc -l) tool(s), tree is $(du -sh "$ROOT" | cut -f1)"
+echo "clang: kept $(ls "$ROOT/bin" | wc -l) tool(s), tree is $(du -sh "$ROOT" | cut -f1)"
 
 # --- prove it compiles and links, which is the whole point ----------------
 "$ROOT/bin/clang" --version | head -1
@@ -99,4 +99,4 @@ mkdir -p "$OUT"
 ASSET="$OUT/llvm-${VERSION}-debian-trixie-amd64.tar.xz"
 tar -cJf "$ASSET" -C "$STAGE" .
 rm -rf "$STAGE"
-echo "llvm: wrote $ASSET ($(du -h "$ASSET" | cut -f1))"
+echo "clang: wrote $ASSET ($(du -h "$ASSET" | cut -f1))"

@@ -452,25 +452,29 @@ setups:
     artifact: nim-2.2.12-debian-trixie-amd64.tar.xz
     sha256: "2474631b6615266d5d5ef96b510cce3e8a9527e05f9c3c65b993ae96ca0cc253"
 
-  # ---------------------------------------------------------------- llvm ---
-  # clang + lld + the llvm binutils, PRUNED from the official release.
+  # --------------------------------------------------------------- clang ---
+  # clang + lld + the llvm binutils, PRUNED from the official LLVM release.
+  #
+  # Named `clang` rather than `llvm` because that is what it actually is: the
+  # keep-list is the compiler and its linker/binutils. The LLVM libraries, the
+  # MLIR stack, flang and lldb are deliberately not in here.
   #
   # The full tarball is 1.9 GB compressed and 11.6 GB unpacked, and nearly all
   # of that is not a compiler: flang (437 MB), mlir-opt (423 MB),
   # mlir-rewrite (301 MB), bbc, llc, opt, a 267 MB liblldb, plus mlir's own LSP
   # servers. What a build invokes is clang, lld and the binutils-style tools,
-  # which build-llvm.sh keeps (23 tools, 783 MB unpacked, 141 MB packed).
+  # which build-clang.sh keeps (23 tools, 783 MB unpacked, 141 MB packed).
   #
   # C++ needs libstdc++'s HEADERS, not just its library - `#include <iostream>`
   # comes from /usr/include/c++/14 - which is why libstdc++-14-dev is here.
-  - tool: llvm
+  - tool: clang
     version: "23.1.4"
     # binutils supplies `ld`, which clang drives when not told -fuse-ld=lld; without
     # it every link fails with "posix_spawn failed". libstdc++-14-dev supplies
     # the C++ HEADERS (not just the .so) that #include <iostream> needs.
     apt_deps: [ca-certificates, curl, xz-utils, binutils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
-    artifact: llvm-23.1.4-debian-trixie-amd64.tar.xz
-    sha256: "f7bc645c26f9148410642f0c3cf87416111c7d38df94ec7b4fb9d0d8b62374c8"
+    artifact: clang-23.1.4-debian-trixie-amd64.tar.xz
+    sha256: ""
 
   # ----------------------------------------------------------------- nix ---
   # Single-user Nix: no daemon, no systemd, no root service. Everything lives

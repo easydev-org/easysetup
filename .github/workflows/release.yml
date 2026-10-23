@@ -329,7 +329,7 @@ jobs:
               # clang must not merely start: it has to compile and link, which
               # is what proves the pruned tree kept the right pieces and that
               # libstdc++-14-dev supplied the C++ headers.
-              llvm)
+              clang)
                 "$B/clang" --version | head -1
                 printf '#include <stdio.h>\nint main(void){printf("ok\\n");return 0;}\n' > /tmp/v.c
                 "$B/clang" -O1 /tmp/v.c -o /tmp/v-c && /tmp/v-c
