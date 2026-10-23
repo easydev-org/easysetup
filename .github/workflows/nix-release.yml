@@ -43,6 +43,24 @@ jobs:
           ONLY: ${{ inputs.only }}
         run: |
           set -euo pipefail
+          # setups/ must agree with matrix-nix.yml. It is derived from it, but the
+          # two drift whenever the manifest is edited without rerunning
+          # gen-setups.py - which is exactly how ccls and vscode-langservers kept
+          # building under their old, wrong version after the manifest was fixed.
+          python3 - <<'PY'
+          import pathlib, sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          want = {e["dir"] for e in matrixlib2.load("matrix-nix.yml")}
+          have = {p.stem for p in pathlib.Path("setups").glob("*.nix")}
+          if want != have:
+              for m in sorted(want - have):
+                  print("::error::setups/ is missing %s.nix - run tools/gen-setups.py" % m)
+              for m in sorted(have - want):
+                  print("::error::setups/%s.nix is stale - run tools/gen-setups.py" % m)
+              sys.exit(1)
+          print("%d setup files match the manifest" % len(want))
+          PY
           python3 - <<'PY' > /tmp/list.json
           import json, os, pathlib, sys
 
