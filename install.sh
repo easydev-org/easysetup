@@ -123,8 +123,28 @@ for id in $ALL; do
   # 4) unpack at / — the archive already carries opt/setup/<id>/.
   tar -xJf "$WORK/asset" -C /
   rm -f "$WORK/asset"
-  [ -d "/opt/setup/$id" ] || {
-    echo "install.sh: $artifact did not produce /opt/setup/$id" >&2; exit 1; }
+  # A setup comes in one of two layouts:
+  #
+  #   normal:  opt/setup/<id>/...          (everything the other build scripts make)
+  #   nixpkg:  nix/store/<hash>-<name>/... plus nix/setup-root-<dir> written by
+  #            build-nixpkg.sh. The closure must stay at /nix/store because every
+  #            binary in it has absolute /nix/store paths baked in; moving it
+  #            breaks PT_INTERP. So this layout is accepted as-is, and the
+  #            metadata file tells gen-env.sh where the binaries are. It is per
+  #            setup so several nix setups can coexist.
+  if [ -d "/opt/setup/$id" ]; then
+    :
+  elif [ -f "/nix/setup-root-$id" ]; then
+    echo "    nix closure unpacked at /nix/store (see /nix/setup-root-$id)"
+    # Keep a discoverable link so /opt/setup/<id> still means something, and so
+    # a second run recognises this setup as installed.
+    mkdir -p /opt/setup
+    rm -f "/opt/setup/$id"
+    ln -s "$(cut -d'|' -f1 "/nix/setup-root-$id")" "/opt/setup/$id"
+  else
+    echo "install.sh: $artifact produced neither /opt/setup/$id nor /nix/setup-root-$id" >&2
+    exit 1
+  fi
   # 4b) A few tools cannot live under /opt/setup at all and must be materialised
   #     at their compiled-in root. Nix is that case: every store path and profile
   #     link inside the tree points at /nix, so it only works there. The tarball
