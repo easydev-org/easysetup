@@ -24,6 +24,10 @@ set -euo pipefail
 OUT="${1:-${EASYSETUP_ENV:-/opt/setup/env.sh}}"
 REGISTRY="${EASYSETUP_ROOT:-/nix}"
 
+# env.sh still lives beside the old tree name. The directory is ours to create -
+# nothing else does, now that setups unpack into /nix/store.
+mkdir -p "$(dirname "$OUT")"
+
 # One setup-root file per installed setup: "<store-path>|<dirs>".
 setup_roots() {
   local f

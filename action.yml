@@ -73,6 +73,12 @@ runs:
 
     # Keyed on the setup list. The store is content-addressed, so a hit is
     # bit-for-bit what was published; a miss costs one download.
+    #
+    # What is cached is /nix - the store AND the setup-root-* registry files. That
+    # is deliberate: the registry is how the next step finds the binaries, so a
+    # cache that restored the store but not the registry would install nothing
+    # usable. It also means a cache hit and a fresh install take the same code
+    # path afterwards.
     - name: restore the nix store
       if: inputs.cache == 'true'
       uses: actions/cache@v4
