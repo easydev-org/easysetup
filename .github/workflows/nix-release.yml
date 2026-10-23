@@ -103,6 +103,9 @@ jobs:
       - name: build ${{ matrix.name }} with nix
         run: |
           set -euo pipefail
+          echo "::group::flake diagnostics"
+          bash diag.sh || true
+          echo "::endgroup::"
           # Report whether nix will DOWNLOAD or COMPILE, because that is the
           # property the design depends on. `grep -c` exits 1 when it counts
           # zero, which under `set -e` aborted this step before the build even
