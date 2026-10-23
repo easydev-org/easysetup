@@ -470,7 +470,7 @@ setups:
     # the C++ HEADERS (not just the .so) that #include <iostream> needs.
     apt_deps: [ca-certificates, curl, xz-utils, binutils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
     artifact: llvm-23.1.4-debian-trixie-amd64.tar.xz
-    sha256: ""
+    sha256: "f7bc645c26f9148410642f0c3cf87416111c7d38df94ec7b4fb9d0d8b62374c8"
 
   # ----------------------------------------------------------------- nix ---
   # Single-user Nix: no daemon, no systemd, no root service. Everything lives
