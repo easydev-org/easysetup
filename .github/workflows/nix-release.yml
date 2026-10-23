@@ -1,0 +1,118 @@
+name: nix-release
+
+# Build every setup with nix, ship each as a portable tarball.
+#
+# What changed from release.yml
+# -----------------------------
+# The old pipeline ran a hand-written tools/build-<tool>.sh per setup, installed
+# its apt_deps, then verified the result. Every one of those steps existed
+# because we were repacking an upstream binary and tracking its libraries
+# ourselves: php needed three CI rounds to get apt_deps right, and four tools hit
+# the same "wrapper bakes in the build prefix" bug.
+#
+# Now a setup is a nix expression. Nix resolves the closure, cache.nixos.org
+# supplies it prebuilt (measured: zero local builds for clang and swift), and the
+# exported closure runs in an empty chroot with no nix installed.
+#
+# Manual dispatch only, for the same reason as before: this repository is edited
+# through the contents API, which makes one commit per file, and a push trigger
+# would fan out a build per commit.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'build one setup only, e.g. "swift" (empty = all)'
+        required: false
+        default: ""
+
+permissions:
+  contents: write        # create releases, upload assets, commit matrix updates
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.matrix.outputs.list }}
+      only: ${{ steps.matrix.outputs.only }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build the matrix from setups/
+        id: matrix
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/list.json
+          import json, os, pathlib, sys
+
+          only = os.environ.get("ONLY", "").strip()
+          names = sorted(
+              p.stem for p in pathlib.Path("setups").glob("*.nix")
+          )
+          if only:
+              # Accept the short name or a name with a version suffix; either
+              # way it must match exactly one setup file.
+              if only in names:
+                  names = [only]
+              else:
+                  hits = [n for n in names if n.startswith(only)]
+                  if len(hits) != 1:
+                      sys.exit("only=%r matches %d setups" % (only, len(hits)))
+                  names = hits
+          print(json.dumps({"include": [{"name": n} for n in names]}))
+          PY
+          echo "list=$(cat /tmp/list.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
+          cat /tmp/list.json
+
+      - name: resolve the versions nix will actually give us
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+
+          # The manifest's version field is a human convenience; nix is the
+          # authority. This prints the drift so it can be fixed, rather than
+          # silently tagging a release with a version it does not contain.
+          m = pathlib.Path("matrix-nix.yml")
+          if not m.exists():
+              print("no matrix-nix.yml yet; nix will supply versions at build time")
+          PY
+
+  build:
+    needs: setup
+    if: needs.setup.outputs.list != ''
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            # The whole design depends on downloading rather than compiling. If
+            # this is ever false the build silently becomes a source build, so
+            # the log shows the substitution counts below.
+            substituters = https://cache.nixos.org
+
+      - name: build ${{ matrix.name }} with nix
+        run: |
+          set -euo pipefail
+          echo "::group::what nix will do"
+          nix build --dry-run ".#${{ matrix.name }}" 2>&1 | tail -5 || true
+          nix build --dry-run ".#${{ matrix.name }}" 2>&1 \
+            | grep -c 'will be built' | xargs -I{} echo "paths built locally: {}"
+          echo "::endgroup::"
+          bash tools/build-nixpkg.sh "${{ matrix.name }}" out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-${{ matrix.name }}
+          path: out/*.tar.xz
+          retention-days: 1
+          if-no-files-found: error
