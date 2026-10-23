@@ -194,8 +194,14 @@ def main(argv):
 
     for name, c in clos.items():
         if name == "base":
-            # base ships the whole shared set; it has nothing to subtract from.
-            own[name] = sorted(set(base) & c)
+            # base ships the shared set ITSELF, not "what its own attribute adds".
+            #
+            # The base entry's attribute is glibc, whose closure is 4 paths - but
+            # the shared set spans 14 paths drawn from many packages (bash, gcc,
+            # xz, acl...). Intersecting the two gives zero, so the base tarball
+            # would be empty and every setup that subtracts those paths would be
+            # left with holes. The shared set is the payload.
+            own[name] = sorted(base)
             continue
         cut = (set(base) & c)
         for d in deps[name]:
@@ -219,9 +225,9 @@ def main(argv):
     for name, c in clos.items():
         if name == "base":
             # base ships the shared set verbatim, and nothing else is subtracted.
-            if set(own[name]) != (set(base) & c):
+            if set(own[name]) != set(base):
                 print("  BROKEN base: ships %d of %d shared paths"
-                      % (len(own[name]), len(set(base) & c)))
+                      % (len(own[name]), len(set(base))))
                 bad += 1
             continue
         rebuilt = set(base) & c          # only the base paths this setup has

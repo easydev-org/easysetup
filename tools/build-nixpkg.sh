@@ -105,12 +105,20 @@ echo "nixpkg: built $REAL"
 # Which subdirectories hold executables. Derive it rather than assume `bin`:
 # some packages ship sbin, and a hard-coded guess would silently produce a
 # tarball with nothing on PATH.
-bins=""
-for d in bin sbin; do
-  [ -d "$REAL/$d" ] && bins="$bins$d "
-done
-bins=$(echo "$bins" | sed 's/ *$//')
-[ -n "$bins" ] || { echo "nixpkg: $REAL has no bin/ or sbin/" >&2; exit 1; }
+#
+# `base` is the exception: it is a library set, not a tool, so it has no bin and
+# putting anything on PATH would be meaningless. Its registry entry says "bin"
+# anyway so the record has a consistent shape; install.sh ignores it for base.
+if [ "$DIR" = "base" ] || [ "${DIR%%-[0-9]*}" = "base" ]; then
+  bins="bin"
+else
+  bins=""
+  for d in bin sbin; do
+    [ -d "$REAL/$d" ] && bins="$bins$d "
+  done
+  bins=$(echo "$bins" | sed 's/ *$//')
+  [ -n "$bins" ] || { echo "nixpkg: $REAL has no bin/ or sbin/" >&2; exit 1; }
+fi
 
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/nix/store"
@@ -155,9 +163,37 @@ if [ -z "$paths" ]; then
 fi
 
 echo "nixpkg: packaging $mode"
+
+# Ensure every path in the list exists locally. For a normal setup the closure is
+# already present because `nix build` realised it. `base` is different: its paths
+# come from many packages (bash, gcc, xz, acl...) that no single build pulls in,
+# so they have to be fetched explicitly or the copy below fails on a missing path.
+missing=""
+for p in $paths; do
+  [ -e "$p" ] || missing="$missing $p"
+done
+if [ -n "$missing" ]; then
+  echo "nixpkg: fetching $(echo $missing | wc -w) path(s) not yet in the store"
+  # `nix-store --realise` takes store paths directly and substitutes them from
+  # the binary cache; no flake evaluation is involved. nix-store ships beside nix
+  # in the same profile.
+  NIXSTORE="$(dirname "$NIX")/nix-store"
+  if [ ! -x "$NIXSTORE" ]; then
+    if ! "$NIX" store realise $missing >/dev/null 2>/tmp/nixpkg-fetch.log; then
+      echo "nixpkg: could not fetch some paths" >&2
+      tail -10 /tmp/nixpkg-fetch.log >&2
+      exit 1
+    fi
+  elif ! "$NIXSTORE" --realise $missing >/dev/null 2>/tmp/nixpkg-fetch.log; then
+    echo "nixpkg: could not fetch some paths" >&2
+    tail -10 /tmp/nixpkg-fetch.log >&2
+    exit 1
+  fi
+fi
+
 count=0
 for p in $paths; do
-  [ -e "$p" ] || { echo "nixpkg: missing $p - was it built?" >&2; exit 1; }
+  [ -e "$p" ] || { echo "nixpkg: still missing $p" >&2; exit 1; }
   cp -a "$p" "$STAGE/nix/store/" 2>/dev/null || true
   count=$((count + 1))
 done
