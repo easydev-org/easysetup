@@ -27,9 +27,16 @@ jobs:
       - name: probe attributes
         run: |
           set -uo pipefail
+          # Attribute names here contain DOTS (php85Packages.composer). nix reads
+          # an unquoted dot as an attribute path separator, and wrapping the whole
+          # name in quotes inside "nixpkgs#..." does not help - the shell hands
+          # nix one string and it still splits on the dot. The reliable form is
+          # `--apply`, which passes the value through a function where the dotted
+          # name is a quoted attribute path.
           probe() {
             local attr="$1" v
-            v=$(nix eval --raw "nixpkgs#\"$attr\".version" 2>/dev/null) || v=""
+            v=$(nix eval --raw "nixpkgs#$attr" --apply 'x: x.version' 2>/dev/null) \
+              || v=""
             if [ -n "$v" ]; then
               printf '  %-34s %s\n' "$attr" "$v"
             else
