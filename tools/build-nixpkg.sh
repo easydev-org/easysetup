@@ -115,14 +115,49 @@ bins=$(echo "$bins" | sed 's/ *$//')
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/nix/store"
 
-echo "nixpkg: copying the closure"
+# What goes in the tarball.
+#
+# By default that is the whole closure, which makes the tarball self-contained.
+# When closures.json lists this setup, the paths already provided by its deps and
+# by the shared base are LEFT OUT - install.sh fetches those once, and pouring
+# them into every tarball is what made `php + composer` download php twice.
+#
+# Only the listed paths are copied, never the whole closure: a delta tarball that
+# quietly included everything would defeat the point, and a full tarball that
+# quietly dropped something would be broken. Both directions are wrong, so the
+# list is computed once (tools/compute-deps.py) and obeyed exactly here.
+CLOSURES="$(dirname "$0")/../closures.json"
+paths=""
+mode="full closure"
+if [ -f "$CLOSURES" ] && command -v python3 >/dev/null 2>&1; then
+  paths=$(python3 - "$CLOSURES" "$DIR" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+entry = doc.get("setups", {}).get(sys.argv[2])
+if not entry:
+    sys.exit(0)                      # unknown here: fall back to the full closure
+for p in entry.get("own", []):
+    print(p)
+PY
+)
+  if [ -n "$paths" ]; then
+    mode="delta ($(echo "$paths" | wc -l) of the closure; the rest comes from deps+base)"
+  fi
+fi
+
+if [ -z "$paths" ]; then
+  paths=$("$NIX" path-info -r "$REAL" 2>/dev/null)
+fi
+
+echo "nixpkg: packaging $mode"
 count=0
-for p in $("$NIX" path-info -r "$REAL" 2>/dev/null); do
+for p in $paths; do
+  [ -e "$p" ] || { echo "nixpkg: missing $p - was it built?" >&2; exit 1; }
   cp -a "$p" "$STAGE/nix/store/" 2>/dev/null || true
   count=$((count + 1))
 done
-[ "$count" -gt 0 ] || { echo "nixpkg: empty closure" >&2; exit 1; }
-echo "nixpkg: $count store path(s)"
+[ "$count" -gt 0 ] || { echo "nixpkg: nothing to package" >&2; exit 1; }
+echo "nixpkg: $count store path(s) in the tarball"
 
 # nix/var is this machine's database and gc roots. It is not part of a package,
 # and shipping it would let the consumer's nix believe things about paths it

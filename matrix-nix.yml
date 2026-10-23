@@ -53,6 +53,34 @@ setups:
   - { tool: node,      attr: "nixpkgs#nodejs_26", version: "26.12.0" }
   - { tool: opam,      attr: "nixpkgs#opam", version: "2.6.1" }
   - { tool: perl,      attr: "nixpkgs#perl", version: "5.42.3" }
+  # ---- python's package set ------------------------------------------------
+  # Separate setups because each is a separate program with its own closure.
+  # compute-deps.py derives that pip's closure contains python315's, so pip's
+  # tarball carries only the 2 paths python does not already provide.
+  - { tool: pip,        attr: "nixpkgs#python315Packages.pip", version: "26.1.2" }
+  - { tool: virtualenv, attr: "nixpkgs#python315Packages.virtualenv", version: "21.6.1" }
+  - { tool: black,      attr: "nixpkgs#python315Packages.black", version: "26.5.1" }
+  - { tool: ruff,       attr: "nixpkgs#python315Packages.ruff", version: "0.17.1" }
+  - { tool: mypy,       attr: "nixpkgs#python315Packages.mypy", version: "2.1.0" }
+  - { tool: pytest,     attr: "nixpkgs#python315Packages.pytest", version: "9.1.1" }
+
+  # ---- php's package set --------------------------------------------------
+  - { tool: composer,   attr: "nixpkgs#php85Packages.composer", version: "2.10.3" }
+  - { tool: php-cs-fixer, attr: "nixpkgs#php85Packages.php-cs-fixer", version: "3.95.1" }
+  - { tool: psalm,      attr: "nixpkgs#php85Packages.psalm", version: "6.18.0" }
+  - { tool: phpmd,      attr: "nixpkgs#php85Packages.phpmd", version: "2.15.0" }
+  - { tool: phing,      attr: "nixpkgs#php85Packages.phing", version: "3.1.2" }
+  - { tool: box,        attr: "nixpkgs#php85Packages.box", version: "4.6.6" }
+
+  # ---- CI tooling ---------------------------------------------------------
+  # jenkins ships jenkins-cli, which talks to a remote Jenkins; the war is part
+  # of the same output, hence the size.
+  - { tool: jenkins,    attr: "nixpkgs#jenkins", version: "2.580.1" }
+  - { tool: kubectl,    attr: "nixpkgs#kubectl", version: "1.37.1" }
+  - { tool: terraform,  attr: "nixpkgs#terraform", version: "1.16.5" }
+  - { tool: shellcheck, attr: "nixpkgs#shellcheck", version: "0.11.0" }
+  - { tool: ripgrep,    attr: "nixpkgs#ripgrep", version: "15.2.0" }
+  - { tool: fd,         attr: "nixpkgs#fd", version: "10.5.0" }
   - { tool: php,       attr: "nixpkgs#php85", version: "8.5.11" }
   - { tool: protobuf,  attr: "nixpkgs#protobuf", version: "36.2" }
   - { tool: python,    attr: "nixpkgs#python315", version: "3.15.0" }

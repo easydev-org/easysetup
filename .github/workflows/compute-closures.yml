@@ -1,0 +1,79 @@
+name: compute-closures
+
+# Regenerate closures.json from the manifest and the nix closures.
+#
+# This is the step that makes delta packaging possible: it answers, for the whole
+# manifest, which store paths each setup can leave out because a dependency or the
+# shared base already provides them.
+#
+# It costs about a minute and downloads no package content - `nix eval .outPath`
+# resolves paths from the derivations, and `path-info --store cache.nixos.org`
+# walks closures from .narinfo metadata only.
+#
+# Run this after adding or removing a setup, then rebuild the affected ones.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'commit the result back to main'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org
+
+      - name: compute closures.json
+        run: |
+          set -euo pipefail
+          python3 tools/compute-deps.py
+
+      - name: show the result
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          d = json.load(open("closures.json"))
+          print("== base ==")
+          for p in d["base"]:
+              print("  ", p.split("-", 1)[-1])
+          print()
+          print("== setups that can drop paths ==")
+          for name, e in sorted(d["setups"].items()):
+              kept, total = len(e["own"]), e["closure_size"]
+              if kept < total:
+                  print("  %-24s %4d/%4d kept  deps=%s"
+                        % (name, kept, total, e["deps"] or "-"))
+          PY
+
+      - name: commit
+        if: inputs.commit
+        run: |
+          set -euo pipefail
+          git config user.name  "easysetup"
+          git config user.email "easysetup@easydev.local"
+          git add closures.json
+          if git diff --cached --quiet; then
+            echo "closures.json unchanged"
+            exit 0
+          fi
+          git commit -F - <<'MSG'
+          chore: recompute closures.json
+
+          Derived from the nix closures by tools/compute-deps.py: the shared base,
+          each setup's derived dependencies, and the paths left to package after
+          both are subtracted.
+          MSG
+          git push

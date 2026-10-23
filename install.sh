@@ -45,8 +45,43 @@ curl -fsSL --retry 3 -o "$WORK/matrix-nix.yml" "$RAW/matrix-nix.yml" || {
   echo "install.sh: cannot read the manifest" >&2; exit 1; }
 curl -fsSL --retry 3 -o "$WORK/matrixlib2.py" "$RAW/matrixlib2.py" || {
   echo "install.sh: cannot read matrixlib2.py" >&2; exit 1; }
+# closures.json is generated at build time from nix closures. It is what makes a
+# delta tarball usable: it says which setups this one relies on, so they can be
+# fetched first. Without it a delta tarball would unpack into a tree whose store
+# paths are missing, and the failure would appear when the tool is run.
+curl -fsSL --retry 3 -o "$WORK/closures.json" "$RAW/closures.json" || {
+  echo "install.sh: cannot read closures.json" >&2; exit 1; }
 
 mlib() { ( cd "$WORK" && python3 matrixlib2.py "$@" ); }
+
+# Resolve one setup directory to its full install order: dependencies first, then
+# itself. The dependency edges are derived from nix closures by
+# tools/compute-deps.py, so this walks a graph nix proved rather than one anybody
+# asserted.
+install_order() {
+  python3 - "$WORK/closures.json" "$1" <<'PY'
+import json, sys
+
+doc = json.load(open(sys.argv[1]))
+want = sys.argv[2]
+setups = doc.get("setups", {})
+
+order, seen = [], set()
+
+
+def visit(name):
+    if name in seen:
+        return
+    seen.add(name)
+    for d in setups.get(name, {}).get("deps", []):
+        visit(d)
+    order.append(name)
+
+
+visit(want)
+print(" ".join(order))
+PY
+}
 
 if [ "$#" -eq 0 ]; then
   echo "install.sh: name at least one setup; 'install.sh --list' shows them" >&2
@@ -61,11 +96,23 @@ fi
 installed=""
 
 for name in "$@"; do
-  id=$(mlib resolve "$name") || {
+  wanted=$(mlib resolve "$name") || {
     echo "install.sh: cannot resolve '$name'" >&2
     echo "            available: $(mlib list | tr '\n' ' ')" >&2
     exit 2
   }
+
+  # Install dependencies first. The order comes from closures.json, which
+  # tools/compute-deps.py derived from the closures themselves; a delta tarball
+  # holds only the paths its deps do not already provide, so unpacking it before
+  # its dep would leave store paths missing.
+  order=$(install_order "$wanted")
+  [ -n "$order" ] || order="$wanted"
+
+  for id in $order; do
+  if [ "$id" != "$wanted" ]; then
+    echo "--> $id (required by $wanted)"
+  fi
   artifact=$(mlib get "$id" artifact)
   tool=$(mlib get "$id" tool)
   version=$(mlib get "$id" version)
@@ -110,6 +157,7 @@ for name in "$@"; do
     exit 1; }
   echo "    unpacked $(cut -d'|' -f1 "/nix/setup-root-$id")"
   installed="$installed $id"
+  done
 done
 
 # Regenerate env.sh from EVERYTHING present, not just this run: install.sh is

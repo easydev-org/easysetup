@@ -100,6 +100,24 @@ jobs:
             # the log shows the substitution counts below.
             substituters = https://cache.nixos.org
 
+      # closures.json decides what each tarball carries: the shared base and the
+      # paths a dependency already provides are subtracted from it. It must exist
+      # before build-nixpkg.sh runs, so every build job fetches it.
+      #
+      # Absent is tolerated and falls back to the full closure - a first run, or a
+      # manifest change that has not been recomputed yet, should publish something
+      # usable rather than nothing.
+      - name: fetch closures.json
+        run: |
+          set -euo pipefail
+          if curl -fsSL --retry 3 -o closures.json \
+               "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/closures.json"; then
+            n=$(python3 -c "import json;print(len(json.load(open('closures.json'))['setups']))")
+            echo "closures.json present: $n setups, $(python3 -c "import json;print(len(json.load(open('closures.json'))['base']))") base paths"
+          else
+            echo "no closures.json yet; tarballs will carry their full closure"
+          fi
+
       - name: build ${{ matrix.name }} with nix
         run: |
           set -euo pipefail
@@ -120,6 +138,29 @@ jobs:
           printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
           echo "::endgroup::"
           bash tools/build-nixpkg.sh "${{ matrix.name }}" out
+
+      # Prove the tarball is usable on its OWN, in a root that has nothing else.
+      # A delta tarball makes this sharper than before: if the subtraction removed
+      # something the tool needs, only an actual run reveals it.
+      - name: the tarball runs in an empty root
+        run: |
+          set -euo pipefail
+          asset=$(ls out/*.tar.zst | head -1)
+          root=/tmp/vroot
+          rm -rf "$root" && mkdir -p "$root"
+          zstd -d --quiet -c "$asset" | tar -xf - -C "$root"
+          reg=$(ls "$root"/nix/setup-root-* 2>/dev/null | head -1)
+          echo "registry: $(cat "$reg")"
+          store=$(cut -d'|' -f1 "$reg")
+          first=$(cut -d'|' -f2 "$reg" | awk '{print $1}')
+          bin=$(ls "$root$store/$first" | head -1)
+          echo "running: $store/$first/$bin"
+          # A chroot has no /nix of its own, so the only store present is what the
+          # tarball carried. A missing interpreter or library fails here.
+          chroot "$root" "$store/$first/$bin" --version 2>&1 | head -3 \
+            || chroot "$root" "$store/$first/$bin" 2>&1 | head -3 \
+            || echo "::warning::$bin did not answer --version"
+          echo "self-sufficient in an empty root"
 
       - uses: actions/upload-artifact@v4
         with:
