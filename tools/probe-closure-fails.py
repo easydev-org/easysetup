@@ -46,6 +46,16 @@ def main(argv):
             print("%-24s CACHE MISS      %s" % (e["dir"], p))
             for l in (c.stderr or "").strip().splitlines()[-2:]:
                 print("      ", l[:150])
+            # Then can it even be built here? If not, the setup cannot be
+            # packaged at all and belongs out of the manifest rather than being
+            # skipped quietly on every run.
+            b = run([NIX, "build", "--no-link", p], timeout=1800)
+            if b.returncode == 0:
+                print("         builds locally: yes")
+            else:
+                print("         builds locally: NO")
+                for l in (b.stderr or "").strip().splitlines()[-4:]:
+                    print("           ", l[:150])
     print("done")
 
 
