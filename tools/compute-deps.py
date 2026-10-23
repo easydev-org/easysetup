@@ -181,9 +181,15 @@ def main(argv):
     # `base` is special: deps lists it, but it is not in clos under that name -
     # clos["base"] would be glibc's FULL closure (build deps included), which is
     # not what the base setup ships. The shared set is in `base`.
-    def dep_paths(name):
+    #
+    # It is also intersected with the setup's own closure: the base set was chosen
+    # by frequency, so a given setup may not contain every path in it (rust and
+    # clang carry their own libc). Subtracting only what is actually present keeps
+    # `base + deps + own` equal to the original closure - which is what the
+    # assertion below checks, and what install.sh depends on.
+    def dep_paths(name, own_closure):
         if name == "base":
-            return set(base)
+            return set(base) & own_closure
         return clos[name]
 
     for name, c in clos.items():
@@ -193,14 +199,15 @@ def main(argv):
             continue
         cut = (set(base) & c)
         for d in deps[name]:
-            cut |= dep_paths(d)
+            cut |= dep_paths(d, c)
         own[name] = sorted(c - cut)
 
     print()
     print("dependency edges (derived, not declared):")
     for name in sorted(deps):
-        if deps[name]:
-            print("  %-22s needs %s" % (name, ", ".join(deps[name])))
+        shown = [d for d in deps[name] if d != "base"]
+        if shown:
+            print("  %-22s needs %s (+base)" % (name, ", ".join(shown)))
 
     print()
     print("packaging sizes (paths kept / total):")
@@ -210,9 +217,16 @@ def main(argv):
     # Sanity: base + deps + own must rebuild the original closure exactly.
     bad = 0
     for name, c in clos.items():
+        if name == "base":
+            # base ships the shared set verbatim, and nothing else is subtracted.
+            if set(own[name]) != (set(base) & c):
+                print("  BROKEN base: ships %d of %d shared paths"
+                      % (len(own[name]), len(set(base) & c)))
+                bad += 1
+            continue
         rebuilt = set(base) & c          # only the base paths this setup has
         for d in deps[name]:
-            rebuilt |= dep_paths(d)
+            rebuilt |= dep_paths(d, c)
         rebuilt |= set(own[name])
         if rebuilt != c:
             print("  BROKEN %s: differs by %d path(s)" % (name, len(c ^ rebuilt)))
