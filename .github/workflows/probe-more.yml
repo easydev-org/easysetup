@@ -1,0 +1,143 @@
+name: probe-more
+
+# Which additional toolchains are worth adding?
+#
+# A candidate has to clear three bars, and this checks all three at once because
+# each one has bitten before:
+#
+#   1. does the attribute exist at all?
+#   2. is it in cache.nixos.org? A package not cached gets compiled from source on
+#      every build, which is how six python setups went from 2 minutes to 40.
+#   3. does it produce an executable? `pkgs.jq.outPath` is its `man` output, and
+#      `pkgs.crystal`'s outPath does not exist at all, so both forms of the naive
+#      check are wrong. This asks `nix build --print-out-paths`.
+#
+# Grouped by what someone would want them for, so the output reads as a
+# shortlist rather than a wall of names.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: probe
+        run: |
+          set -uo pipefail
+          set +e
+
+          printf '%-26s %-10s %-6s %-6s %s\n' ATTR VERSION CACHE BINS FIRST-BINS
+          printf '%-26s %-10s %-6s %-6s %s\n' '--------------------------' '--------' '-----' '----' '-------------------------'
+
+          probe() {
+            local attr="$1"
+            local name ver out h code nb names
+            # `.name` rather than `.version`: not every package exposes version,
+            # but basically all expose name, and a missing attr answers neither.
+            name=$(nix eval --raw "nixpkgs#$attr.name" 2>/dev/null) || name=""
+            if [ -z "$name" ]; then
+              printf '%-26s %-10s %-6s %-6s %s\n' "$attr" "-" "-" "-" "no such attribute"
+              return
+            fi
+            ver=$(nix eval --raw "nixpkgs#$attr.version" 2>/dev/null) || ver="?"
+
+            out=$(nix build --no-link --print-out-paths "nixpkgs#$attr" 2>/dev/null | tail -1) || out=""
+            if [ -z "$out" ] || [ ! -e "$out" ]; then
+              printf '%-26s %-10s %-6s %-6s %s\n' "$attr" "$ver" "?" "-" "BUILD FAILED"
+              return
+            fi
+            # Is the *output* in the cache? A 404 means every build compiles it.
+            h=$(basename "$out" | cut -d- -f1)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+
+            nb=0; names=""
+            for sub in bin sbin; do
+              if [ -d "$out/$sub" ]; then
+                nb=$((nb + $(ls "$out/$sub" 2>/dev/null | wc -l)))
+                [ -z "$names" ] && names=$(ls "$out/$sub" 2>/dev/null | head -3 | tr '\n' ' ')
+              fi
+            done
+            [ "$nb" -gt 0 ] || names="(no bin/)"
+            printf '%-26s %-10s %-6s %-6s %s\n' "$attr" "${ver:0:9}" "$code" "$nb" "$names"
+          }
+
+          echo "===== JS / TS toolchain ====="
+          probe pnpm; probe yarn; probe bun; probe deno; probe typescript
+          probe esbuild; probe swc; probe vitest; probe biome
+
+          echo
+          echo "===== python packaging / testing ====="
+          probe uv; probe poetry; probe pdm; probe hatch; probe tox; probe nox
+          probe twine; probe bdist
+
+          echo
+          echo "===== JVM beyond the JDK ====="
+          probe kotlin; probe scala; probe groovy; probe clojure; probe mill
+          probe jbang; probe ant; probe jmeter
+
+          echo
+          echo "===== C / C++ ====="
+          probe gcc; probe llvm; probe lldb; probe valgrind; probe cppcheck
+          probe ccache; probe bear; probe meson; probe autoconf; probe automake
+          probe libtool; probe pkg-config; probe make; probe bison; probe flex
+          probe mold; probe lld; probe gdb
+
+          echo
+          echo "===== containers ====="
+          probe podman; probe buildah; probe skopeo; probe docker-compose
+          probe kind; probe minikube; probe k3d; probe kustomize; probe skaffold
+
+          echo
+          echo "===== infra as code ====="
+          probe ansible; probe packer; probe vault; probe consul; probe nomad
+          probe tflint; probe terraform-docs; probe checkov
+
+          echo
+          echo "===== cloud CLIs ====="
+          probe awscli2; probe azure-cli; probe google-cloud-sdk; probe doctl
+          probe hcloud; probe linode-cli
+
+          echo
+          echo "===== databases ====="
+          probe postgresql; probe mysql; probe mariadb; probe sqlite
+          probe redis; probe mongodb; probe clickhouse
+
+          echo
+          echo "===== API / load testing ====="
+          probe grpcurl; probe k6; probe vegeta; probe hey; probe wrk; probe locust
+          probe websocat; probe httpie; probe curlie
+
+          echo
+          echo "===== lint / format / security ====="
+          probe yamllint; probe hadolint; probe prettier; probe eslint
+          probe golangci-lint; probe trivy; probe grype; probe syft
+          probe gitleaks; probe semgrep; probe checkstyle; probe shfmt
+          probe markdownlint-cli2; probe sqlfluff; probe taplo
+
+          echo
+          echo "===== editors / language servers ====="
+          probe neovim; probe helix; probe gopls; probe nil; probe nixd
+          probe lua-language-server; probe vscode-langservers-extracted
+
+          echo
+          echo "===== modern CLI replacements ====="
+          probe bat; probe eza; probe zoxide; probe fzf; probe sd; probe hyperfine
+          probe tokei; probe dust; probe bottom; probe btop; probe procs
+          probe delta; probe gh; probe glab; probe pre-commit; probe act
+          probe just; probe task; probe watchexec; probe direnv
+
+          echo
+          echo "===== docs / misc ====="
+          probe pandoc; probe texlive.combined.scheme-basic; probe graphviz
+          probe mermaid-cli; probe plantuml; probe doxygen
