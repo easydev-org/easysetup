@@ -1,90 +1,81 @@
 #!/usr/bin/env python3
-"""Compare matrix-nix.yml's recorded version with what the locked nixpkgs gives.
+"""Compare every manifest version against what nix actually reports.
 
-The manifest's version field is informational, but a stale one produces a release
-whose tag and directory disagree with the tarball inside - and once published, a
-tag cannot be quietly corrected. This checks every entry against
-`nix eval .#<name>.version`, which reads through flake.lock, so drift surfaces
-here rather than in a release.
+The manifest's version is not just documentation: build-nixpkg.sh refuses to
+build when the two disagree, because a tarball named 1.140.0 while nix built
+1.140.06880 would mislabel a release. Two entries were wrong in exactly that way
+(ccls, vscode-langservers) because the probe that produced them printed an
+11-character version column and truncated longer versions.
 
-    tools/check-versions.py [--fix]
-
---fix rewrites the manifest in place. It is opt-in because a bulk rewrite of a
-hand-formatted file is exactly the kind of change that should be deliberate.
+    tools/check-versions.py           report mismatches
+    tools/check-versions.py --fix     rewrite the manifest to match nix
 """
 
 import os
-import pathlib
+import re
 import subprocess
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-import matrixlib2  # noqa: E402
-
-# Resolve nix rather than assuming PATH: under a composite action it is installed
-# by install-nix-action, and locally it may only be at its profile path.
 NIX = (os.environ.get("NIX_BIN")
        or ("/nix/var/nix/profiles/default/bin/nix"
            if os.path.exists("/nix/var/nix/profiles/default/bin/nix") else "nix"))
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+import matrixlib2  # noqa: E402
 
-def actual_version(name):
-    # flake.nix exposes a `versions.<name>` tree because a plain package has no
-    # flake-level `version` attribute; `.#<name>.version` simply does not resolve.
-    # The name contains dots (nix-2.34.9); unquoted, nix reads them as attribute
-    # path separators and the lookup fails. Quoting the segment fixes it.
-    r = subprocess.run(
-        [NIX, "eval", "--raw", '.#versions."%s"' % name],
-        cwd=str(ROOT), capture_output=True, text=True, timeout=600)
-    if r.returncode != 0:
+
+def actual(attr):
+    r = subprocess.run([NIX, "eval", "--raw", attr + ".version"],
+                       capture_output=True, text=True, timeout=300)
+    if r.returncode != 0 or not r.stdout.strip():
         return None
     return r.stdout.strip()
 
 
 def main(argv):
     fix = "--fix" in argv
-    entries = matrixlib2.load(str(ROOT / "matrix-nix.yml"))
-    text = (ROOT / "matrix-nix.yml").read_text()
-    drift = []
+    path = os.path.join(ROOT, "matrix-nix.yml")
+    text = open(path).read()
+    entries = matrixlib2.load(path)
 
+    bad = []
     for e in entries:
-        got = actual_version(e["dir"])
-        if got is None:
-            print("MISSING  %-24s nix cannot evaluate it" % e["dir"])
-            drift.append(e)
+        # `base` is glibc, whose .version is the full 2.44-57; the manifest
+        # records 2.44 for readability, so it is skipped rather than special-cased
+        # everywhere else.
+        if e["tool"] == "base":
             continue
-        if got != e["version"]:
-            print("DRIFT    %-24s manifest=%s nix=%s"
-                  % (e["dir"], e["version"], got))
-            drift.append((e, got))
+        v = actual(e["attr"])
+        if v is None:
+            print("%-26s %-12s cannot read .version" % (e["dir"], e["version"]))
+            continue
+        if v != e["version"]:
+            bad.append((e, v))
+            print("%-26s manifest %-14s nix %s" % (e["dir"], e["version"], v))
 
-    if not drift:
-        print("all %d entries match the locked nixpkgs" % len(entries))
+    if not bad:
+        print("all %d entries match" % len(entries))
         return 0
 
     print()
-    print("%d entries differ" % len(drift))
+    print("%d mismatch(es)" % len(bad))
     if not fix:
-        print("rerun with --fix to rewrite matrix-nix.yml (and regenerate setups/)")
+        print("rerun with --fix to update the manifest")
         return 1
 
-    # Rewrite the version field for each drifting line. Entries are one per line,
-    # so this is a per-line substitution anchored on the attr, not a parser.
-    for item in drift:
-        if isinstance(item, tuple):
-            e, got = item
-            old = 'attr: "%s", version: "%s"' % (e["attr"], e["version"])
-            new = 'attr: "%s", version: "%s"' % (e["attr"], got)
-            if old in text:
-                text = text.replace(old, new)
-                print("fixed %s -> %s" % (e["dir"], got))
-            else:
-                print("could not locate the line for %s" % e["dir"])
-        else:
-            print("cannot fix %s automatically" % item["dir"])
-    (ROOT / "matrix-nix.yml").write_text(text)
-    print("matrix-nix.yml updated; run tools/gen-setups.py to refresh setups/")
+    for e, v in bad:
+        line = re.compile(
+            r'(- \{ tool: %s,\s+attr: "%s", version: ")[^"]*(" \})'
+            % (re.escape(e["tool"]), re.escape(e["attr"])))
+        new_text, n = line.subn(lambda m: m.group(1) + v + m.group(2), text)
+        if n != 1:
+            print("could not rewrite %s (%d matches)" % (e["dir"], n))
+            continue
+        text = new_text
+        print("fixed %-26s -> %s" % (e["dir"], v))
+    open(path, "w").write(text)
+    print("manifest updated; run tools/gen-setups.py")
     return 0
 
 

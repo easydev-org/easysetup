@@ -200,7 +200,8 @@ setups:
 
   # TypeScript / JavaScript
   - { tool: typescript-language-server, attr: "nixpkgs#typescript-language-server", version: "6.0.2" }
-  - { tool: vscode-langservers, attr: "nixpkgs#vscode-langservers-extracted", version: "1.140.0" }
+  # nix reports 1.140.06880; the probe's 11-character version column cut it short.
+  - { tool: vscode-langservers, attr: "nixpkgs#vscode-langservers-extracted", version: "1.140.06880" }
 
   # Python - lint, format, type-check, test, REPL, language server
   - { tool: pylint,     attr: "nixpkgs#python314Packages.pylint", version: "4.0.7" }
@@ -247,7 +248,9 @@ setups:
   - { tool: iwyu,       attr: "nixpkgs#include-what-you-use", version: "0.26" }
   - { tool: gcovr,      attr: "nixpkgs#gcovr", version: "8.4" }
   - { tool: lcov,       attr: "nixpkgs#lcov", version: "2.4" }
-  - { tool: ccls,       attr: "nixpkgs#ccls", version: "0.20250815" }
+  # The probe truncated this to 0.20250815 when it printed an 11-character
+  # version column; nix reports 0.20250815.1 and the build refuses to disagree.
+  - { tool: ccls,       attr: "nixpkgs#ccls", version: "0.20250815.1" }
 
   # JVM
   - { tool: pmd,        attr: "nixpkgs#pmd", version: "6.55.0" }

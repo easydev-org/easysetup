@@ -40,6 +40,20 @@ jobs:
           set -euo pipefail
           python3 tools/compute-deps.py
 
+      # Every manifest version must equal what nix reports, because build-nixpkg.sh
+      # refuses to build when they disagree - a tarball named 1.140.0 while nix
+      # built 1.140.06880 would mislabel a release. Two entries were wrong this
+      # way (ccls, vscode-langservers), both truncated by a probe's fixed-width
+      # version column. Checking here means the next one is caught before a full
+      # 155-job build rather than during it.
+      - name: versions in the manifest match nix
+        run: |
+          set -uo pipefail
+          python3 tools/check-versions.py || {
+            echo "::error::the manifest disagrees with nix; run tools/check-versions.py --fix and regenerate setups/"
+            exit 1
+          }
+
       # A setup that cannot be resolved is SKIPPED, which is safe but silent - and
       # silence is how six python-package entries and terraform disappeared from
       # the graph without anyone noticing. This prints every failure and its
