@@ -39,18 +39,26 @@
           })
           names));
 
-      # A parallel tree carrying only the version string. Reading the version
-      # used to need `.#<name>.version`, which does not exist on a plain package
-      # derivation - the flake exposes packages, not their metadata. This makes
-      # `nix eval .#versions.<name>` work, and tools/check-versions.py uses it to
-      # prove the manifest has not drifted from the locked nixpkgs.
-      versions = forAll (pkgs:
-        let names = setupNames pkgs; in
+      # A flat tree carrying only version strings, so a version can be read
+      # without building anything. Reading `.#<name>.version` does not work: a
+      # plain package derivation has no flake-level `version` attribute.
+      #
+      # Flattened rather than per-system on purpose - there is only ever one
+      # system here (x86_64-linux), and making the caller spell
+      # `.#versions.x86_64-linux.<name>` buys nothing but a longer command.
+      versions =
+        let
+          pkgs = import nixpkgs {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+          };
+          names = setupNames pkgs;
+        in
         builtins.listToAttrs (map
           (n: {
             name = n;
             value = (import (./setups + "/${n}.nix") { inherit pkgs; }).version;
           })
-          names));
+          names);
     };
 }
