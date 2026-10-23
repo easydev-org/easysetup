@@ -21,16 +21,28 @@
  "setups": {
   "base-2.44": {
    "closure_size": 4,
-   "deps": [
-    "base"
+   "deps": [],
+   "own": [
+    "/nix/store/00fs4zz9c0jjcvs62wg39b91dydz7zqb-libidn2-2.3.8",
+    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
+    "/nix/store/3sj8msrsym648f35mk3gb3pp385hhk8r-gcc-16.2.0-libgcc",
+    "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
+    "/nix/store/7a2cjhcgzyym5zaz6m4fksw47qvm150w-gcc-16.2.0-lib",
+    "/nix/store/bx7jdvkba26sy20ryr4l617qqmzj9hff-libunistring-1.4.2",
+    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/ji36842higmp6b06hbbpmzbd59g1c07c-zlib-1.3.2",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
+    "/nix/store/nnm9gdr70ihc6zc9298mzz8jpcgaciql-bash-5.3p20",
+    "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
+    "/nix/store/pkkjnyk4z46n18fkyqwlg24p272apb69-xgcc-16.2.0-libgcc",
+    "/nix/store/pqyiidz5mi73wv5f91d48s9plcqyj5bz-glibc-2.44-57",
+    "/nix/store/zx4ag3v11v9rl0iqvg6vzbpflzlg0dk2-bzip2-1.0.8"
    ],
-   "own": [],
    "store": "/nix/store/pqyiidz5mi73wv5f91d48s9plcqyj5bz-glibc-2.44-57"
   },
   "bazel-7.6.0": {
    "closure_size": 52,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -78,7 +90,6 @@
   "box-4.6.6": {
    "closure_size": 126,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -200,7 +211,6 @@
   "buf-1.73.0": {
    "closure_size": 8,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -214,7 +224,6 @@
   "cabal-3.16.1.0": {
    "closure_size": 29,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -240,7 +249,6 @@
   "clang-23.1.3": {
    "closure_size": 48,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -284,7 +292,6 @@
   "cmake-4.4.4": {
    "closure_size": 27,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -308,7 +315,7 @@
   "composer-2.10.3": {
    "closure_size": 133,
    "deps": [
-    "base",
+    "base-2.44",
     "php-8.5.11"
    ],
    "own": [
@@ -332,7 +339,6 @@
   "conan-2.32.0": {
    "closure_size": 52,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -381,7 +387,6 @@
   "conda-26.7.1-1": {
    "closure_size": 95,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -473,7 +478,6 @@
   "crystal-1.21.1": {
    "closure_size": 71,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -540,7 +544,6 @@
   "dart-3.13.0": {
    "closure_size": 17,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -560,7 +563,6 @@
   "deno-2.9.7": {
    "closure_size": 13,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -574,7 +576,7 @@
   "dotnet-10.0.401": {
    "closure_size": 39,
    "deps": [
-    "base",
+    "base-2.44",
     "perl-5.42.3"
    ],
    "own": [
@@ -607,7 +609,7 @@
   "elixir-1.18.5": {
    "closure_size": 215,
    "deps": [
-    "base",
+    "base-2.44",
     "erlang-28.5.0.8"
    ],
    "own": [
@@ -620,7 +622,7 @@
   "erlang-28.5.0.8": {
    "closure_size": 212,
    "deps": [
-    "base",
+    "base-2.44",
     "perl-5.42.3"
    ],
    "own": [
@@ -823,7 +825,6 @@
   "fd-10.5.0": {
    "closure_size": 7,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -834,7 +835,6 @@
   "ghc-9.10.3": {
    "closure_size": 70,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -900,7 +900,6 @@
   "git-lfs-3.8.0": {
    "closure_size": 8,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -914,7 +913,6 @@
   "go-1.26.9": {
    "closure_size": 9,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -928,7 +926,7 @@
   "gradle-9.8.0": {
    "closure_size": 133,
    "deps": [
-    "base",
+    "base-2.44",
     "java-25.0.4.1+1"
    ],
    "own": [
@@ -963,7 +961,6 @@
   "helm-4.3.1": {
    "closure_size": 8,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -977,7 +974,6 @@
   "java-25.0.4.1+1": {
    "closure_size": 107,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1081,7 +1077,7 @@
   "jenkins-2.580.1": {
    "closure_size": 108,
    "deps": [
-    "base",
+    "base-2.44",
     "java-25.0.4.1+1"
    ],
    "own": [
@@ -1092,7 +1088,6 @@
   "jq-1.8.2": {
    "closure_size": 7,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1105,7 +1100,6 @@
   "julia-1.13.2": {
    "closure_size": 18,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1137,7 +1131,6 @@
   "lua-5.5.1": {
    "closure_size": 6,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1149,7 +1142,7 @@
   "luarocks-3.13.0-1": {
    "closure_size": 43,
    "deps": [
-    "base",
+    "base-2.44",
     "cmake-4.4.4"
    ],
    "own": [
@@ -1175,7 +1168,6 @@
   "maven-3.9.16": {
    "closure_size": 13,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1190,7 +1182,6 @@
   "nim-2.2.12": {
    "closure_size": 66,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1252,7 +1243,6 @@
   "ninja-1.13.2": {
    "closure_size": 7,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1263,7 +1253,6 @@
   "nix-2.34.9": {
    "closure_size": 63,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1324,7 +1313,6 @@
   "node-26.12.0": {
    "closure_size": 40,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1363,7 +1351,6 @@
   "opam-2.6.1": {
    "closure_size": 30,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1392,7 +1379,6 @@
   "perl-5.42.3": {
    "closure_size": 13,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1407,7 +1393,6 @@
   "phing-3.1.2": {
    "closure_size": 122,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1525,7 +1510,6 @@
   "php-8.5.11": {
    "closure_size": 119,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1640,7 +1624,7 @@
   "php-cs-fixer-3.95.1": {
    "closure_size": 120,
    "deps": [
-    "base",
+    "base-2.44",
     "php-8.5.11"
    ],
    "own": [
@@ -1651,7 +1635,7 @@
   "phpmd-2.15.0": {
    "closure_size": 120,
    "deps": [
-    "base",
+    "base-2.44",
     "php-8.5.11"
    ],
    "own": [
@@ -1662,7 +1646,6 @@
   "protobuf-36.2": {
    "closure_size": 12,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1677,7 +1660,7 @@
   "psalm-6.18.0": {
    "closure_size": 120,
    "deps": [
-    "base",
+    "base-2.44",
     "php-8.5.11"
    ],
    "own": [
@@ -1688,7 +1671,6 @@
   "python-3.15.0": {
    "closure_size": 23,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1708,7 +1690,6 @@
   "r-4.6.1": {
    "closure_size": 241,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1945,7 +1926,6 @@
   "ripgrep-15.2.0": {
    "closure_size": 8,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1957,7 +1937,6 @@
   "ruby-4.0.7": {
    "closure_size": 11,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1969,7 +1948,6 @@
   "rust-1.99.0": {
    "closure_size": 13,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -1983,7 +1961,6 @@
   "sbt-2.0.10": {
    "closure_size": 109,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -2089,7 +2066,6 @@
   "shellcheck-0.11.0": {
    "closure_size": 27,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -2114,7 +2090,6 @@
   "swift-6.3.3": {
    "closure_size": 92,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -2202,7 +2177,6 @@
   "yq-4.54.1": {
    "closure_size": 8,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
@@ -2216,7 +2190,6 @@
   "zig-0.17.0": {
    "closure_size": 16,
    "deps": [
-    "base",
     "base-2.44"
    ],
    "own": [
