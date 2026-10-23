@@ -46,8 +46,22 @@ echo "nixpkg: resolving version of ./setups/$NAME.nix"
 # looks for versions.nix."2"."34"."9" and fails. Quoting the segment is required.
 VERSION=$("$NIX" eval --raw ".#versions.\"$NAME\"" 2>/dev/null) || VERSION=""
 [ -n "$VERSION" ] || { echo "nixpkg: cannot evaluate $NAME.version" >&2; exit 1; }
-DIR="$NAME-$VERSION"
-echo "nixpkg: $NAME -> $DIR"
+
+# `NAME` is already `<tool>-<version>` (that is what the setup file is called), so
+# the directory is NAME itself. Concatenating the version again produced
+# `bazel-7.6.0-7.6.0` and pointed the asset name at a directory that does not
+# exist.
+DIR="$NAME"
+echo "nixpkg: $NAME (nix reports version $VERSION) -> $DIR"
+
+# The version nix reports must match what the name claims. If nixpkgs moved a
+# patch release, the setup file name is stale and the tag would lie; failing here
+# is better than publishing a mislabelled asset.
+case "$NAME" in
+  *-"$VERSION") : ;;
+  *) echo "nixpkg: name says $NAME but nix builds $VERSION - run tools/check-versions.py --fix, then regenerate setups/" >&2
+     exit 1 ;;
+esac
 
 echo "nixpkg: building"
 OUTPATH=$("$NIX" build --no-link --print-out-paths ".#$NAME" 2>/tmp/nixpkg-err.log | tail -1)
