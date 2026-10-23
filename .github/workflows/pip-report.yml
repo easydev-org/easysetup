@@ -37,17 +37,24 @@ jobs:
 
       - name: 1. plain pip install
         run: |
+          # `set -e` is NOT used here on purpose: this step EXPECTS the install to
+          # fail, and the failure message is the deliverable. Without this the
+          # step aborts before printing, which is what happened on the first run.
           set -uo pipefail
           . /tmp/env.sh
-          # Written to files: a failure inside a pipe under pipefail would abort
-          # the step and hide the message this whole job exists to capture.
-          pip install requests > /tmp/plain.out 2>&1; echo "exit=$?" >> /tmp/plain.out
+          set +e
+          pip install requests > /tmp/plain.out 2>&1
+          rc=$?
+          set -e
+          echo "exit=$rc" >> /tmp/plain.out
           echo "########## pip install requests ##########"
           cat /tmp/plain.out
+          # Deliberately not failing the job here; the next steps decide.
 
       - name: 2. is it PEP 668 or a read-only filesystem?
         run: |
           set -uo pipefail
+          set +e
           . /tmp/env.sh
           echo "########## site-packages location and permissions ##########"
           python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
@@ -75,6 +82,7 @@ jobs:
       - name: 3. venv
         run: |
           set -uo pipefail
+          set +e
           . /tmp/env.sh
           echo "########## python -m venv ##########"
           python3 -m venv /tmp/v > /tmp/venv.out 2>&1; echo "venv exit=$?" >> /tmp/venv.out
@@ -92,6 +100,7 @@ jobs:
       - name: 4. pip install --user
         run: |
           set -uo pipefail
+          set +e
           . /tmp/env.sh
           export HOME=/tmp/home && mkdir -p "$HOME"
           echo "########## pip install --user requests ##########"
