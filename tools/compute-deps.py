@@ -84,9 +84,23 @@ def out_path(attr):
 def closure(path):
     """Every store path `path` needs, read from the binary cache's metadata."""
     r = run([NIX, "path-info", "--store", CACHE, "-r", path], timeout=600)
-    if r.returncode != 0:
+    if r.returncode == 0 and r.stdout.strip():
+        return set(x for x in r.stdout.splitlines() if x.strip())
+
+    # Not every path is IN the binary cache. The python package sets in
+    # particular are built per-interpreter and often absent, and a path that is
+    # not there cannot be walked from metadata alone.
+    #
+    # Falling back to the local store is correct but costs a download, so it is
+    # reported: a closure computed this way is still exact, it just was not free.
+    print("      (not in cache, building locally: %s)" % path.split("-", 1)[-1])
+    b = run([NIX, "build", "--no-link", path], timeout=1800)
+    if b.returncode != 0:
         return None
-    return set(x for x in r.stdout.splitlines() if x.strip())
+    r2 = run([NIX, "path-info", "-r", path], timeout=600)
+    if r2.returncode != 0:
+        return None
+    return set(x for x in r2.stdout.splitlines() if x.strip())
 
 
 def main(argv):

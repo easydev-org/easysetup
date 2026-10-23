@@ -40,6 +40,21 @@ jobs:
           set -euo pipefail
           python3 tools/compute-deps.py
 
+      # A setup that cannot be resolved is SKIPPED, which is safe but silent - and
+      # silence is how six python-package entries and terraform disappeared from
+      # the graph without anyone noticing. This prints every failure and its
+      # reason, so the omission is visible in the run.
+      - name: list anything the graph could not include
+        run: |
+          set -uo pipefail
+          python3 tools/probe-closure-fails.py | tee /tmp/missing.txt
+          echo
+          n=$(grep -cE 'FAILED|CACHE MISS' /tmp/missing.txt || true)
+          echo "setups missing from closures.json: $n"
+          if [ "$n" -gt 0 ]; then
+            echo "::warning::$n setup(s) were skipped - see the list above"
+          fi
+
       - name: show the result
         run: |
           set -euo pipefail
