@@ -1,0 +1,168 @@
+name: cli-audit
+
+# Does every setup actually put a working program on PATH?
+#
+# This is the audit that caught two real defects: jq and shellcheck both resolved
+# to their `man` output, so their tarballs held documentation and no binary; and
+# conda shipped a bwrap sandbox instead of a conda command. A "must have bin/"
+# check cannot tell a right binary from a wrong one, so this asks what each setup
+# provides and then RUNS the ones whose whole purpose is a command.
+#
+# The table is generated from the manifest, so a new setup is covered without
+# anyone remembering to add it here.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # `set -e` is deliberately absent: one setup failing must not hide the rest.
+      # The previous attempt at this audit died part-way through for exactly that
+      # reason, and the report looked complete while most setups were unchecked.
+      - name: what each setup provides
+        run: |
+          set -uo pipefail
+          python3 - > /tmp/setups.txt <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print(e["dir"])
+          PY
+
+          printf '%-24s %5s %6s  %s\n' SETUP BINS PATHS "FIRST PROGRAMS"
+          printf '%-24s %5s %6s  %s\n' '------------------------' '----' '-----' '---------------------------'
+
+          miss=0
+          while read -r d; do
+            out=$(nix eval --raw ".#\"$d\".outPath" 2>/dev/null) || out=""
+            if [ -z "$out" ]; then
+              printf '%-24s %5s %6s  %s\n' "$d" "-" "-" "CANNOT RESOLVE"
+              miss=$((miss+1)); continue
+            fi
+            nix build --no-link ".#\"$d\"" >/dev/null 2>&1 || true
+
+            nb=0; names=""
+            for sub in bin sbin; do
+              if [ -d "$out/$sub" ]; then
+                c=$(ls "$out/$sub" 2>/dev/null | wc -l)
+                nb=$((nb + c))
+                [ -z "$names" ] && names=$(ls "$out/$sub" 2>/dev/null | head -3 | tr '\n' ' ')
+              fi
+            done
+            [ "$nb" -gt 0 ] || { names="(no bin/ or sbin/)"; miss=$((miss+1)); }
+            np=$(nix path-info -r "$out" 2>/dev/null | wc -l)
+            printf '%-24s %5s %6s  %s\n' "$d" "$nb" "$np" "$names"
+          done < /tmp/setups.txt
+
+          echo
+          echo "setups with no executables: $miss"
+          if [ "$miss" -gt 0 ]; then
+            echo "::warning::$miss setup(s) provide no program - see the table"
+          fi
+
+      # Every setup whose purpose is a command, run for real. The list is explicit
+      # because the executable name is not always the setup name (php -> php,
+      # maven -> mvn, opentofu -> tofu, node -> node).
+      - name: run the CLIs
+        run: |
+          set -uo pipefail
+          run_one() {
+            local d="$1" exe="$2"; shift 2
+            local out line rc
+            out=$(nix eval --raw ".#\"$d\".outPath" 2>/dev/null) || {
+              printf '  %-22s %s\n' "$d" "cannot resolve"; return; }
+            nix build --no-link ".#\"$d\"" >/dev/null 2>&1 || true
+            local found=""
+            for sub in bin sbin; do
+              [ -x "$out/$sub/$exe" ] && found="$out/$sub/$exe" && break
+            done
+            if [ -z "$found" ]; then
+              printf '  %-22s NO %s\n' "$d" "$exe"; return
+            fi
+            line=$("$found" "$@" 2>&1 | head -1); rc=$?
+            printf '  %-22s rc=%s  %s\n' "$d" "$rc" "${line:0:70}"
+          }
+
+          echo "== language runtimes =="
+          run_one node-26.12.0 node --version
+          run_one python-3.14.8 python3 --version
+          run_one go-1.26.9 go version
+          run_one java-25.0.4.1+1 java -version
+          run_one ruby-4.0.7 ruby --version
+          run_one php-8.5.11 php --version
+          run_one perl-5.42.3 perl --version
+          run_one r-4.6.1 R --version
+          run_one rust-1.99.0 rustc --version
+          run_one cargo-1.99.0 cargo --version
+          run_one swift-6.3.3 swift --version
+          run_one julia-1.13.2 julia --version
+          run_one crystal-1.21.1 crystal --version
+          run_one dart-3.13.0 dart --version
+          run_one deno-2.9.7 deno --version
+          run_one elixir-1.18.5 elixir --version
+          run_one erlang-28.5.0.8 erl -version
+          run_one ghc-9.10.3 ghc --version
+          run_one dotnet-10.0.401 dotnet --version
+          run_one lua-5.5.1 lua -v
+          run_one nim-2.2.12 nim --version
+          run_one opam-2.6.1 opam --version
+
+          echo
+          echo "== build tools =="
+          run_one bazel-7.6.0 bazel --version
+          run_one cmake-4.4.4 cmake --version
+          run_one ninja-1.13.2 ninja --version
+          run_one maven-3.9.16 mvn --version
+          run_one gradle-9.8.0 gradle --version
+          run_one sbt-2.0.10 sbt --script-version
+          run_one cabal-3.16.1.0 cabal --version
+          run_one conan-2.32.0 conan --version
+          run_one clang-23.1.3 clang --version
+          run_one zig-0.17.0 zig version
+          run_one nix-2.34.9 nix --version
+
+          echo
+          echo "== package managers =="
+          run_one pip-26.1.2 pip --version
+          run_one composer-2.10.3 composer --version
+          run_one micromamba-2.9.0 micromamba --version
+          run_one pixi-0.82.0 pixi --version
+          run_one luarocks-3.13.0-1 luarocks --version
+          run_one virtualenv-21.6.1 virtualenv --version
+          run_one pytest-9.1.1 pytest --version
+          run_one mypy-2.1.0 mypy --version
+          run_one black-26.5.1 black --version
+          run_one ruff-0.17.1 ruff --version
+          run_one php-cs-fixer-3.95.1 php-cs-fixer --version
+          run_one psalm-6.18.0 psalm --version
+          run_one phpmd-2.15.0 phpmd --version
+          run_one phing-3.1.2 phing -version
+          run_one box-4.6.6 box --version
+
+          echo
+          echo "== CI / infra =="
+          run_one kubectl-1.37.1 kubectl version --client
+          run_one opentofu-1.13.1 tofu --version
+          run_one helm-4.3.1 helm version --short
+          run_one jenkins-2.580.1 jenkins-cli --help
+          run_one shellcheck-0.11.0 shellcheck --version
+          run_one ripgrep-15.2.0 rg --version
+          run_one fd-10.5.0 fd --version
+          run_one jq-1.8.2 jq --version
+          run_one yq-4.54.1 yq --version
+          run_one git-lfs-3.8.0 git-lfs --version
+          run_one protobuf-36.2 protoc --version
+          run_one buf-1.73.0 buf --version
