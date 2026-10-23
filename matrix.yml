@@ -465,7 +465,10 @@ setups:
   # comes from /usr/include/c++/14 - which is why libstdc++-14-dev is here.
   - tool: llvm
     version: "23.1.4"
-    apt_deps: [ca-certificates, curl, xz-utils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
+    # binutils supplies `ld`, which clang drives when not told -fuse-ld=lld; without
+    # it every link fails with "posix_spawn failed". libstdc++-14-dev supplies
+    # the C++ HEADERS (not just the .so) that #include <iostream> needs.
+    apt_deps: [ca-certificates, curl, xz-utils, binutils, libstdc++-14-dev, libc6-dev, zlib1g, libzstd1, libxml2]
     artifact: llvm-23.1.4-debian-trixie-amd64.tar.xz
     sha256: ""
 
