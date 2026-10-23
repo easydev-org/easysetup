@@ -85,7 +85,12 @@ fi
 # The attribute name contains dots (jq-1.8.2), and nix reads an UNQUOTED dot as an
 # attribute path separator: `.#jq-1.8.2` looks for jq-1."8"."2". Every setup name
 # here has that shape, so this quoting is what makes the build resolve at all.
-if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log | tail -1); then
+#
+# `head -1`, not `tail -1`: a multi-output package prints one line per output, and
+# the last is not the one the setup asked for. jq's setup is `pkgs.jq.bin`, and
+# taking the last line gave the `man` output instead - a tarball of documentation
+# with no binary, which is the exact failure this project has hit twice before.
+if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log | head -1); then
   echo "nixpkg: nix build failed" >&2
   tail -40 /tmp/nixpkg-err.log >&2
   exit 1

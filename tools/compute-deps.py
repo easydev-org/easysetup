@@ -97,14 +97,14 @@ def out_path(attr):
     if r.returncode == 0:
         lines = [x for x in r.stdout.splitlines() if x.strip()]
         if lines:
-            return lines[-1]
+            return lines[0]
     # Fall back to the plain nixpkgs reference for anything the flake does not
     # expose. Better a partial answer than a missing setup.
     r = run([NIX, "build", "--no-link", "--print-out-paths", attr], timeout=1800)
     if r.returncode == 0:
         lines = [x for x in r.stdout.splitlines() if x.strip()]
         if lines:
-            return lines[-1]
+            return lines[0]
     return None
 
 
