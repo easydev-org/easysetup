@@ -1,150 +1,95 @@
-# easysetup manifest — nix-built toolchains.
+# easysetup manifest — one entry per nixpkgs attribute we publish.
 #
-# One entry is one nixpkgs attribute. Nothing else is declared, because nothing
-# else is needed:
+# The rule: ship the versions NIXPKGS exposes, and only those. Nothing is pinned
+# by hand here, because nix already decides what a version means; this file only
+# gives each attribute the name a user types.
 #
-#   * the dependency closure is nix's job, not a hand-maintained apt_deps list;
-#   * the build is `nix build`, which DOWNLOADS a prebuilt closure from
-#     cache.nixos.org rather than compiling (measured: clang 44 paths / 462 MB,
-#     swift 90 paths / 1470 MB, zero local builds);
-#   * the artifact is portable - unpacking it into an empty chroot runs the tool
-#     with no nix present (verified).
+# That is why some tools appear several times (node has 22/24/26) and some once
+# (go only has one attribute). It reflects nixpkgs, not a choice of ours.
 #
 # Fields
-# ------
 #   tool     the name users type: `install.sh node`
-#   version  recorded for humans and for the tag; the authoritative value is
-#            whatever `nix eval <attr>.version` returns, and CI corrects this
-#   attr     the nixpkgs attribute to build, e.g. nixpkgs#swift
-#   bins     subdirectories of the store path that hold executables (default: bin)
+#   version  informational; the authority is `nix eval .#<name>.version`, and
+#            build-nixpkg.sh derives both the directory and the asset name from
+#            what nix reports, so a stale value here cannot mislabel a release
+#   attr     the nixpkgs attribute
 #
-# The old fields are gone on purpose: apt_deps, requires, artifact, sha256 and
-# the per-tool build script were all consequences of repacking upstream
-# binaries. `sha256` still exists per release, but CI computes it from the
-# tarball it produced, it is not written here by hand.
+# Setups with no nixpkgs attribute at all - swift's wasm/static-linux/android
+# SDKs, rust's cross std, jenkins-plugin-cli - are not listed. They were
+# buildable by hand because we assembled upstream tarballs; a pure nix pipeline
+# cannot conjure an attribute that does not exist.
 setups:
-  # ---- languages -----------------------------------------------------------
-  - tool: node
-    attr: nixpkgs#nodejs
-    version: "24.21.0"
-  - tool: python
-    attr: nixpkgs#python3
-    version: "3.14.8"
-  - tool: go
-    attr: nixpkgs#go
-    version: "1.26.9"
-  - tool: java
-    attr: nixpkgs#jdk21
-    version: "21.0.12.1+1"
-  - tool: java17
-    attr: nixpkgs#jdk17
-    version: "17.0.20.1+1"
-  - tool: java25
-    attr: nixpkgs#jdk25
-    version: "25.0.4.1+1"
-  - tool: rust
-    attr: nixpkgs#rustc
-    version: "1.99.0"
-  - tool: ruby
-    attr: nixpkgs#ruby
-    version: "3.4.11"
-  - tool: php
-    attr: nixpkgs#php
-    version: "8.5.11"
-  - tool: dotnet
-    attr: nixpkgs#dotnet-sdk
-    version: "8.0.425"
-  - tool: dart
-    attr: nixpkgs#dart
-    version: "3.13.0"
-  - tool: deno
-    attr: nixpkgs#deno
-    version: "2.9.7"
-  - tool: julia
-    attr: nixpkgs#julia
-    version: "1.13.2"
-  - tool: r
-    attr: nixpkgs#R
-    version: "4.6.1"
-  - tool: lua
-    attr: nixpkgs#lua
-    version: "5.5.1"
-  - tool: perl
-    attr: nixpkgs#perl
-    version: "5.42.3"
-  - tool: swift
-    attr: nixpkgs#swift
-    version: "6.3.3"
-  - tool: zig
-    attr: nixpkgs#zig
-    version: "0.17.0"
-  - tool: crystal
-    attr: nixpkgs#crystal
-    version: "1.21.1"
-  - tool: nim
-    attr: nixpkgs#nim
-    version: "2.2.12"
-  - tool: erlang
-    attr: nixpkgs#erlang
-    version: "28.5.0.8"
-  - tool: elixir
-    attr: nixpkgs#elixir
-    version: "1.18.5"
-  - tool: ghc
-    attr: nixpkgs#ghc
-    version: "9.10.3"
-  - tool: cabal
-    attr: nixpkgs#cabal-install
-    version: "3.16.1.0"
-  - tool: opam
-    attr: nixpkgs#opam
-    version: "2.6.1"
+  # ---- languages, with every version nixpkgs exposes ----------------------
+  - { tool: node,    attr: "nixpkgs#nodejs_22", version: "22.23.3" }
+  - { tool: node,    attr: "nixpkgs#nodejs_24", version: "24.21.0" }
+  - { tool: node,    attr: "nixpkgs#nodejs_26", version: "26.12.0" }
+  - { tool: python,  attr: "nixpkgs#python311",  version: "3.11.17" }
+  - { tool: python,  attr: "nixpkgs#python312",  version: "3.12.15" }
+  - { tool: python,  attr: "nixpkgs#python313",  version: "3.13.16" }
+  - { tool: python,  attr: "nixpkgs#python314",  version: "3.14.8" }
+  - { tool: python,  attr: "nixpkgs#python315",  version: "3.15.0" }
+  - { tool: go,      attr: "nixpkgs#go",         version: "1.26.9" }
+  - { tool: java,    attr: "nixpkgs#jdk17",      version: "17.0.20.1+1" }
+  - { tool: java,    attr: "nixpkgs#jdk21",      version: "21.0.12.1+1" }
+  - { tool: java,    attr: "nixpkgs#jdk25",      version: "25.0.4.1+1" }
+  - { tool: gradle,  attr: "nixpkgs#gradle_8",   version: "8.14.4" }
+  - { tool: gradle,  attr: "nixpkgs#gradle_9",   version: "9.8.0" }
+  - { tool: ruby,    attr: "nixpkgs#ruby_3_4",   version: "3.4.11" }
+  - { tool: ruby,    attr: "nixpkgs#ruby_4_0",   version: "4.0.7" }
+  - { tool: php,     attr: "nixpkgs#php82",      version: "8.2.34" }
+  - { tool: php,     attr: "nixpkgs#php83",      version: "8.3.35" }
+  - { tool: php,     attr: "nixpkgs#php84",      version: "8.4.26" }
+  - { tool: php,     attr: "nixpkgs#php85",      version: "8.5.11" }
+  - { tool: dotnet,  attr: "nixpkgs#dotnetCorePackages.sdk_8_0",  version: "8.0.425" }
+  - { tool: dotnet,  attr: "nixpkgs#dotnetCorePackages.sdk_9_0",  version: "9.0.318" }
+  - { tool: dotnet,  attr: "nixpkgs#dotnetCorePackages.sdk_10_0", version: "10.0.401" }
+  - { tool: lua,     attr: "nixpkgs#lua5_1",     version: "5.1.5" }
+  - { tool: lua,     attr: "nixpkgs#lua5_3",     version: "5.3.6" }
+  - { tool: lua,     attr: "nixpkgs#lua5_4",     version: "5.4.9" }
+  - { tool: lua,     attr: "nixpkgs#lua5_5",     version: "5.5.1" }
+  - { tool: perl,    attr: "nixpkgs#perl",       version: "5.42.3" }
+  - { tool: swift,   attr: "nixpkgs#swift",      version: "6.3.3" }
+  - { tool: zig,     attr: "nixpkgs#zig",        version: "0.17.0" }
+  - { tool: crystal, attr: "nixpkgs#crystal",    version: "1.21.1" }
+  - { tool: nim,     attr: "nixpkgs#nim",        version: "2.2.12" }
+  - { tool: erlang,  attr: "nixpkgs#erlang",     version: "28.5.0.8" }
+  - { tool: elixir,  attr: "nixpkgs#elixir",     version: "1.18.5" }
+  - { tool: ghc,     attr: "nixpkgs#ghc",        version: "9.10.3" }
+  - { tool: cabal,   attr: "nixpkgs#cabal-install", version: "3.16.1.0" }
+  - { tool: opam,    attr: "nixpkgs#opam",       version: "2.6.1" }
+  - { tool: rust,    attr: "nixpkgs#rustc",      version: "1.99.0" }
+  - { tool: dart,    attr: "nixpkgs#dart",       version: "3.13.0" }
+  - { tool: deno,    attr: "nixpkgs#deno",       version: "2.9.7" }
+  - { tool: julia,   attr: "nixpkgs#julia",      version: "1.13.2" }
+  - { tool: r,       attr: "nixpkgs#R",          version: "4.6.1" }
 
   # ---- compilers and build tools ------------------------------------------
-  - tool: clang
-    attr: nixpkgs#clang
-    version: "21.1.8"
-  - tool: cmake
-    attr: nixpkgs#cmake
-    version: "4.4.4"
-  - tool: ninja
-    attr: nixpkgs#ninja
-    version: "1.13.2"
-  - tool: bazel
-    attr: nixpkgs#bazel
-    version: "7.6.0"
-  - tool: maven
-    attr: nixpkgs#maven
-    version: "3.9.16"
-  - tool: gradle
-    attr: nixpkgs#gradle
-    version: "8.14.4"
-  - tool: sbt
-    attr: nixpkgs#sbt
-    version: "2.0.10"
-  - tool: conda
-    attr: nixpkgs#conda
-    version: "26.7.1-1"
-  - tool: conan
-    attr: nixpkgs#conan
-    version: "2.32.0"
+  # clang versions are spread over two naming schemes. `clang_NN` stops at 21;
+  # 22 and 23 only exist as `llvmPackages_NN.clang`. Both are the WRAPPED
+  # compiler - the variant that also supplies the bintools, so `clang` can find
+  # its own assembler and linker. `clang-unwrapped` is the raw compiler and is
+  # deliberately not shipped: installing it alone gives a compiler that cannot
+  # link.
+  - { tool: clang,   attr: "nixpkgs#clang_18",                 version: "18.1.8" }
+  - { tool: clang,   attr: "nixpkgs#clang_19",                 version: "19.1.7" }
+  - { tool: clang,   attr: "nixpkgs#clang_20",                 version: "20.1.8" }
+  - { tool: clang,   attr: "nixpkgs#clang_21",                 version: "21.1.8" }
+  - { tool: clang,   attr: "nixpkgs#llvmPackages_22.clang",    version: "22.1.8" }
+  - { tool: clang,   attr: "nixpkgs#llvmPackages_23.clang",    version: "23.1.3" }
+  - { tool: cmake,   attr: "nixpkgs#cmake",      version: "4.4.4" }
+  - { tool: ninja,   attr: "nixpkgs#ninja",      version: "1.13.2" }
+  - { tool: bazel,   attr: "nixpkgs#bazel",      version: "7.6.0" }
+  - { tool: maven,   attr: "nixpkgs#maven",      version: "3.9.16" }
+  - { tool: sbt,     attr: "nixpkgs#sbt",        version: "2.0.10" }
+  - { tool: conda,   attr: "nixpkgs#conda",      version: "26.7.1-1" }
+  - { tool: conan,   attr: "nixpkgs#conan",      version: "2.32.0" }
+  - { tool: luarocks, attr: "nixpkgs#luarocks",  version: "3.13.0-1" }
 
   # ---- CLI -----------------------------------------------------------------
-  - tool: jq
-    attr: nixpkgs#jq
-    version: "1.8.2"
-  - tool: yq
-    attr: nixpkgs#yq-go
-    version: "4.54.1"
-  - tool: git-lfs
-    attr: nixpkgs#git-lfs
-    version: "3.8.0"
-  - tool: helm
-    attr: nixpkgs#kubernetes-helm
-    version: "4.3.1"
-  - tool: protobuf
-    attr: nixpkgs#protobuf
-    version: "36.2"
-  - tool: nix
-    attr: nixpkgs#nix
-    version: "2.34.9"
+  - { tool: jq,      attr: "nixpkgs#jq",         version: "1.8.2" }
+  - { tool: yq,      attr: "nixpkgs#yq-go",      version: "4.54.1" }
+  - { tool: git-lfs, attr: "nixpkgs#git-lfs",    version: "3.8.0" }
+  - { tool: helm,    attr: "nixpkgs#kubernetes-helm", version: "4.3.1" }
+  - { tool: protobuf, attr: "nixpkgs#protobuf",  version: "36.2" }
+  - { tool: buf,     attr: "nixpkgs#buf",        version: "1.73.0" }
+  - { tool: nix,     attr: "nixpkgs#nix",        version: "2.34.9" }

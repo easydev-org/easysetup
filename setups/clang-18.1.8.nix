@@ -4,4 +4,4 @@
 # this file, unless the setup genuinely needs an override - in which case delete
 # the "Generated" line above so regeneration leaves it alone.
 { pkgs }:
-pkgs.dotnet-sdk
+pkgs.clang_18

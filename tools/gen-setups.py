@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate setups/<tool>.nix from matrix-nix.yml.
+"""Generate setups/<dir>.nix from matrix-nix.yml.
 
 The refactor's shape is "one setup, one expression", but writing 40 near-identical
 two-line files by hand invites drift (and a typo in one attribute is a CI round).
@@ -7,6 +7,10 @@ This generates them from the manifest, so the attribute name is written once.
 
 Files that already exist are left alone: an entry may have been hand-edited to
 add an override, and regeneration must not clobber that.
+
+Named by DIRECTORY (tool-version), not by tool: several nodes exist
+(node-22.23.3, node-24.21.0, node-26.12.0) and a tool-keyed file would let the
+last one written silently win.
 
     tools/gen-setups.py [--force]
 """
@@ -35,7 +39,9 @@ def main(argv):
     out.mkdir(exist_ok=True)
     made = kept = 0
     for e in matrixlib2.load(str(ROOT / "matrix-nix.yml")):
-        name = e["tool"]
+        # `dir` is tool-version, unique per entry. The flake exposes the attribute
+        # under this name, so `nix build .#node-22.23.3` selects one version.
+        name = e["dir"]
         path = out / (name + ".nix")
         if path.exists():
             txt = path.read_text()

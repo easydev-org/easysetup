@@ -32,6 +32,27 @@ def _scalar(s):
     return s
 
 
+def _split_flow(inner):
+    """Split a flow mapping on commas that are not inside quotes."""
+    items, buf, quote = [], "", None
+    for ch in inner:
+        if quote:
+            if ch == quote:
+                quote = None
+            else:
+                buf += ch
+        elif ch in "\"'":
+            quote = ch
+        elif ch == ",":
+            items.append(buf)
+            buf = ""
+        else:
+            buf += ch
+    if buf.strip():
+        items.append(buf)
+    return [x.strip() for x in items if x.strip()]
+
+
 def load(path=MATRIX):
     """Parse the manifest into entries. Each entry gets a derived `dir`."""
     entries = []
@@ -51,8 +72,20 @@ def load(path=MATRIX):
         if indent == 2 and stripped.startswith("- "):
             if cur is not None:
                 entries.append(cur)
+            rest = stripped[2:].strip()
+            if rest.startswith("{"):
+                # Flow mapping on one line: { tool: node, attr: "x", version: "1" }.
+                # A 60-entry manifest is far easier to scan this way than with
+                # five lines per setup.
+                cur = {}
+                inner = rest[1:]
+                if inner.rstrip().endswith("}"):
+                    inner = inner.rstrip()[:-1]
+                for part in _split_flow(inner):
+                    k, _, v = part.partition(":")
+                    cur[k.strip()] = _scalar(v)
+                continue
             cur = {}
-            rest = stripped[2:]
             k, _, v = rest.partition(":")
             cur[k.strip()] = _scalar(v)
             continue
