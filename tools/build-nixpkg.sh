@@ -64,10 +64,18 @@ case "$NAME" in
 esac
 
 echo "nixpkg: building"
-OUTPATH=$("$NIX" build --no-link --print-out-paths ".#$NAME" 2>/tmp/nixpkg-err.log | tail -1)
+# `set -e` aborts on a failing command substitution BEFORE the `if` can inspect
+# it, so a build failure produced no message at all - the log just stopped after
+# "nixpkg: building". Capturing the status explicitly is what makes the error
+# visible.
+if ! OUTPATH=$("$NIX" build --no-link --print-out-paths ".#$NAME" 2>/tmp/nixpkg-err.log | tail -1); then
+  echo "nixpkg: nix build failed" >&2
+  tail -40 /tmp/nixpkg-err.log >&2
+  exit 1
+fi
 if [ -z "$OUTPATH" ] || [ ! -e "$OUTPATH" ]; then
-  echo "nixpkg: build failed" >&2
-  tail -30 /tmp/nixpkg-err.log >&2
+  echo "nixpkg: nix build produced no output path" >&2
+  tail -40 /tmp/nixpkg-err.log >&2
   exit 1
 fi
 REAL=$(readlink -f "$OUTPATH")
