@@ -74,11 +74,31 @@ def run(args, timeout=300):
 
 
 def out_path(attr):
-    """Resolve a flake attribute to its store path without building it."""
-    r = run([NIX, "eval", "--raw", attr + ".outPath"])
+    """Resolve a setup's store path without building it.
+
+    The attribute is resolved through OUR flake, not through `nixpkgs#...`.
+    That distinction is not cosmetic: `nixpkgs#...` evaluates the registry's
+    nixpkgs with its own config, where `allowUnfree` is false. terraform is BUSL,
+    so `nix eval nixpkgs#terraform.outPath` fails and the setup vanished from the
+    graph. flake.nix sets allowUnfree, so `.#<name>` resolves it.
+
+    The setup name contains dots (jq-1.8.2), so it has to be quoted inside the
+    attribute path or nix reads the dots as separators.
+    """
+    name = attr.rsplit("#", 1)[-1]
+    r = run([NIX, "eval", "--raw", '.#%s.outPath' % _quoted(name)])
     if r.returncode != 0 or not r.stdout.strip():
-        return None
+        # Fall back to the plain nixpkgs reference, which works for anything the
+        # registry can evaluate - better a partial answer than none.
+        r = run([NIX, "eval", "--raw", attr + ".outPath"])
+        if r.returncode != 0 or not r.stdout.strip():
+            return None
     return r.stdout.strip()
+
+
+def _quoted(name):
+    """Quote an attribute name for a nix attribute path."""
+    return '"%s"' % name
 
 
 def closure(path):
