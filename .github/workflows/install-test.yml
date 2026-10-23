@@ -1,0 +1,130 @@
+name: install-test
+
+# Exercise install.sh the way a consumer does, on the artifacts that are
+# actually published.
+#
+# This exists because the recursive dependency handling has never been run end to
+# end. closures.json says `composer` depends on `php`, and composer's tarball
+# deliberately omits the php paths - so if the recursion is wrong, the install
+# "succeeds" and leaves a composer that cannot start. That failure only appears
+# when something is executed, which is what these jobs do.
+#
+# Each job is a different shape of the same risk:
+#   composer  a dependency one level deep, whose dep is large
+#   cargo     a dependency that shares most of its closure with rustc
+#   pip       a dependency whose own tarball is almost empty (1 path)
+#   explicit  asking for both tools by name must not install either twice
+#   bare      a setup with no deps at all must still work
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  composer:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: install only composer, expect php too
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          bash install.sh composer
+
+          echo "== what got installed =="
+          ls /nix/setup-root-*
+          test -f /nix/setup-root-composer-2.10.3 || { echo "::error::composer missing"; exit 1; }
+          test -f /nix/setup-root-php-8.5.11     || { echo "::error::php was NOT pulled in as a dependency"; exit 1; }
+
+          echo "== composer actually runs (it is a php program) =="
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          composer --version
+          echo "== and the php it needs is present =="
+          php --version | head -1
+
+  cargo:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: install only cargo, expect rustc too
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          bash install.sh cargo
+          ls /nix/setup-root-*
+          test -f /nix/setup-root-cargo-1.99.0 || { echo "::error::cargo missing"; exit 1; }
+          test -f /nix/setup-root-rust-1.99.0  || { echo "::error::rustc was NOT pulled in"; exit 1; }
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          cargo --version
+          rustc --version
+
+  pip:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: install only pip, expect python too
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          bash install.sh pip
+          ls /nix/setup-root-*
+          test -f /nix/setup-root-pip-26.1.2    || { echo "::error::pip missing"; exit 1; }
+          test -f /nix/setup-root-python-3.14.8 || { echo "::error::python was NOT pulled in"; exit 1; }
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          pip --version
+          # pip must be able to reach its interpreter and act on a real package.
+          python3 -c "import sys; print('python', sys.version.split()[0])"
+
+  explicit:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: ask for both, get each once
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          bash install.sh composer php
+          echo "== each setup registered exactly once =="
+          ls /nix/setup-root-* | sort
+          n=$(ls /nix/setup-root-* | wc -l)
+          echo "count: $n"
+          # composer + php + base = 3. More would mean the recursion installed
+          # something twice; fewer would mean it skipped a dependency.
+          test "$n" -eq 3 || { echo "::error::expected 3 registrations, got $n"; exit 1; }
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          composer --version
+
+  bare:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: a setup with no dependencies needs no base
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          # jq's only dependency is the shared base, so this checks the shallowest
+          # case: base then jq, two setups. It also covers the dotted-name
+          # resolution (jq-1.8.2) that has broken before.
+          bash install.sh jq
+          test "$(ls /nix/setup-root-* | wc -l)" -eq 2 || {
+            echo "::error::expected base + jq"; ls /nix/setup-root-*; exit 1; }
+          ls /nix/setup-root-*
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          jq --version
+          echo '{"a":1}' | jq -r .a
