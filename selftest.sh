@@ -323,6 +323,41 @@ for d in $("$PY" matrixlib.py list); do
 done
 ok "build scripts exist for every builder"
 
+echo "== build scripts name the artifact matrix.yml expects =="
+# The artifact a build writes must equal the one the manifest names, or the
+# upload step silently misses it: that is how a rename from llvm to clang
+# produced a 141 MB tarball called llvm-*.tar.xz while matrix.yml asked for
+# clang-*.tar.xz, and the verify step failed on a missing file.
+"$PY" - <<'PY' || fail=1
+import re, sys
+sys.path.insert(0, ".")
+import matrixlib
+
+bad = 0
+for e in matrixlib.load():
+    # Only check pure "tool-version-debian-trixie-amd64.tar.xz" naming, which is
+    # what every script constructs itself.
+    want = "%s-%s-debian-trixie-amd64.tar.xz" % (e["tool"], e["version"])
+    if e["artifact"] != want:
+        continue
+    path = "tools/build-%s.sh" % e["builder"]
+    try:
+        src = open(path).read()
+    except OSError:
+        continue
+    # The script must mention the tool name it installs; a rename forgets
+    # exactly that. Scripts shared by several setups (rust-toolchain-* all use
+    # build-rust.sh) derive the name from $DIR, so skip those.
+    shared = sum(1 for x in matrixlib.load() if x["builder"] == e["builder"]) > 1
+    if not shared and e["tool"] not in src:
+        print("FAIL %s: %s never mentions the tool name (renamed setup?)"
+              % (e["dir"], path))
+        bad = 1
+if not bad:
+    print("ok   build scripts reference their own tool name")
+sys.exit(bad)
+PY
+
 echo "== apt_deps cover every soname the ELFs ask for =="
 # Guessing one missing library per CI round is how php took three rounds
 # (libsodium, then libargon2). If a staged tree is present, check it properly;

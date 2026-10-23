@@ -96,7 +96,7 @@ printf '#include <stdio.h>\n#include <stddef.h>\nint main(void){printf("c ok %%z
 rm -f /tmp/llvm-t.c /tmp/llvm-t-c /tmp/llvm-t-lld
 
 mkdir -p "$OUT"
-ASSET="$OUT/llvm-${VERSION}-debian-trixie-amd64.tar.xz"
+ASSET="$OUT/clang-${VERSION}-debian-trixie-amd64.tar.xz"
 tar -cJf "$ASSET" -C "$STAGE" .
 rm -rf "$STAGE"
 echo "clang: wrote $ASSET ($(du -h "$ASSET" | cut -f1))"
