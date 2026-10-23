@@ -34,6 +34,11 @@ jobs:
       - name: what each setup provides
         run: |
           set -uo pipefail
+          # GitHub runs `bash -e` by default, so a failing `nix build` for one
+          # setup would end the whole table. That is exactly how the previous
+          # audit produced a report that looked complete while most setups went
+          # unchecked - it stopped after the 8th and nobody could tell.
+          set +e
           python3 - > /tmp/setups.txt <<'PY'
           import sys
           sys.path.insert(0, ".")
@@ -79,6 +84,10 @@ jobs:
       - name: run the CLIs
         run: |
           set -uo pipefail
+          # Same reason as above: several of these are EXPECTED to be interesting
+          # (a tool that exits non-zero on --version, a binary that is absent).
+          # The report is the point, not the exit status of any one probe.
+          set +e
           run_one() {
             local d="$1" exe="$2"; shift 2
             local out line rc
