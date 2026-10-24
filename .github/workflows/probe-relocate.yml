@@ -33,9 +33,14 @@ jobs:
       - name: install a small setup and count what hard-codes /nix/store
         run: |
           set -euo pipefail
+          # The counting below runs `file` and `readelf` over a thousand files;
+          # both exit non-zero on inputs they do not recognise, and `set -e` would
+          # then end the step before printing anything useful. Only the first
+          # block (the install) needs strictness.
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates file binutils patchelf
           bash install.sh jq
+          set +e
 
           root=/tmp/tree
           rm -rf "$root"; mkdir -p "$root"
