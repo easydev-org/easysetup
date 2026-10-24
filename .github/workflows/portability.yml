@@ -1,0 +1,132 @@
+name: portability
+
+# Is `container: debian:trixie-slim` a real requirement or a self-imposed one?
+#
+# The action refuses anything that is not Debian 13. The stated reason is that the
+# artifacts need trixie's glibc 2.41. But the artifacts ship glibc themselves -
+# `base` is a glibc closure, and every binary's PT_INTERP points at an absolute
+# /nix/store path inside it. If that is true, the host libc is never used and the
+# check is protecting against nothing.
+#
+# This runs the published jq on systems with older libc (Ubuntu 24.04 = 2.39,
+# Debian 12 = 2.36) and on Fedora (dnf rather than apt), and reports which part
+# actually breaks - the binary, or merely the apt-based prerequisite step.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: what does a published binary actually link against?
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates file binutils
+          bash install.sh jq
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          JQ=$(command -v jq)
+          echo "== $JQ"
+          echo
+          echo "== ELF interpreter (what the kernel actually loads) =="
+          readelf -l "$JQ" 2>/dev/null | grep -A1 INTERP | tail -1
+          echo
+          echo "== does that path exist, and is it inside our own store? =="
+          interp=$(readelf -l "$JQ" 2>/dev/null | sed -n 's/.*Requesting program interpreter: \(.*\)\]/\1/p')
+          echo "interp: $interp"
+          ls -l "$interp" 2>&1 || echo "MISSING"
+          echo
+          echo "== ldd: which libs does it resolve, and from where? =="
+          ldd "$JQ" 2>&1 | head -10
+          echo
+          echo "== is glibc in /nix/store, i.e. shipped rather than borrowed? =="
+          ls -d /nix/store/*glibc-*/lib 2>/dev/null | head -3
+
+  ubuntu2404:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: host libc version
+        run: |
+          echo "host: $(. /etc/os-release; echo $PRETTY_NAME)"
+          ldd --version | head -1
+      - name: install and run without a container
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          sudo bash install.sh jq
+          sudo bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          echo "== jq from the artifact, on a host with glibc 2.39 =="
+          jq --version
+          echo '{"a":1}' | jq -r .a
+
+  debian12:
+    runs-on: ubuntu-latest
+    container: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: host libc version
+        run: |
+          echo "host: $(. /etc/os-release; echo $PRETTY_NAME)"
+          ldd --version | head -1
+      - name: install and run on an OLDER glibc than the build host
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          bash install.sh jq
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          echo "== jq from the artifact, on debian 12 (glibc 2.36) =="
+          jq --version
+          echo '{"a":1}' | jq -r .a
+
+  fedora:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: host tooling
+        run: |
+          echo "host: $(. /etc/os-release; echo $PRETTY_NAME)"
+          ldd --version | head -1
+      - name: does it run when prerequisites come from dnf?
+        run: |
+          set -euo pipefail
+          # The prerequisite step assumes apt-get. Fedora has no apt, so this is
+          # the part that breaks - not the artifact.
+          dnf install -y -q curl zstd python3 ca-certificates
+          bash install.sh jq
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          echo "== jq from the artifact, on fedora =="
+          jq --version
+          echo '{"a":1}' | jq -r .a
+
+  alpine:
+    runs-on: ubuntu-latest
+    container: alpine:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: musl host - is this the real limit?
+        run: |
+          set -uo pipefail
+          set +e
+          echo "host: $(cat /etc/alpine-release 2>/dev/null)"
+          # musl, not glibc. The artifact's interpreter is a glibc ld-linux, which
+          # does not exist here and cannot be substituted.
+          apk add --no-cache curl zstd python3 ca-certificates bash
+          bash install.sh jq
+          bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          echo "== running on musl =="
+          jq --version 2>&1 | head -3
+          echo "exit=$?"
