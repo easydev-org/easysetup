@@ -98,7 +98,7 @@ jobs:
               echo "::error::$a matrix has $n entries, over GitHub's limit of 256"
               exit 1
             fi
-            echo "$a=$n" >> "$GITHUB_OUTPUT"
+            echo "n_$a=$n" >> "$GITHUB_OUTPUT"
           done
           echo "list_amd64=$(cat /tmp/list-amd64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "list_arm64=$(cat /tmp/list-arm64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
@@ -120,7 +120,7 @@ jobs:
 
   build:
     needs: setup
-    if: needs.setup.outputs.amd64 != '0'
+    if: needs.setup.outputs.n_amd64 != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -243,7 +243,7 @@ jobs:
 
   build-arm64:
     needs: setup
-    if: needs.setup.outputs.arm64 != '0'
+    if: needs.setup.outputs.n_arm64 != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
