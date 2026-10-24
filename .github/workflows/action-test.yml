@@ -182,14 +182,19 @@ jobs:
           # PATH, so the script took the sudo branch and succeeded - the branch
           # under test never ran. Here sudo is genuinely not findable.
           rm -rf /tmp/nosudo && mkdir -p /tmp/nosudo
-          for f in sh sed grep cut head dirname basename stat mkdir chmod cat tr id; do
+          # bash, not sh: the step's first line is `set -euo pipefail`, and dash
+          # (what /bin/sh is on Debian) rejects `-o pipefail`. Putting bash in the
+          # restricted PATH is what lets the script get as far as the branch under
+          # test - otherwise it dies on its own first line and the assertion fails
+          # for a reason that has nothing to do with sudo.
+          for f in bash sed grep cut head dirname basename stat mkdir chmod cat tr id; do
             p=$(command -v "$f" 2>/dev/null) || continue
             cp -L "$p" "/tmp/nosudo/$f"
           done
           chmod -R 755 /tmp/nosudo
 
           out=$(sudo -u nobody env -i PATH=/tmp/nosudo HOME=/tmp \
-                  /tmp/nosudo/sh /tmp/prep.sh 2>&1 || true)
+                  /tmp/nosudo/bash /tmp/prep.sh 2>&1 || true)
           echo "$out"
 
           echo "$out" | grep -q "sudo is not installed" \
