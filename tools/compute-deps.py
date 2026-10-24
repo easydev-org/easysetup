@@ -104,7 +104,19 @@ def out_path(attr):
     path or nix reads the dots as separators.
     """
     name = attr.rsplit("#", 1)[-1]
-    for ref in ('.#%s' % _quoted(name), attr):
+    # ONLY our flake, never the bare `nixpkgs#<attr>` that the manifest carries.
+    #
+    # There used to be a fallback to that second form, and it quietly broke the
+    # one guarantee this file exists to provide: `nixpkgs#ameba` resolves through
+    # NIX_PATH's channel, not through flake.lock. The graph would then record the
+    # channel's store path while build-nixpkg.sh built the locked one - the two
+    # differ as soon as the channel moves - and the subtraction would remove paths
+    # the tarball did not contain. The symptom was "bin/ is empty in the staged
+    # copy" on a completely correct build.
+    #
+    # If the flake cannot resolve an attribute, that is a real answer: this setup
+    # is not available here.
+    for ref in ('.#%s' % _quoted(name),):
         r = run([NIX, "build", "--no-link", "--print-out-paths",
                  "--system", NIX_SYSTEM, ref],
                 timeout=1800)
