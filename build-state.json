@@ -16,6 +16,7 @@
  "busybox-1.37.0": "2554f4b63713b60d",
  "bzip2-1.0.8": "19b6a04e7a05fdc7",
  "cabal-3.16.1.0": "97ea6840a022bde3",
+ "cacert-3.126": "2042a03356dce28e",
  "cargo-1.99.0": "eb4878107d975cf0",
  "cargo-audit-0.22.2": "4225371092b840aa",
  "cargo-nextest-0.9.146": "af83362b464d0cb2",
