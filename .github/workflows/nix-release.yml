@@ -265,11 +265,13 @@ jobs:
           # What is already published, so the new SHA256SUMS covers the whole set
           # rather than only this run's files. Without this the checksum file
           # would silently lose every setup that did not change.
+          # --jq, not python: `gh` has a built-in JSON filter, so this needs no
+          # interpreter on the runner. (A previous version shelled out to python3
+          # with a multi-line program, which also broke the YAML block scalar -
+          # the second line began at column 0 and ended the `run: |` block.)
           existing=$(mktemp)
-          gh release view "$RELEASE_TAG" --json assets \
-            | python3 -c 'import json,sys
-for a in json.load(sys.stdin)["assets"]:
-    print(a["name"])' > "$existing" || true
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
+            > "$existing" || true
           echo "already published: $(wc -l < "$existing")"
 
           # Checksums carried over from the previous SHA256SUMS, for tarballs this
