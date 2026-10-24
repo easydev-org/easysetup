@@ -194,7 +194,11 @@ mkdir -p "$STAGE/nix/store"
 # quietly included everything would defeat the point, and a full tarball that
 # quietly dropped something would be broken. Both directions are wrong, so the
 # list is computed once (tools/compute-deps.py) and obeyed exactly here.
-CLOSURES="$(dirname "$0")/../closures.json"
+# The graph is per architecture, and using the wrong one is not a harmless
+# mistake: the amd64 graph lists amd64 store paths, so an arm64 build would
+# subtract paths it does not ship and then find "bin/ is empty in the staged
+# copy" - a correct-looking error for a correct build.
+CLOSURES="$(dirname "$0")/../closures-$ARCH.json"
 paths=""
 mode="full closure"
 if [ -f "$CLOSURES" ] && command -v python3 >/dev/null 2>&1; then

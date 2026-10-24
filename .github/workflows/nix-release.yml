@@ -164,12 +164,17 @@ jobs:
       - name: fetch closures.json
         run: |
           set -euo pipefail
-          if curl -fsSL --retry 3 -o closures.json \
-               "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/closures.json"; then
-            n=$(python3 -c "import json;print(len(json.load(open('closures.json'))['setups']))")
-            echo "closures.json present: $n setups, $(python3 -c "import json;print(len(json.load(open('closures.json'))['base']))") base paths"
+          # The graph for THIS architecture. The amd64 graph lists amd64 store
+          # paths; using it for arm64 subtracts paths the tarball does not ship,
+          # and the build then fails at "bin/ is empty in the staged copy" - a
+          # correct-sounding error produced by a correct build.
+          f="closures-${ARCH}.json"
+          if curl -fsSL --retry 3 -o "$f" \
+               "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/$f"; then
+            n=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d['setups']),len(d['base']))" "$f")
+            echo "$f present: $n"
           else
-            echo "no closures.json yet; tarballs will carry their full closure"
+            echo "no $f yet; tarballs will carry their full closure"
           fi
 
       - name: build ${{ matrix.name }} with nix
