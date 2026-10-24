@@ -134,7 +134,9 @@ jobs:
       # directly for the output path, which is the fact that matters: a path in
       # cache.nixos.org downloads on any host, and anything else would have to be
       # compiled here, on an emulated runner, for hours.
-      - name: every setup, arm64: cached or must compile
+      # Quoted because the name contains a colon - unquoted, YAML reads
+      # "arm64: cached" as a mapping and the whole file stops parsing.
+      - name: "every setup, arm64 - cached or must compile"
         run: |
           set -uo pipefail
           set +e
