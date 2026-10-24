@@ -5,7 +5,6 @@
   "/nix/store/7a2cjhcgzyym5zaz6m4fksw47qvm150w-gcc-16.2.0-lib",
   "/nix/store/bx7jdvkba26sy20ryr4l617qqmzj9hff-libunistring-1.4.2",
   "/nix/store/ji36842higmp6b06hbbpmzbd59g1c07c-zlib-1.3.2",
-  "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
   "/nix/store/nnm9gdr70ihc6zc9298mzz8jpcgaciql-bash-5.3p20",
   "/nix/store/pkkjnyk4z46n18fkyqwlg24p272apb69-xgcc-16.2.0-libgcc",
   "/nix/store/pqyiidz5mi73wv5f91d48s9plcqyj5bz-glibc-2.44-57"
@@ -100,7 +99,6 @@
     "/nix/store/7a2cjhcgzyym5zaz6m4fksw47qvm150w-gcc-16.2.0-lib",
     "/nix/store/bx7jdvkba26sy20ryr4l617qqmzj9hff-libunistring-1.4.2",
     "/nix/store/ji36842higmp6b06hbbpmzbd59g1c07c-zlib-1.3.2",
-    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/nnm9gdr70ihc6zc9298mzz8jpcgaciql-bash-5.3p20",
     "/nix/store/pkkjnyk4z46n18fkyqwlg24p272apb69-xgcc-16.2.0-libgcc",
     "/nix/store/pqyiidz5mi73wv5f91d48s9plcqyj5bz-glibc-2.44-57"
@@ -118,41 +116,47 @@
    ],
    "store": "/nix/store/vqpdipjlna9a2mawpxw83lhq87m5ifq1-basedpyright-1.39.8"
   },
+  "bash-5.3p20": {
+   "closure_size": 7,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
+    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6"
+   ],
+   "store": "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20"
+  },
   "bazel-7.6.0": {
    "closure_size": 52,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
+    "diffutils-3.12",
+    "findutils-4.11.0",
+    "gawk-5.4.1",
+    "grep-3.12",
+    "gzip-1.15",
+    "patch-2.8",
     "python-3.14.8",
+    "sed-4.10",
+    "tar-1.35",
     "unzip-6.0",
+    "which-2.25",
     "zip-3.0"
    ],
    "own": [
     "/nix/store/06il2mnivfxvf14xzkyb1vwcgvzidybq-die-hook",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3qgkh5yll8mli9501143bl3pghw4zk0w-bazel-rc",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
-    "/nix/store/77d0rlxs1c4sx71ss06vnmfpjcd5mm22-ed-1.22.6",
     "/nix/store/7ylbv76cqdba5qpyrhn9y6skyzksj4vh-bazel-7.6.0",
-    "/nix/store/99v13ig4382mngi6ggf0csqi7rfa04j5-findutils-4.11.0",
     "/nix/store/9g2ayz3qczp4d596j7qmz5gsr18c95fg-openjdk-headless-21.0.12.1+1",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/aliq9nclm4w66msq9mkjhhv2lg98al2c-libjpeg-turbo-3.2.0",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
-    "/nix/store/d5jz315vxbphknfawsrjs192ci9bc6df-patch-2.8",
-    "/nix/store/f9shc46n2300jbm0h60f6s4m69j0smyp-gnutar-1.35",
     "/nix/store/gys44dwkjgcypsld3iwf1wka02g3x7vk-bash",
-    "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1",
     "/nix/store/hfgqb1ssvvw15b2jnf0lgxbarmpyicda-set-java-classpath-hook",
     "/nix/store/hxrhz810ihz16cwcpl0rvl5j6maycqdz-bash",
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
-    "/nix/store/nzsflqrk0zdljly9jhx82l784hl5rmc4-diffutils-3.12",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/wnxl2v5a9rm80kixrg45k99d0s78zqsv-make-shell-wrapper-hook"
    ],
    "store": "/nix/store/7ylbv76cqdba5qpyrhn9y6skyzksj4vh-bazel-7.6.0"
@@ -161,19 +165,16 @@
    "closure_size": 24,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
     "llvm-23.1.3"
    ],
    "own": [
     "/nix/store/01m5r726f2p9bsxpkzs70knrdd84kscc-llvm-binutils-wrapper-23.1.3",
     "/nix/store/39sfwwfm1i6fca19dxn1vis4swzh59fm-lld-23.1.3",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/x95v5famp8giggh3f09bs5qf69ks4zq9-llvm-binutils-23.1.3"
    ],
    "store": "/nix/store/01m5r726f2p9bsxpkzs70knrdd84kscc-llvm-binutils-wrapper-23.1.3"
@@ -192,7 +193,8 @@
   "box-4.6.6": {
    "closure_size": 126,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "gzip-1.15"
    ],
    "own": [
     "/nix/store/18ykcs87zl2zxgdvjnl3zdzqcp7r2m44-linux-pam-1.7.2",
@@ -271,6 +273,7 @@
     "/nix/store/k7fm0119b1ki5ny5nqmilm7ydjza1iki-php-iconv-8.2.34",
     "/nix/store/kggg99nn8zvnxdb47pg6ydpb8vnww44a-cyrus-sasl-2.1.28",
     "/nix/store/l2804gg75cj5v2m18aiq8w1qjq8bisqa-php-intl-8.2.34",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/lbvvv07w1kbxifkdswpl0ifn7sdcfcan-dav1d-1.5.3",
     "/nix/store/lmgi1sadfpn64nl8mxai9rlawcz2jp4k-openldap-2.6.13",
     "/nix/store/lns2dm51vljy9d86sm9ghs450dhxv16j-libpq-18.6",
@@ -294,7 +297,6 @@
     "/nix/store/rdbqlf0h46k4191zxg2h7xf16pp8dqb5-php-readline-8.2.34",
     "/nix/store/rg0gyybjjaws5x1lcc0p2ra98mikbrrd-php-session-8.2.34",
     "/nix/store/rimm8a3m34yr31hp1pv9824l7nzck22y-libyuv-1908",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/sgrr09qg61pm0wdn3kyvnz264vgyqf63-gd-2.3.3",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/v0ia5y8al4h6m8qihl0i618sngnwmmi1-icu4c-73.2",
@@ -338,6 +340,27 @@
    ],
    "store": "/nix/store/2mxhj3nrvxxqm6gf6rwnrvz048zqdclp-bun-1.4.2"
   },
+  "busybox-1.37.0": {
+   "closure_size": 5,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/j9m041gdw923yfikpr9yva8vna6lk6f7-busybox-1.37.0"
+   ],
+   "store": "/nix/store/j9m041gdw923yfikpr9yva8vna6lk6f7-busybox-1.37.0"
+  },
+  "bzip2-1.0.8": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin",
+    "/nix/store/zx4ag3v11v9rl0iqvg6vzbpflzlg0dk2-bzip2-1.0.8"
+   ],
+   "store": "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin"
+  },
   "cabal-3.16.1.0": {
    "closure_size": 29,
    "deps": [
@@ -353,6 +376,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -381,6 +405,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -429,6 +454,7 @@
     "/nix/store/8bziihn1d77lmqsm267h466bwgv3h929-hiredis-1.5.0",
     "/nix/store/d0bpdc960m11k61jkl5h2wmxz69kc2q7-fmt-12.2.0",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/zfx4lcv63y31dd27m28qvanipysxq02q-ccache-4.14.1"
    ],
    "store": "/nix/store/zfx4lcv63y31dd27m28qvanipysxq02q-ccache-4.14.1"
@@ -437,30 +463,26 @@
    "closure_size": 48,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
     "python-3.14.8"
    ],
    "own": [
     "/nix/store/0a584d1b9csvk900bdg4pf7vzkx1v7jl-binutils-wrapper-2.46",
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
     "/nix/store/5c0rqk890xw9wz74msjsl00m2x42q7ag-clang-23.1.3-lib",
     "/nix/store/9fvlqb86slschi21bk5n4zrzz2jinpw6-compiler-rt-libc-23.1.3-dev",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/gxjpbn30h1an7ywffxrsn7czxwczcpqz-clang-23.1.3",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
     "/nix/store/nzj6mcvj7blcv0qp11zv9mxgrcp0rqkm-compiler-rt-libc-23.1.3",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/q5hx5j4n0c1nyxaxfgd1dzca3r3q3c25-clang-wrapper-23.1.3",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
     "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
     "/nix/store/y6ri2r743ckh5kk160r461czl9n2f2wf-binutils-2.46",
     "/nix/store/yi5d8g9kma5bhskfjllrjypd5d2xhvl1-isl-0.20",
@@ -507,7 +529,8 @@
   "clojure-1.12.6.1673": {
    "closure_size": 112,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -515,7 +538,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -545,7 +567,6 @@
     "/nix/store/brdyqjbshzkw21p14p3wi6axjaq8bmcw-rlwrap-0.48",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -587,7 +608,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
@@ -597,7 +617,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -646,6 +665,7 @@
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
     "/nix/store/rlpcs1h48m058z811xxkn5672v77p5qj-cmake-4.4.4",
@@ -658,8 +678,11 @@
    "closure_size": 133,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
     "curl-8.22.0",
+    "grep-3.12",
     "php-8.5.11",
+    "sed-4.10",
     "unzip-6.0",
     "xz-5.8.4"
    ],
@@ -669,12 +692,7 @@
     "/nix/store/8bjgbzmn2zcknwsadv60ngqhzs8031xy-composer-2.10.3",
     "/nix/store/8qdw9shgr7dd3315jim8sfva2dnhq86c-gettext-1.0",
     "/nix/store/90s57svwlkmix0pyd5wmz21ml95pzy2r-7zz-26.04",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
-    "/nix/store/kpxyphz34wzyahmlyryvx4805qgiy2a3-7zz-26.04-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0"
+    "/nix/store/kpxyphz34wzyahmlyryvx4805qgiy2a3-7zz-26.04-lib"
    ],
    "store": "/nix/store/8bjgbzmn2zcknwsadv60ngqhzs8031xy-composer-2.10.3"
   },
@@ -709,6 +727,19 @@
     "/nix/store/zk83rs36i3h116g8wvwxh97vbwv0pg81-python3.14-python-dateutil-2.9.0.post0"
    ],
    "store": "/nix/store/1iamkj24p9vk3md9phv0g5rz56ms7kqk-conan-2.32.0"
+  },
+  "coreutils-9.12": {
+   "closure_size": 10,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
+    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
+    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
+    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0"
+   ],
+   "store": "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12"
   },
   "coverage-7.16.2": {
    "closure_size": 24,
@@ -750,8 +781,12 @@
    "closure_size": 70,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
+    "openssl-3.5.9",
     "pkg-config-0.29.2",
-    "python-3.14.8"
+    "python-3.14.8",
+    "which-2.25"
    ],
    "own": [
     "/nix/store/0a584d1b9csvk900bdg4pf7vzkx1v7jl-binutils-wrapper-2.46",
@@ -759,7 +794,6 @@
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
     "/nix/store/2wlpnlk88r3y1dir79ibzvhkz446b8bw-libyaml-0.2.5-dev",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
     "/nix/store/50lngyqcak682x0msmda3rfdjqhdh08f-find-xml-catalogs-hook",
     "/nix/store/5ajx1np9zlq7z6ljqq18sibpzhnjakdw-clang-22.1.8-lib",
@@ -769,12 +803,8 @@
     "/nix/store/9iqk4l5nf7ld7jfnxcmffyhiq5w6gkqx-pcre2-10.49-bin",
     "/nix/store/a76rmqrp6l3w6h9pppfwzb3s6dzi0y4g-zlib-1.3.2-dev",
     "/nix/store/aa0fqrgffl8ijza9mmx9apxy973215wz-clang-wrapper-22.1.8",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/d6ar9rr2bbwdrjdj2y7pfbppf8q1wydn-libxml2-2.15.4-bin",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/hka7hr5qp0n92dmfv6gdigcabx9dai9r-zlib-1.3.2-static",
     "/nix/store/hwp3ss11vsb9y3cf0blsp80cldaqy48q-boehm-gc-8.2.12",
     "/nix/store/ik6d4jn947nvp5d7mzsyprji73y6p2ym-clang-22.1.8",
@@ -788,10 +818,7 @@
     "/nix/store/nm86wbjs09mrwwzrji3bbwzz09sk5ajq-compiler-rt-libc-22.1.8-dev",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
     "/nix/store/nsgmh9gxbbpg3cla9njjh9qr3akh3f98-llvm-22.1.8-lib",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w1z8fn0fli02g8yb000zkggfx22ijj5k-compiler-rt-libc-22.1.8",
     "/nix/store/wps4g7kaj73d2zs53a5cfimw1bnb3c99-openssl-3.5.9-dev",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
@@ -829,11 +856,11 @@
    "closure_size": 41,
    "deps": [
     "base-2.44",
-    "dotnet-10.0.401"
+    "dotnet-10.0.401",
+    "which-2.25"
    ],
    "own": [
-    "/nix/store/awc33f6yp6d57ic7yraa7lf7r02p1a2b-csharp-ls-0.28.0",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25"
+    "/nix/store/awc33f6yp6d57ic7yraa7lf7r02p1a2b-csharp-ls-0.28.0"
    ],
    "store": "/nix/store/awc33f6yp6d57ic7yraa7lf7r02p1a2b-csharp-ls-0.28.0"
   },
@@ -850,6 +877,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -887,6 +915,18 @@
     "/nix/store/l4sp8gsbb2nnj77rzp7ba87i3vcnyv6z-dasel-3.11.2"
    ],
    "store": "/nix/store/l4sp8gsbb2nnj77rzp7ba87i3vcnyv6z-dasel-3.11.2"
+  },
+  "dash-0.5.13.5": {
+   "closure_size": 7,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/91a26w6xq3mlfr624xv63gprl2408mqp-dash-0.5.13.5",
+    "/nix/store/ka6nj2ppyjyn7s1xs9ibd1jpzdklx12y-libedit-20260508-3.1",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6"
+   ],
+   "store": "/nix/store/91a26w6xq3mlfr624xv63gprl2408mqp-dash-0.5.13.5"
   },
   "delve-1.27.2": {
    "closure_size": 8,
@@ -930,6 +970,17 @@
    ],
    "store": "/nix/store/n74jy7r2r6qzprvvcs2dh6lifix4sz31-detekt-1.23.8"
   },
+  "diffutils-3.12": {
+   "closure_size": 11,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12"
+   ],
+   "own": [
+    "/nix/store/nzsflqrk0zdljly9jhx82l784hl5rmc4-diffutils-3.12"
+   ],
+   "store": "/nix/store/nzsflqrk0zdljly9jhx82l784hl5rmc4-diffutils-3.12"
+  },
   "dotnet-10.0.401": {
    "closure_size": 39,
    "deps": [
@@ -951,6 +1002,7 @@
     "/nix/store/h65g4h1zh6gcsqr6wig86clsyqa5wrzm-lttng-ust-2.12.2",
     "/nix/store/hddk44f1m060mvavy5l122yg9v190zk0-perl5.42.3-Sub-Identify-0.14",
     "/nix/store/hzv8gh10apyd26whwx8sg4lsaxjgwssd-dotnet-sdk-10.0.401",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/ljcav5kfyiy93hrl84jf8xky282vqi8q-perl5.42.3-SUPER-1.20190531",
     "/nix/store/m0f5xgws8lpkja6kz7lvzwl7bb4zm6w5-libxslt-1.1.45",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
@@ -967,11 +1019,11 @@
    "closure_size": 215,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
     "curl-8.22.0",
     "erlang-28.5.0.8"
    ],
    "own": [
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
     "/nix/store/s1h2bf9lk5784mry7w3v32nv0g1v00jb-elixir-1.18.5"
    ],
    "store": "/nix/store/s1h2bf9lk5784mry7w3v32nv0g1v00jb-elixir-1.18.5"
@@ -991,8 +1043,10 @@
    "closure_size": 212,
    "deps": [
     "base-2.44",
+    "gawk-5.4.1",
     "perl-5.42.3",
-    "python-3.14.8"
+    "python-3.14.8",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/00b5lqr8fc4gbsjsfsy9j2irwl8l770k-graphene-1.10.8",
@@ -1034,7 +1088,6 @@
     "/nix/store/8sixyv0w19kkargpan10hf4af55hr5lk-gtk+3-3.24.52",
     "/nix/store/9b21b18iq20d67isg1bwhik42rifzpvs-util-linux-minimal-2.42.4-login",
     "/nix/store/9n9vsf6b87vk39lhziijh0ay9xljkznj-aspell-0.60.8.2",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/9wwqcw8hr8z47avkdcigdyhclkq62f0a-icu4c-78.3",
     "/nix/store/ajzrc8n8fksmaclsa0cggfv3804dk269-libaom-3.15.1",
     "/nix/store/alal124kklhnav6h2d7444iz3z0kq0f2-libapparmor-5.0.2",
@@ -1077,7 +1130,6 @@
     "/nix/store/gr3dpqv495i1m3waq1vds3002ismqisi-libsndfile-1.2.2",
     "/nix/store/grgpna7v4mxl7849zhn0fp7d7wmnqngr-flac-1.5.0",
     "/nix/store/gxwji99652lk8f9vys36jvc7gj4l289p-libfido2-1.17.0",
-    "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1",
     "/nix/store/hbqm1ll9fkvsf66dhlfnv0wn081n2gya-libdrm-2.4.134-bin",
     "/nix/store/hcrghwaqp9qa727j9abr5yj2lahn4ir9-gdk-pixbuf-2.44.8",
     "/nix/store/hdkn50x441a5r9l2i3p0wmjk8kb98bs8-pixman-0.46.4",
@@ -1215,15 +1267,32 @@
    ],
    "store": "/nix/store/a0in10vqbms8p07zg03jrw8j36gmgv58-fd-10.5.0"
   },
+  "findutils-4.11.0": {
+   "closure_size": 11,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12"
+   ],
+   "own": [
+    "/nix/store/99v13ig4382mngi6ggf0csqi7rfa04j5-findutils-4.11.0"
+   ],
+   "store": "/nix/store/99v13ig4382mngi6ggf0csqi7rfa04j5-findutils-4.11.0"
+  },
   "flutter-3.47.4": {
    "closure_size": 430,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
+    "bzip2-1.0.8",
     "cmake-4.4.4",
+    "coreutils-9.12",
     "curl-8.22.0",
     "ninja-1.13.2",
+    "openssl-3.5.9",
     "pkg-config-0.29.2",
     "python-3.14.8",
+    "sed-4.10",
+    "which-2.25",
     "xz-5.8.4",
     "zstd-1.5.7"
    ],
@@ -1335,7 +1404,6 @@
     "/nix/store/9r1yyvgcs4fs9y4bqighj0fwcwkp921v-graphite2-1.3.15-dev",
     "/nix/store/9s2g6cbca4k1spi0qsp3w2plpdggb64s-pango-1.57.1-bin",
     "/nix/store/9wa7410wfy77mmlz8pznyq4fc7jpx48w-libarchive-3.8.9",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/9wwqcw8hr8z47avkdcigdyhclkq62f0a-icu4c-78.3",
     "/nix/store/9z3pd7iwyvbx5mmbah8xbr8j9ph130dw-pub-fake_async-1.3.3",
     "/nix/store/a0znmy6cri7m8335bf44q1wkmd5x51f6-p11-kit-0.26.5-bin",
@@ -1344,7 +1412,6 @@
     "/nix/store/a7r3am78cawva22gfdh50c59qnxpqgrz-libjpeg-turbo-3.2.0-bin",
     "/nix/store/a8jdfjk13g79r4s5nwxplfyzlfca36m5-libx11-1.8.13-dev",
     "/nix/store/a9vhkdr379k8fxaywf9xqcxngkr2gg19-json-c-0.18-dev",
-    "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin",
     "/nix/store/ajlj4n3cjkjy950r9fw49vwy4bq0577n-pub-mime-2.0.0",
     "/nix/store/alal124kklhnav6h2d7444iz3z0kq0f2-libapparmor-5.0.2",
     "/nix/store/aliq9nclm4w66msq9mkjhhv2lg98al2c-libjpeg-turbo-3.2.0",
@@ -1361,11 +1428,9 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/bknqdwimgfpajqyarn8hs6fm08zn86cn-libjpeg-turbo-3.2.0-dev",
     "/nix/store/bvfkqam1y3zmsb3k41iml0zwx13sknjl-elfutils-0.195",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
     "/nix/store/c7gbx9b77g5ppbj3krp6yq01r1ph0x6x-cairo-1.18.4-dev",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cbdk05r9l643r460f0l43kxp884g4ll7-pub-path-1.9.1",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/cmbr4mv4h7d79f4axrc1nxhs8imq112f-pub-web-1.1.1",
@@ -1400,7 +1465,6 @@
     "/nix/store/gqzc8br5ckngw7d65823zwkivx4bl330-tinysparql-3.11.1-dev",
     "/nix/store/grg6zvpfzd7samwq6rm6vr9fi2s2bzkd-pub-stack_trace-1.12.1",
     "/nix/store/grmykqygprcczfg4lwfq00na00sxm69d-dart-3.13.3",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/gxkjndisp1vmy8qi9rg7mz4y1bj0x1wh-libcap-ng-0.9.6-dev",
     "/nix/store/gxl989vk4xkbiw8yh7f58vnnc2s813lc-libice-1.1.2-dev",
     "/nix/store/h63nh9nh68id4waxjip21fk32fddqcns-libxau-1.0.12-dev",
@@ -1447,7 +1511,6 @@
     "/nix/store/kq2d6nk60b7n95q4d4s052sixzp1r5r4-kmod-31-dev",
     "/nix/store/kw4bid4fjcg5zc4gc897jqlavdm71l0p-pub-source_map_stack_trace-2.1.2",
     "/nix/store/kwrnyfpbxwjq1gipcwp15dvk57ihqfz9-setup-debug-info-dirs-hook",
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
     "/nix/store/kx7s9yba4bssr6wp7cvx0v4wql62cgg6-pub-shelf_proxy-1.0.5",
     "/nix/store/ky11x7a712d1mgzp0gphbg7fx01w5cwf-pub-dwds-27.1.2",
     "/nix/store/kyiv69yxcf24qga5qs3sw3rfz90djnpw-sqlite-3.53.3-dev",
@@ -1502,7 +1565,6 @@
     "/nix/store/pj11k1s54045khrq1zw6xvf7pv2jca2m-pub-checked_yaml-2.0.4",
     "/nix/store/plwplfr99gn6bxii119spnrdbm834gsb-libsm-1.2.6",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/pspff0rp45gfx1gf0xpwp38z1i08qc0x-lerc-4.2.0-dev",
     "/nix/store/px0zr20xcc1kkls1gkpjcrsgf75w7yr1-libedit-20260508-3.1-dev",
     "/nix/store/q0pzz10kw93zqf2xyghpgyrvc6x0wba6-pub-vm_snapshot_analysis-0.7.6",
@@ -1545,7 +1607,6 @@
     "/nix/store/vfvqm06xf08f6mkwzaz1993rf5d7zzhv-libxcursor-1.2.3-dev",
     "/nix/store/vj95j5874ahl4ba6ydkmwhgj9wpa26x6-tcl-8.6.16",
     "/nix/store/vqqz42af3hm89plcfg6sxmic32v2praa-brotli-1.2.0-dev",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/vvi17a5j76749706ipn561p9g0467fxq-libmicrohttpd-1.0.10",
     "/nix/store/vwjw9639n5i9wfni9k38n9j2ymavn74c-flutter-wrapped-3.47.4",
     "/nix/store/vyhb8kwf0xw9z6c6qqp7d0b2bzk876l5-pub-graphs-2.3.2",
@@ -1608,28 +1669,34 @@
    ],
    "store": "/nix/store/zjrgc7zva5nh4w9w2v0n5qyp5j7js3qn-flutter-wrapped-3.47.4-sdk-links"
   },
-  "gcc-16.2.0": {
-   "closure_size": 27,
+  "gawk-5.4.1": {
+   "closure_size": 5,
    "deps": [
     "base-2.44"
    ],
    "own": [
+    "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1"
+   ],
+   "store": "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1"
+  },
+  "gcc-16.2.0": {
+   "closure_size": 27,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12"
+   ],
+   "own": [
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/fi98g122a3kzbschgvbvsqvpyxrmqvvl-binutils-wrapper-2.46",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
     "/nix/store/jkz7a5kgwa1h16d8hkhjqlgm0xy5bkhw-expand-response-params",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/r5ri78axx1qggkjq3vawywlzglg70b5w-gcc-wrapper-16.2.0",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
     "/nix/store/y6ri2r743ckh5kk160r461czl9n2f2wf-binutils-2.46",
     "/nix/store/yi5d8g9kma5bhskfjllrjypd5d2xhvl1-isl-0.20"
@@ -1702,6 +1769,7 @@
    "closure_size": 70,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
     "gcc-16.2.0"
    ],
    "own": [
@@ -1723,9 +1791,8 @@
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
     "/nix/store/irdalsbs99v3gyc8wr0imfx4c449rhf2-libevent-2.1.13",
     "/nix/store/j7jpq1bligg8qvkdh7mki29x9pg2zvwz-ncurses-6.6-man",
-    "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
     "/nix/store/kwrnyfpbxwjq1gipcwp15dvk57ihqfz9-setup-debug-info-dirs-hook",
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/nh6v5wa41gapkbzkg7nh32f0l6a95s26-dns-root-data-2025-04-14",
@@ -1736,7 +1803,6 @@
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
     "/nix/store/qygq2af9b050xxl31znawlj38x71rx3n-ghc-9.10.3-doc",
-    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
     "/nix/store/rq885zjr9p3n1prnlskzxn8cjkpf5nir-numactl-2.0.18-dev",
     "/nix/store/skwngnn0ha6bwbv6fj1kdjmd4646w0ik-elfutils-0.195-dev",
     "/nix/store/vbmxpq22lm0hhb37mhykinj45aa0ljc3-numactl-2.0.18",
@@ -1754,8 +1820,11 @@
    "closure_size": 87,
    "deps": [
     "base-2.44",
+    "grep-3.12",
+    "gzip-1.15",
     "perl-5.42.3",
-    "python-3.14.8"
+    "python-3.14.8",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/013la2bf3dqkvvyxpyl4pgvx51d2jwnv-perl5.42.3-HTTP-Daemon-6.17",
@@ -1772,12 +1841,10 @@
     "/nix/store/8qc02dniix9i7cz4arhzbibb5zksqymy-perl5.42.3-HTTP-Date-6.08",
     "/nix/store/8qdw9shgr7dd3315jim8sfva2dnhq86c-gettext-1.0",
     "/nix/store/9drfa3mrps11k2169s62h354mpj86q7l-perl5.42.3-FCGI-0.82",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/9ywrmani4xx0n9j96f6nx4gqk1q2k99b-perl5.42.3-MIME-Base32-1.303",
     "/nix/store/a7jy06vpv6bhkrgm6hipn6px8pgfbnws-perl5.42.3-HTML-Tagset-3.20",
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
     "/nix/store/bf61yikkg1xg2xsqghdiy1i8ypz9m9ls-perl5.42.3-TimeDate-2.33",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
     "/nix/store/c74icicyxl49zs706jhxf2f97dgw0big-perl5.42.3-Crypt-URandom-0.55",
     "/nix/store/czcwl43cyddmgy8z67cbq2ag8avi73qx-perl5.42.3-Test-Needs-0.002010",
     "/nix/store/dbg2yqnjnqqsln5li7wfsc5bg70avjxx-perl5.42.3-WWW-RobotRules-6.02",
@@ -1798,7 +1865,6 @@
     "/nix/store/ncpfrkxdi790dnky93p1dpvn50m7icaj-perl5.42.3-FCGI-ProcManager-0.28",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
     "/nix/store/p9i1b7jgfj4fl5bx557jnwbdsafl434i-curl-8.22.0",
     "/nix/store/pf6ph2hr3p286qxdsl04jis0n4vcc0gi-perl5.42.3-HTTP-Negotiate-6.01",
     "/nix/store/plix5s7ffq1fp9p8yhxj3adl0ah4hhqz-perl5.42.3-libnet-3.15",
@@ -1806,7 +1872,6 @@
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
     "/nix/store/rab3bl91k7xksrdpdw69pcpkj6p1z78q-perl5.42.3-Net-SSLeay-1.92",
     "/nix/store/rcha0vx95xd6dxlwqmj3iqv79aqjwq1z-perl5.42.3-HTTP-Message-7.02",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/sixp6a2yhv1rqyjvi4q0vkz85z8r0rnr-perl5.42.3-HTML-Parser-3.85",
     "/nix/store/spr79kzwpcsmfbvppf7br727bvn4gsdm-perl5.42.3-HTML-TagCloud-0.38",
     "/nix/store/x5a9anjlhrsp9rmr1j2rdf1czlxlzxnk-perl5.42.3-Digest-HMAC-1.05",
@@ -1887,6 +1952,7 @@
     "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
     "/nix/store/k0ac9glg0y925lxx2hs52b22ragnrglg-libusb-1.0.30",
     "/nix/store/kggg99nn8zvnxdb47pg6ydpb8vnww44a-cyrus-sasl-2.1.28",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/ljdkkww2qchiqq6zc2yc6yab4lgfx7nb-tpm2-tss-4.2.0",
     "/nix/store/lmgi1sadfpn64nl8mxai9rlawcz2jp4k-openldap-2.6.13",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
@@ -1967,7 +2033,8 @@
   "google-java-format-1.37.0": {
    "closure_size": 108,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -1975,7 +2042,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -2004,7 +2070,6 @@
     "/nix/store/blwa6yr7yw7ljwi57wia54d03jvpq1j2-google-java-format-1.37.0",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -2044,7 +2109,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -2053,7 +2117,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -2103,19 +2166,19 @@
    "closure_size": 133,
    "deps": [
     "base-2.44",
+    "findutils-4.11.0",
     "java-25.0.4.1+1",
-    "python-3.14.8"
+    "openssl-3.5.9",
+    "python-3.14.8",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
     "/nix/store/2qkf1l0vzibp62vmyvnij8qmwqb233ng-gradle-9.8.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
-    "/nix/store/99v13ig4382mngi6ggf0csqi7rfa04j5-findutils-4.11.0",
     "/nix/store/9lmqrzl7cvpqc2awncvx9i73j5zpq85b-ncurses-abi5-compat-6.6",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
     "/nix/store/kda141himdarphaq50rpmmcf1yv7gspy-gradle-setup-hook",
     "/nix/store/kwvwxlvz18l0jrwki7hh7icg7q3v9i1w-mitm-cache-0.1.2",
@@ -2127,6 +2190,27 @@
     "/nix/store/yi5d8g9kma5bhskfjllrjypd5d2xhvl1-isl-0.20"
    ],
    "store": "/nix/store/2qkf1l0vzibp62vmyvnij8qmwqb233ng-gradle-9.8.0"
+  },
+  "grep-3.12": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
+    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49"
+   ],
+   "store": "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12"
+  },
+  "gzip-1.15": {
+   "closure_size": 5,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15"
+   ],
+   "store": "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15"
   },
   "hadolint-2.14.0": {
    "closure_size": 27,
@@ -2143,6 +2227,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -2686,6 +2771,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -2699,6 +2785,62 @@
     "/nix/store/zx4ag3v11v9rl0iqvg6vzbpflzlg0dk2-bzip2-1.0.8"
    ],
    "store": "/nix/store/y243rxa3q4fhgfdk49nb96fzj1a5gq02-hlint-3.10"
+  },
+  "inetutils-2.7": {
+   "closure_size": 13,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12"
+   ],
+   "own": [
+    "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
+    "/nix/store/sgjg6zavzzmy7n438w4xd5j8kiqniphp-inetutils-2.7"
+   ],
+   "store": "/nix/store/sgjg6zavzzmy7n438w4xd5j8kiqniphp-inetutils-2.7"
+  },
+  "iproute2-7.2.0": {
+   "closure_size": 30,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/1ww3clwns6md3prwdh4knqpwn785fvzy-iproute2-7.2.0",
+    "/nix/store/2aw3zp99m9jc250ajl42rhaankp2kjav-nghttp2-1.70.0-lib",
+    "/nix/store/2b7h6rnav6a0s6npjk8y76f6rjs86lvw-ngtcp2-1.23.0",
+    "/nix/store/3lydnylg6mzmhmqha5gsr001jnzby3a2-libnetfilter_conntrack-1.1.1",
+    "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
+    "/nix/store/4k1kyap0izb6gqhc9yy8kv99pl55ldia-libnfnetlink-1.0.2",
+    "/nix/store/79jdhn4pc0r7janay6aqzk527gif3nbq-iptables-1.8.13-lib",
+    "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
+    "/nix/store/bvfkqam1y3zmsb3k41iml0zwx13sknjl-elfutils-0.195",
+    "/nix/store/cg4vskbr8139w0nkwbf3bpl3n79vz1d6-db-5.3.28",
+    "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
+    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/g5r5v78yig5lf2srpcm1dwcnzs2g522v-libbpf-1.8.0",
+    "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
+    "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
+    "/nix/store/n98x77rw5dn38jzihippjwkz2vfnpg91-libmnl-1.0.5",
+    "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
+    "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
+    "/nix/store/p9i1b7jgfj4fl5bx557jnwbdsafl434i-curl-8.22.0",
+    "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
+    "/nix/store/z10rxaxcalb7dis6bjgkqi4604llmgyv-json-c-0.18",
+    "/nix/store/zx4ag3v11v9rl0iqvg6vzbpflzlg0dk2-bzip2-1.0.8"
+   ],
+   "store": "/nix/store/1ww3clwns6md3prwdh4knqpwn785fvzy-iproute2-7.2.0"
+  },
+  "iputils-20250605": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/1n81sbs00pd7i5j7zjsvhcdcgzq4mnfh-iputils-20250605",
+    "/nix/store/r81hqhnfjmgj795bdy0qiy76gh7h2iik-libcap-2.78-lib"
+   ],
+   "store": "/nix/store/1n81sbs00pd7i5j7zjsvhcdcgzq4mnfh-iputils-20250605"
   },
   "ipython-9.16.1": {
    "closure_size": 41,
@@ -2760,19 +2902,18 @@
    "closure_size": 49,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
     "python-3.14.8"
    ],
    "own": [
     "/nix/store/0a584d1b9csvk900bdg4pf7vzkx1v7jl-binutils-wrapper-2.46",
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
     "/nix/store/5ajx1np9zlq7z6ljqq18sibpzhnjakdw-clang-22.1.8-lib",
     "/nix/store/6l711bys0whj4dyh3yrg1iam4212vd6d-include-what-you-use-0.26",
     "/nix/store/aa0fqrgffl8ijza9mmx9apxy973215wz-clang-wrapper-22.1.8",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/ik6d4jn947nvp5d7mzsyprji73y6p2ym-clang-22.1.8",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
@@ -2780,11 +2921,8 @@
     "/nix/store/nm86wbjs09mrwwzrji3bbwzz09sk5ajq-compiler-rt-libc-22.1.8-dev",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
     "/nix/store/nsgmh9gxbbpg3cla9njjh9qr3akh3f98-llvm-22.1.8-lib",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
     "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w1z8fn0fli02g8yb000zkggfx22ijj5k-compiler-rt-libc-22.1.8",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
     "/nix/store/y6ri2r743ckh5kk160r461czl9n2f2wf-binutils-2.46",
@@ -2795,7 +2933,8 @@
   "java-25.0.4.1+1": {
    "closure_size": 107,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -2803,7 +2942,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -2831,7 +2969,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -2871,7 +3008,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -2879,7 +3015,6 @@
     "/nix/store/sgwn4f0dy14s8bghl8jwvdglpvdxk12i-dbus-1.16.2-lib",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -2904,6 +3039,7 @@
    "closure_size": 116,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
     "python-3.14.8"
    ],
    "own": [
@@ -2912,7 +3048,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
     "/nix/store/48jp3zrc8rsgn441kfrk0dfx3n11ph26-libwebp-1.6.0",
@@ -2938,7 +3073,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -2977,7 +3111,6 @@
     "/nix/store/p8rsjqmh7fhkhky8rdz1vrl7lk57ycnp-libxkbcommon-1.13.2",
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -2986,7 +3119,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -3073,7 +3205,8 @@
   "kotlin-2.4.20": {
    "closure_size": 108,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -3082,7 +3215,6 @@
     "/nix/store/375q713hr3jl5ai18xvyj42v9fdjjljy-kotlin-2.4.20",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -3110,7 +3242,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -3150,7 +3281,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -3159,7 +3289,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -3183,6 +3312,7 @@
    "closure_size": 110,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
     "maven-3.9.16"
    ],
    "own": [
@@ -3191,7 +3321,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
     "/nix/store/48jp3zrc8rsgn441kfrk0dfx3n11ph26-libwebp-1.6.0",
@@ -3217,7 +3346,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -3256,7 +3384,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -3266,7 +3393,6 @@
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
     "/nix/store/vmalvkdv4sm9mb5rry3ila8jwj49j2ll-kotlin-language-server-1.3.13",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -3289,12 +3415,12 @@
   "ktlint-1.8.0": {
    "closure_size": 14,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/9g2ayz3qczp4d596j7qmz5gsr18c95fg-openjdk-headless-21.0.12.1+1",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/aliq9nclm4w66msq9mkjhhv2lg98al2c-libjpeg-turbo-3.2.0",
     "/nix/store/hfgqb1ssvvw15b2jnf0lgxbarmpyicda-set-java-classpath-hook",
     "/nix/store/lym33yp011ach7q11q1gbsrghywq7b89-ktlint-1.8.0"
@@ -3329,6 +3455,7 @@
    "closure_size": 117,
    "deps": [
     "base-2.44",
+    "gzip-1.15",
     "perl-5.42.3",
     "python-3.14.8"
    ],
@@ -3402,7 +3529,6 @@
     "/nix/store/rcha0vx95xd6dxlwqmj3iqv79aqjwq1z-perl5.42.3-HTTP-Message-7.02",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
     "/nix/store/rimm8a3m34yr31hp1pv9824l7nzck22y-libyuv-1908",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/sgrr09qg61pm0wdn3kyvnz264vgyqf63-gd-2.3.3",
     "/nix/store/sixp6a2yhv1rqyjvi4q0vkz85z8r0rnr-perl5.42.3-HTML-Parser-3.85",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
@@ -3427,27 +3553,23 @@
   "libtool-2.6.2": {
    "closure_size": 28,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/a9ilgwvkq7j51dyqp22caafam792ywdh-libtool-2.6.2",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/dspggxr946ixbkqmrakiqw2i1fryfxz7-libtool-2.6.2-lib",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
     "/nix/store/vighs4x0sw8yhpbyqy1jszwzvlz6cabq-file-5.48-dev",
     "/nix/store/vqjfzxpgkl3yaagpcs2ghwjp6jsc9h86-gnum4-1.4.21",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
     "/nix/store/yi5d8g9kma5bhskfjllrjypd5d2xhvl1-isl-0.20"
    ],
@@ -3510,6 +3632,7 @@
    "deps": [
     "base-2.44",
     "cmake-4.4.4",
+    "coreutils-9.12",
     "unzip-6.0",
     "zip-3.0"
    ],
@@ -3517,16 +3640,13 @@
     "/nix/store/06il2mnivfxvf14xzkyb1vwcgvzidybq-die-hook",
     "/nix/store/50b23y9wimv3w2d50l1iqfvly3sl92q7-luarocks_bootstrap-3.13.0",
     "/nix/store/amc08awcxvz178lqqc0y5n568ch1bzxg-version-check-hook",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
     "/nix/store/jizh2zappxvzzwx68r8ddjri9b107wiy-lua-5.2.4",
     "/nix/store/lgxm86xpiac13i760c6vbmbi1acxmrkv-lua5.2-luarocks-3.13.0-1",
     "/nix/store/pc4cqrsc6n1csdzsg63vgqlqw5h5ri2j-wrap-lua-hook",
     "/nix/store/pkqxj99ylqbxch7maydvdvpzi9ba6xx5-install-shell-files",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qrd1hprzg03a5m1f8c1g0npzjljd6xiz-luarocks-luarocks-config.lua",
     "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/wnxl2v5a9rm80kixrg45k99d0s78zqsv-make-shell-wrapper-hook"
    ],
    "store": "/nix/store/lgxm86xpiac13i760c6vbmbi1acxmrkv-lua5.2-luarocks-3.13.0-1"
@@ -3569,7 +3689,8 @@
   "metals-1.6.9": {
    "closure_size": 109,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -3578,7 +3699,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -3606,7 +3726,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -3647,7 +3766,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -3656,7 +3774,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -3680,8 +3797,13 @@
    "closure_size": 126,
    "deps": [
     "base-2.44",
+    "bzip2-1.0.8",
+    "gawk-5.4.1",
     "gcc-16.2.0",
     "gnupg-2.4.9",
+    "gzip-1.15",
+    "patch-2.8",
+    "sed-4.10",
     "xz-5.8.4",
     "zstd-1.5.7"
    ],
@@ -3694,27 +3816,22 @@
     "/nix/store/3pdar6fkzj8gx57g9x7xq41nsad8ab8p-lvm2-2.03.41-lib",
     "/nix/store/4i59caha5csdby9a1g9abz859xx1vksp-reproc-14.2.4",
     "/nix/store/4v80m0p93sk0glz555sxasacf7hvxz9w-libcbor-0.14.0",
-    "/nix/store/77d0rlxs1c4sx71ss06vnmfpjcd5mm22-ed-1.22.6",
     "/nix/store/7hx6ihiqxri1hljdbh8zwgxy4pclr4kq-libsolv-0.7.39",
     "/nix/store/7rx5im6jbgyfhrl0lc0kyxd9yf14rdxc-expat-2.9.0",
     "/nix/store/8xz4d9wp4jy49mhl306wyg55096wis3p-gnumake-4.4.1",
     "/nix/store/9b21b18iq20d67isg1bwhik42rifzpvs-util-linux-minimal-2.42.4-login",
     "/nix/store/9mzgzmmnv4ygdligs99zzla2izgc5pvg-lua-5.4.9",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
-    "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin",
     "/nix/store/alal124kklhnav6h2d7444iz3z0kq0f2-libapparmor-5.0.2",
     "/nix/store/awfzm5spb4yc9598b7rifa87ix5p818x-libmamba-2.9.0",
     "/nix/store/bvfkqam1y3zmsb3k41iml0zwx13sknjl-elfutils-0.195",
     "/nix/store/cpjbf23sndfxcwjgwxrj3kvcvy2yfa41-mamba-cpp-2.9.0",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d0bpdc960m11k61jkl5h2wmxz69kc2q7-fmt-12.2.0",
-    "/nix/store/d5jz315vxbphknfawsrjs192ci9bc6df-patch-2.8",
     "/nix/store/fgwmn1g1n1v3kw4nj7g6bl3n2g1wrpgr-audit-4.2.1-lib",
     "/nix/store/fmg6kh4sx6ljgwqnxccc5j7y1ps572j5-systemd-262",
     "/nix/store/g5r5v78yig5lf2srpcm1dwcnzs2g522v-libbpf-1.8.0",
     "/nix/store/gn6svwq2sl76fdvcypx6hnczll34ffyq-libseccomp-2.6.1-lib",
     "/nix/store/gxwji99652lk8f9vys36jvc7gj4l289p-libfido2-1.17.0",
-    "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1",
     "/nix/store/i3gz6v86drjzzf5q9887q5zcll0ybygv-simdjson-4.6.11",
     "/nix/store/jbfv21xy9i681ba417khn554xwmcfzyg-qrencode-4.1.1",
     "/nix/store/jk66bz3lrb948zi24hhyfy8wqvki1na3-kbd-2.9.0",
@@ -3728,7 +3845,6 @@
     "/nix/store/qhkdylk9qqn0pslsw9hsbyp5g359m5mq-libpwquality-1.4.5-lib",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r81hqhnfjmgj795bdy0qiy76gh7h2iik-libcap-2.78-lib",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/vvi17a5j76749706ipn561p9g0467fxq-libmicrohttpd-1.0.10",
     "/nix/store/wlc9yf5cfx1jrzw0ia4ak9wknrasabyb-rpm-sequoia-1.10.3",
     "/nix/store/wn6vff0zslcfcvsp67kxbfqjb2y4ry1c-yaml-cpp-0.9.0",
@@ -3756,19 +3872,16 @@
   "mold-3.0.0": {
    "closure_size": 17,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
     "/nix/store/nlykwwxppzcffy0gzl3hmfxmhpwx26ms-mold-unwrapped-wrapper-3.0.0",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/v3zn44a8cdmllhmcwbfpv3lbn2sxai89-mold-unwrapped-3.0.0",
-    "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0"
+    "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params"
    ],
    "store": "/nix/store/nlykwwxppzcffy0gzl3hmfxmhpwx26ms-mold-unwrapped-wrapper-3.0.0"
   },
@@ -3884,6 +3997,7 @@
     "/nix/store/k2g0pchrg7kr7svc6186aq7g0016kdmv-nix-cmd-2.34.9",
     "/nix/store/kawnc9b3i2asg422vd4xvhpsry9flmh0-llhttp-9.4.3",
     "/nix/store/lakygh85c5d5ac5h2562b4cr9mln54jj-aws-c-io-1.0.0",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/lfccfacxhqqzh0cbfadibw98rmv8svnv-nix-util-2.34.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
@@ -3916,7 +4030,8 @@
   "node-24.21.0": {
    "closure_size": 36,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "openssl-3.5.9"
    ],
    "own": [
     "/nix/store/1g70k04n1887qkfn4xn26av35jwcd8n9-libuv-1.53.0",
@@ -3932,7 +4047,6 @@
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/fisi9algzl2pcxb2xfhgp2yw5mzjfdwg-nodejs-slim-24.21.0",
     "/nix/store/ga4hbzf19rlshci0fdsdf7dha8xsmqj0-c-ares-1.34.8",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/hka7hr5qp0n92dmfv6gdigcabx9dai9r-zlib-1.3.2-static",
     "/nix/store/hxg65alxvkr4gbpbbxwcn5g8wwz5mygw-nodejs-slim-24.21.0-corepack",
     "/nix/store/i3gz6v86drjzzf5q9887q5zcll0ybygv-simdjson-4.6.11",
@@ -3952,7 +4066,8 @@
   "node-26.12.0": {
    "closure_size": 40,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "openssl-3.5.9"
    ],
    "own": [
     "/nix/store/1g70k04n1887qkfn4xn26av35jwcd8n9-libuv-1.53.0",
@@ -3969,7 +4084,6 @@
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/ga4hbzf19rlshci0fdsdf7dha8xsmqj0-c-ares-1.34.8",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/hka7hr5qp0n92dmfv6gdigcabx9dai9r-zlib-1.3.2-static",
     "/nix/store/i3gz6v86drjzzf5q9887q5zcll0ybygv-simdjson-4.6.11",
     "/nix/store/kawnc9b3i2asg422vd4xvhpsry9flmh0-llhttp-9.4.3",
@@ -4031,6 +4145,7 @@
     "base-2.44",
     "perl-5.42.3",
     "unzip-6.0",
+    "which-2.25",
     "zip-3.0"
    ],
    "own": [
@@ -4042,12 +4157,12 @@
     "/nix/store/6dvdar2gsd9x0amsx5lx842b5l91xllj-lndir-1.0.6",
     "/nix/store/6p1r50bkp268c9qgmp58cnz11xrxwa9y-extra.targets",
     "/nix/store/9wwqcw8hr8z47avkdcigdyhclkq62f0a-icu4c-78.3",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25",
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f00m5qmq4sp5mfy1r8j8w47ll16dcw1w-liburcu-0.15.7",
     "/nix/store/h65g4h1zh6gcsqr6wig86clsyqa5wrzm-lttng-ust-2.12.2",
     "/nix/store/hddk44f1m060mvavy5l122yg9v190zk0-perl5.42.3-Sub-Identify-0.14",
     "/nix/store/kl4rzaxn4ibhl8y2my2gjy5dryhzfl88-omnisharp-roslyn-1.39.14",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/ljcav5kfyiy93hrl84jf8xky282vqi8q-perl5.42.3-SUPER-1.20190531",
     "/nix/store/m0f5xgws8lpkja6kz7lvzwl7bb4zm6w5-libxslt-1.1.45",
     "/nix/store/m41hlk4pcawryjpxydqklbqlv7d84ja7-dotnet-sdk-wrapped-8.0.425",
@@ -4097,11 +4212,23 @@
     "/nix/store/fgwmn1g1n1v3kw4nj7g6bl3n2g1wrpgr-audit-4.2.1-lib",
     "/nix/store/gxwji99652lk8f9vys36jvc7gj4l289p-libfido2-1.17.0",
     "/nix/store/ka6nj2ppyjyn7s1xs9ibd1jpzdklx12y-libedit-20260508-3.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
     "/nix/store/wz8h60wc57f240dr1f6z1d9qj9sg6548-db-4.8.30",
     "/nix/store/xqhm88f6dgkah58ksrsyclswal2c2mzk-libcap-ng-0.9.6"
    ],
    "store": "/nix/store/cy1kp9s0vklml5di3hddw0x4k38bixv6-openssh-10.6p1"
+  },
+  "openssl-3.5.9": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9"
+   ],
+   "store": "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin"
   },
   "opentofu-1.13.1": {
    "closure_size": 8,
@@ -4131,6 +4258,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -4144,17 +4272,25 @@
    ],
    "store": "/nix/store/y8zjcas4al4jx21j81rymaysq2mczggz-ormolu-0.8.0.2-bin"
   },
-  "perl-5.42.3": {
-   "closure_size": 13,
+  "patch-2.8": {
+   "closure_size": 6,
    "deps": [
     "base-2.44"
    ],
    "own": [
+    "/nix/store/77d0rlxs1c4sx71ss06vnmfpjcd5mm22-ed-1.22.6",
+    "/nix/store/d5jz315vxbphknfawsrjs192ci9bc6df-patch-2.8"
+   ],
+   "store": "/nix/store/d5jz315vxbphknfawsrjs192ci9bc6df-patch-2.8"
+  },
+  "perl-5.42.3": {
+   "closure_size": 13,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12"
+   ],
+   "own": [
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/y1gmkixqpkfwayj9iqxn3c8brm6zkn1m-perl-5.42.3"
    ],
    "store": "/nix/store/y1gmkixqpkfwayj9iqxn3c8brm6zkn1m-perl-5.42.3"
@@ -4162,7 +4298,8 @@
   "phing-3.1.2": {
    "closure_size": 122,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "gzip-1.15"
    ],
    "own": [
     "/nix/store/1lzx38pb851wmsx3kjw4k5yxjp8ydgy7-php-tokenizer-8.5.11",
@@ -4230,6 +4367,7 @@
     "/nix/store/kfy076xn537kyr57viywpaxd05b6vg00-php-mysqlnd-8.5.11",
     "/nix/store/kggg99nn8zvnxdb47pg6ydpb8vnww44a-cyrus-sasl-2.1.28",
     "/nix/store/l0f55x1hi61l8q4cicqr64nl2dcbzind-php-openssl-8.5.11",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/lbvvv07w1kbxifkdswpl0ifn7sdcfcan-dav1d-1.5.3",
     "/nix/store/lmgi1sadfpn64nl8mxai9rlawcz2jp4k-openldap-2.6.13",
     "/nix/store/lns2dm51vljy9d86sm9ghs450dhxv16j-libpq-18.6",
@@ -4255,7 +4393,6 @@
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
     "/nix/store/rimm8a3m34yr31hp1pv9824l7nzck22y-libyuv-1908",
     "/nix/store/rnfl5qdjidmw7pyrnrag5yq278vqr05j-php-sysvsem-8.5.11",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/scvbvrna55kdbwfs3m1sk59fc42iwwwn-php-dom-8.5.11",
     "/nix/store/sgrr09qg61pm0wdn3kyvnz264vgyqf63-gd-2.3.3",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
@@ -4284,7 +4421,8 @@
   "php-8.5.11": {
    "closure_size": 119,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "gzip-1.15"
    ],
    "own": [
     "/nix/store/1lzx38pb851wmsx3kjw4k5yxjp8ydgy7-php-tokenizer-8.5.11",
@@ -4350,6 +4488,7 @@
     "/nix/store/kfy076xn537kyr57viywpaxd05b6vg00-php-mysqlnd-8.5.11",
     "/nix/store/kggg99nn8zvnxdb47pg6ydpb8vnww44a-cyrus-sasl-2.1.28",
     "/nix/store/l0f55x1hi61l8q4cicqr64nl2dcbzind-php-openssl-8.5.11",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/lbvvv07w1kbxifkdswpl0ifn7sdcfcan-dav1d-1.5.3",
     "/nix/store/lmgi1sadfpn64nl8mxai9rlawcz2jp4k-openldap-2.6.13",
     "/nix/store/lns2dm51vljy9d86sm9ghs450dhxv16j-libpq-18.6",
@@ -4375,7 +4514,6 @@
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
     "/nix/store/rimm8a3m34yr31hp1pv9824l7nzck22y-libyuv-1908",
     "/nix/store/rnfl5qdjidmw7pyrnrag5yq278vqr05j-php-sysvsem-8.5.11",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/scvbvrna55kdbwfs3m1sk59fc42iwwwn-php-dom-8.5.11",
     "/nix/store/sgrr09qg61pm0wdn3kyvnz264vgyqf63-gd-2.3.3",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
@@ -4470,13 +4608,13 @@
   "pmd-6.55.0": {
    "closure_size": 66,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
     "/nix/store/4a5nk31dby6qk9p108nas23r2cbs3s5x-libxrandr-1.5.5",
@@ -4490,7 +4628,6 @@
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/bklrb36d3x2w8b97gwby2id54s46mnsr-liberation-fonts-2.1.5",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
     "/nix/store/f0x9fvndvxhjcr6ggbl0di49ba5alfzm-libpng-apng-1.6.59",
@@ -4513,14 +4650,12 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
     "/nix/store/rxbg8mp3ald16g03326z2sq6fd3b5jvj-libdaemon-0.14",
     "/nix/store/sgwn4f0dy14s8bghl8jwvdglpvdxk12i-dbus-1.16.2-lib",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/y9cls6f6wyf1xpw0hw1ds7vw5k4lybni-libxi-1.8.3",
@@ -4548,37 +4683,33 @@
    "closure_size": 115,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
+    "coreutils-9.12",
     "gnupg-2.4.9",
-    "python-3.14.8"
+    "gzip-1.15",
+    "iproute2-7.2.0",
+    "python-3.14.8",
+    "tar-1.35"
    ],
    "own": [
     "/nix/store/1ay4bcfpqrfci746d0i01wwwxisdhciy-libmd-1.3.0",
-    "/nix/store/1ww3clwns6md3prwdh4knqpwn785fvzy-iproute2-7.2.0",
     "/nix/store/1z87f63qlrb8x435260bdrbvlnnlfmkc-libkrunfw-5.5.0",
     "/nix/store/2aw4ss9v3pnchkkv4gkx613gsnyl64gh-protobuf-c-1.5.2-lib",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
-    "/nix/store/3lydnylg6mzmhmqha5gsr001jnzby3a2-libnetfilter_conntrack-1.1.1",
     "/nix/store/3mvjpmcmnqh3mfcl70lrs7wqvnjjwxc6-netavark-1.17.2",
     "/nix/store/3yr53grpp9cfny1ybqsbwd9qgsl9yvlc-util-linux-minimal-2.42.4-bin",
-    "/nix/store/4k1kyap0izb6gqhc9yy8kv99pl55ldia-libnfnetlink-1.0.2",
     "/nix/store/4z1kikmfakz89gbg0lqq50p5xskkkgbz-libnl-3.12.0",
     "/nix/store/6a3q36k2h4plppxjfpg82ypvd94874ib-crun-1.30.1",
     "/nix/store/6yhar0n69in9l6pk2z5bjifdx34zdad3-libbsd-0.12.2",
     "/nix/store/721nv3nhqm25j6qqgqs9ckqmlpgfibhi-runc-1.5.2",
-    "/nix/store/79jdhn4pc0r7janay6aqzk527gif3nbq-iptables-1.8.13-lib",
     "/nix/store/7i0bhnc6ka10z96sy4fpi3b47gvwmg0x-glib-2.88.3",
     "/nix/store/7x7fvh0dk0czbl01r27f3gqdfb7wjr5n-libnftnl-1.3.2",
     "/nix/store/9b21b18iq20d67isg1bwhik42rifzpvs-util-linux-minimal-2.42.4-login",
     "/nix/store/9jp4dwnbm8qi7yhg7prqdwlvp6vaqpi6-catatonit-0.2.1",
     "/nix/store/a4x9z75ghw7jrd7kv4c4rrv6dz0ayfsp-podman-5.8.9",
     "/nix/store/b2ihy0x4vvi8dhl9306rispihv401gn8-gpgme-2.2.0",
-    "/nix/store/bvfkqam1y3zmsb3k41iml0zwx13sknjl-elfutils-0.195",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
-    "/nix/store/f9shc46n2300jbm0h60f6s4m69j0smyp-gnutar-1.35",
     "/nix/store/fnv6i98rqlwycnk25a43kniyxjwnfz3p-libpcap-1.10.7-lib",
     "/nix/store/frbwz7p5jrsrpznzld1fcif1br8fix6n-iptables-1.8.13",
-    "/nix/store/g5r5v78yig5lf2srpcm1dwcnzs2g522v-libbpf-1.8.0",
     "/nix/store/gn6svwq2sl76fdvcypx6hnczll34ffyq-libseccomp-2.6.1-lib",
     "/nix/store/hp84f5h6zb558xzkqykhszywrx1k0ps3-libnet-1.3",
     "/nix/store/icvmqd9f8m3s8msrby6ha2wd17gzjd1z-passt-2026_07_16.090d739",
@@ -4586,25 +4717,20 @@
     "/nix/store/jfm1vh85z20f5fnl17ks0pyd1fj9mrh4-podman-helper-binary-wrapper",
     "/nix/store/jw04ymglha5phivzvi9ngv0lkaa74bnm-nftables-1.1.7",
     "/nix/store/ka6nj2ppyjyn7s1xs9ibd1jpzdklx12y-libedit-20260508-3.1",
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
     "/nix/store/lli1anw5ddf2qppf78vhp9l5bxlqgz52-kmod-31-lib",
     "/nix/store/lnj8ynbcf60cigma2xw382alzpyw2853-criu-4.1.1",
-    "/nix/store/n98x77rw5dn38jzihippjwkz2vfnpg91-libmnl-1.0.5",
     "/nix/store/p5cyz8gg08sv72pl4r9lk4yx4kn26bhs-fuse-overlayfs-1.18",
     "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qb7yksiq14hqklhm4s3zbr15mk0j0brh-conmon-2.2.1",
     "/nix/store/qmdmm59hdnlzy41dpn5nwcd00654zaha-jansson-2.15.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/qs4x0rk39zy80mg3rj3n3ndr8m5mcyf9-rdma-core-65.0",
     "/nix/store/qx6fljzi6bxnpqrqy71i4lc6lpmsir7l-libkrun-1.19.5",
     "/nix/store/r81hqhnfjmgj795bdy0qiy76gh7h2iik-libcap-2.78-lib",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/vhbwgylgavqqh69na265frmkxvy3n0ph-fuse-3.18.2",
     "/nix/store/vi84xd7qaplb0jpdxci700lv4sbih17l-aardvark-dns-2.1.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/xqhm88f6dgkah58ksrsyclswal2c2mzk-libcap-ng-0.9.6",
     "/nix/store/zrr9acf2m60fkzdhrk434wf69sfgavl6-util-linux-minimal-2.42.4-swap"
    ],
@@ -4614,7 +4740,10 @@
    "closure_size": 63,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
     "pytest-9.1.1",
+    "sed-4.10",
     "virtualenv-21.6.1"
    ],
    "own": [
@@ -4622,17 +4751,13 @@
     "/nix/store/2aw3zp99m9jc250ajl42rhaankp2kjav-nghttp2-1.70.0-lib",
     "/nix/store/2b7h6rnav6a0s6npjk8y76f6rjs86lvw-ngtcp2-1.23.0",
     "/nix/store/2wlays4ahsvdx02v84s3x91ri2623qbl-git-minimal-2.56.0",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3p96yc808l6vzckls096x7nbyb6hdkp9-python3.14-pycparser-3.00",
     "/nix/store/3yvkkhgag6q02rfsrlx42yz9sg11hg0w-python3.14-ukkonen-1.1.0",
     "/nix/store/42in9mqs4kcmha55xd0i3ahbnibbzwkb-zlib-ng-2.3.3",
     "/nix/store/4w3qqylc0gssfarw7ydjm4r73n7b97wm-python3.14-pyyaml-6.0.3",
     "/nix/store/8qdw9shgr7dd3315jim8sfva2dnhq86c-gettext-1.0",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/b6gl2snq9zjny7rrlvd2app1ywn81wcd-python3.14-nodeenv-1.10.0",
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
     "/nix/store/j5wkxxf93gxc00mc9zl832sb6w0digjz-pytest-check-hook",
@@ -4641,15 +4766,27 @@
     "/nix/store/m58vkbls4mg0nh4drn3b8xlx88b7zm78-python3.14-cffi-2.1.1",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
     "/nix/store/p9i1b7jgfj4fl5bx557jnwbdsafl434i-curl-8.22.0",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
     "/nix/store/rphaznsk7d6jgkz7r16dq12pp4dznj0h-python3.14-cfgv-3.5.0",
-    "/nix/store/siv4cmnqm1bm2cq8znjkrfvw4m0samyp-pre-commit-4.7.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0"
+    "/nix/store/siv4cmnqm1bm2cq8znjkrfvw4m0samyp-pre-commit-4.7.0"
    ],
    "store": "/nix/store/siv4cmnqm1bm2cq8znjkrfvw4m0samyp-pre-commit-4.7.0"
+  },
+  "procps-4.0.7": {
+   "closure_size": 12,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
+    "/nix/store/7xkwycvjhvfyq2sjhq8yqf75y0afikaj-lz4-1.10.0-lib",
+    "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
+    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
+    "/nix/store/y733samykhd49crbck70qzsl315zq3hw-procps-4.0.7"
+   ],
+   "store": "/nix/store/y733samykhd49crbck70qzsl315zq3hw-procps-4.0.7"
   },
   "protobuf-36.2": {
    "closure_size": 12,
@@ -4752,6 +4889,7 @@
     "/nix/store/fsrw69w5mx838p7xydbdvywhwl6wnbjw-tzdata-2026e",
     "/nix/store/i68jrr4ixqmpb5dk5phddx7bnhlwqffs-mailcap-2.1.54",
     "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/pfav6492acf7d8m41lggwqghpprkq9di-gdbm-1.26-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/qwzgw6wlb5ghsy3ph0x1p9mvf3mxwms5-mpdecimal-4.0.1",
@@ -4774,6 +4912,7 @@
     "/nix/store/fsrw69w5mx838p7xydbdvywhwl6wnbjw-tzdata-2026e",
     "/nix/store/i68jrr4ixqmpb5dk5phddx7bnhlwqffs-mailcap-2.1.54",
     "/nix/store/j9436i4mh2hlhnlqlk59fq5dc2sprs4i-readline-8.3p3",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/pfav6492acf7d8m41lggwqghpprkq9di-gdbm-1.26-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/qwzgw6wlb5ghsy3ph0x1p9mvf3mxwms5-mpdecimal-4.0.1",
@@ -4789,9 +4928,16 @@
    "closure_size": 241,
    "deps": [
     "base-2.44",
+    "bash-5.3p20",
+    "bzip2-1.0.8",
     "curl-8.22.0",
+    "gawk-5.4.1",
     "gcc-16.2.0",
+    "gzip-1.15",
+    "openssl-3.5.9",
     "python-3.14.8",
+    "sed-4.10",
+    "which-2.25",
     "xz-5.8.4",
     "zstd-1.5.7"
    ],
@@ -4842,12 +4988,10 @@
     "/nix/store/9iqk4l5nf7ld7jfnxcmffyhiq5w6gkqx-pcre2-10.49-bin",
     "/nix/store/9r1yyvgcs4fs9y4bqighj0fwcwkp921v-graphite2-1.3.15-dev",
     "/nix/store/9s2g6cbca4k1spi0qsp3w2plpdggb64s-pango-1.57.1-bin",
-    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10",
     "/nix/store/9wwqcw8hr8z47avkdcigdyhclkq62f0a-icu4c-78.3",
     "/nix/store/a76rmqrp6l3w6h9pppfwzb3s6dzi0y4g-zlib-1.3.2-dev",
     "/nix/store/a7r3am78cawva22gfdh50c59qnxpqgrz-libjpeg-turbo-3.2.0-bin",
     "/nix/store/a8jdfjk13g79r4s5nwxplfyzlfca36m5-libx11-1.8.13-dev",
-    "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin",
     "/nix/store/ajzrc8n8fksmaclsa0cggfv3804dk269-libaom-3.15.1",
     "/nix/store/aliq9nclm4w66msq9mkjhhv2lg98al2c-libjpeg-turbo-3.2.0",
     "/nix/store/anh1ib7l6ksrwr45kiwgz906vfi0vr5x-libxau-1.0.12",
@@ -4859,7 +5003,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/bknqdwimgfpajqyarn8hs6fm08zn86cn-libjpeg-turbo-3.2.0-dev",
     "/nix/store/bvfkqam1y3zmsb3k41iml0zwx13sknjl-elfutils-0.195",
-    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
     "/nix/store/c7gbx9b77g5ppbj3krp6yq01r1ph0x6x-cairo-1.18.4-dev",
@@ -4887,10 +5030,8 @@
     "/nix/store/g519d0jpgihgim6r3n83sb2z5krkm391-curl-8.22.0-man",
     "/nix/store/ghl60fqmigddmv7v6m9a6skfwfny0cwz-lapack-3-dev",
     "/nix/store/ghnpw9rvjiz7iski1gl7ifmkrvf8pkrx-xkeyboard-config-2.48",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/gxl989vk4xkbiw8yh7f58vnnc2s813lc-libice-1.1.2-dev",
     "/nix/store/h63nh9nh68id4waxjip21fk32fddqcns-libxau-1.0.12-dev",
-    "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1",
     "/nix/store/hcrghwaqp9qa727j9abr5yj2lahn4ir9-gdk-pixbuf-2.44.8",
     "/nix/store/hdkn50x441a5r9l2i3p0wmjk8kb98bs8-pixman-0.46.4",
     "/nix/store/hfgqb1ssvvw15b2jnf0lgxbarmpyicda-set-java-classpath-hook",
@@ -4913,7 +5054,6 @@
     "/nix/store/k13kzjmbcynxd2d2kz82zvnwnsvac29y-libxext-1.3.7-dev",
     "/nix/store/ka6nj2ppyjyn7s1xs9ibd1jpzdklx12y-libedit-20260508-3.1",
     "/nix/store/kk2gdmidsj6vspgr2mjhg7d5fmh51di0-libxmu-1.3.1-dev",
-    "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20",
     "/nix/store/l1l9kgbbgq92qi8zgnvlpvmx0fbr22sh-alsa-topology-conf-1.2.5.1",
     "/nix/store/l8bxxcl6q08mjqidgv9ddxi7dr3qjlwi-gfortran-16.2.0-lib",
     "/nix/store/l9f17m3j280r2gmb7gksl4r1dycxylin-zstd-1.5.7-dev",
@@ -4943,7 +5083,6 @@
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
     "/nix/store/rimm8a3m34yr31hp1pv9824l7nzck22y-libyuv-1908",
-    "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15",
     "/nix/store/rwg3lk26pbqrrsld679igps6d4lvsgbw-tk-8.6.16-dev",
     "/nix/store/rxbg8mp3ald16g03326z2sq6fd3b5jvj-libdaemon-0.14",
     "/nix/store/sdywqhfily8324mqijjs03hhqrz5vjkz-glib-2.88.3-dev",
@@ -4993,6 +5132,7 @@
    "own": [
     "/nix/store/15c5vkz8dsk3hrzpvlbc7pp0imgsslky-libyaml-0.2.5",
     "/nix/store/7b77drpxxyywsxq9hf4y0fc8c56pfivl-ruby-3.4.11",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m84a35isv1fwxj4gcy5m1ckamcadpkhb-ruby3.4-rake-13.3.1",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0"
    ],
@@ -5020,7 +5160,8 @@
     "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/7xkwycvjhvfyq2sjhq8yqf75y0afikaj-lz4-1.10.0-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
-    "/nix/store/hsv6gv4p5cvlgzqgj0ylszssifr2vh6x-rsync-3.5.0"
+    "/nix/store/hsv6gv4p5cvlgzqgj0ylszssifr2vh6x-rsync-3.5.0",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9"
    ],
    "store": "/nix/store/hsv6gv4p5cvlgzqgj0ylszssifr2vh6x-rsync-3.5.0"
   },
@@ -5041,6 +5182,7 @@
     "/nix/store/9990hqbrxpirjpmf9adgi3129f8wmhl4-ruby3.4-racc-1.8.1",
     "/nix/store/c1blbqkp0q9x7g7brg2cfpr5s6yz9cg5-ruby3.4-unicode-display_width-3.2.0",
     "/nix/store/f0xfk2xqc9x6dsaxhnzdcjq798fcrrrw-ruby3.4-prism-1.6.0",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/mdnxzn6nz5f2w5fmjy5gs4bd565zlrll-ruby3.4-rubocop-1.80.2",
     "/nix/store/n4lh1jcjz7aw6c4y24249ibwjxjjbnv6-ruby3.4-language_server-protocol-3.17.0.5",
     "/nix/store/p5bny7a1vd5pds2lm68mr56j2axn3095-ruby3.4-regexp_parser-2.11.3",
@@ -5058,6 +5200,7 @@
    ],
    "own": [
     "/nix/store/15c5vkz8dsk3hrzpvlbc7pp0imgsslky-libyaml-0.2.5",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/xi6y11yd566pf95scr0znh03j68433d8-ruby-4.0.7"
    ],
@@ -5074,6 +5217,7 @@
     "/nix/store/a1xzblx4mlrhrdhvbcgjlcfvmm5qrmnf-ruby3.4-ruby-lsp-0.26.3",
     "/nix/store/bs931pz16cmqdy1w9nd6vpbsij0skfma-ruby3.4-logger-1.7.0",
     "/nix/store/f0xfk2xqc9x6dsaxhnzdcjq798fcrrrw-ruby3.4-prism-1.6.0",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/n4lh1jcjz7aw6c4y24249ibwjxjjbnv6-ruby3.4-language_server-protocol-3.17.0.5",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/z2fva4r78bnksjg3fbrdcbl9l2kigciz-ruby3.4-rbs-3.9.5"
@@ -5133,7 +5277,8 @@
   "sbt-2.0.10": {
    "closure_size": 109,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -5141,7 +5286,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -5169,7 +5313,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -5209,7 +5352,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/qvz0z5ijf5yy3lhjl28znqlsyv7q9scz-sbt-2.0.10",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
@@ -5220,7 +5362,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -5243,7 +5384,8 @@
   "scala-3.9.0": {
    "closure_size": 112,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -5251,7 +5393,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -5280,7 +5421,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -5322,7 +5462,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
@@ -5332,7 +5471,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -5356,7 +5494,8 @@
   "scalafmt-3.11.5": {
    "closure_size": 109,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/1imbrrc9cknszx9xfg1ivfaz0h3saprf-libtasn1-4.21.0",
@@ -5364,7 +5503,6 @@
     "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
     "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
     "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
     "/nix/store/3xshhghfgs08lbx1harnvg67sgyrlgkw-lcms2-2.19.1",
     "/nix/store/43crihl8i42yk2jb5ji9x3g4givl9wph-alsa-ucm-conf-1.2.16.1",
@@ -5392,7 +5530,6 @@
     "/nix/store/bip3rp7knhgghlcsrqgbf6ckd5p5lvni-libxinerama-1.1.6",
     "/nix/store/c1rn8k96cxnfm0y2c8brc1mqpj94ffr9-harfbuzz-14.5.1",
     "/nix/store/c4q6wnp14xf0npalyiqsfp1c99y4qhcx-cairo-1.18.4",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
     "/nix/store/d03jsfz5lq08cc8s9f4bdnnxs91bb40r-kmod-31",
     "/nix/store/d5dsf0h0r0fpi48rgvi7hmnac3mzj2s8-libxcb-1.17.0",
@@ -5434,7 +5571,6 @@
     "/nix/store/pdlgs14qp211q6kqn14hhw1i7w1dyz44-cups-2.4.19-lib",
     "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
     "/nix/store/pm0iwmyzwhnlkb92knzwj58avriy7i7q-unbound-1.26.1-lib",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qqwfnfl9mxbq498b3nwg68id0f8izrja-util-linux-minimal-2.42.4-mount",
     "/nix/store/r5c4873mkjk11s238hn8papkwhnagzb0-libxcomposite-0.4.7",
     "/nix/store/rck9w8gj3r2w2z1xpw15g1fvpzi8iz9h-libx11-1.8.13",
@@ -5443,7 +5579,6 @@
     "/nix/store/slq0bpajkf5n95nhc0lm7a8f8vha8dw5-libselinux-3.11",
     "/nix/store/sqhzxndf435ylw3d2mgaa493vh78izgr-systemd-minimal-262",
     "/nix/store/v6wbpgyray6ysrs5d554wjzxgg6pamns-openjdk-21.0.12.1+1",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
     "/nix/store/wj12aprggq4q95sh3b6m4cj1pc2yrkgv-gnutls-3.8.13",
     "/nix/store/ww5pckflswny9whz04k06xh233jbg5kl-libglvnd-1.7.0",
@@ -5463,6 +5598,16 @@
    ],
    "store": "/nix/store/i0wwqv3gjr8ph8rr35kca5dnjj5pr0hb-scalafmt-3.11.5"
   },
+  "sed-4.10": {
+   "closure_size": 5,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10"
+   ],
+   "store": "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10"
+  },
   "shellcheck-0.11.0": {
    "closure_size": 27,
    "deps": [
@@ -5478,6 +5623,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
@@ -5539,6 +5685,7 @@
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/mfqi43pwak804fn1m07gp2k11yibzgp2-ICU-76142.4.7",
@@ -5569,6 +5716,8 @@
    "closure_size": 92,
    "deps": [
     "base-2.44",
+    "coreutils-9.12",
+    "grep-3.12",
     "python-3.14.8"
    ],
    "own": [
@@ -5583,7 +5732,6 @@
     "/nix/store/2aw3zp99m9jc250ajl42rhaankp2kjav-nghttp2-1.70.0-lib",
     "/nix/store/2b7h6rnav6a0s6npjk8y76f6rjs86lvw-ngtcp2-1.23.0",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
     "/nix/store/49r7ql9sypb1f1x3i41dsw9kcl2nax88-compiler-rt-libc-21.1.8-dev",
     "/nix/store/4r0nvlkynh50krsm2sqkjkfvnhh1kfga-lldb-21.0.0",
@@ -5597,8 +5745,6 @@
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
     "/nix/store/bb6la8k5x4qj2bmakzr0iv3h49ykvrmj-libpfm-4.14.1",
     "/nix/store/bcdwidl756vigwjfpan5916bp790529p-swift-llbuild-6.3.3-lib",
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/cjaa92jhrm1glg7w24qcn1azyayizppg-swift-foundation-6.3.3",
     "/nix/store/d23dxcjz5pcs4f21adnb4pxrr2vbcc8j-swift-testing-6.3.3",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
@@ -5620,9 +5766,7 @@
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
-    "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
     "/nix/store/p9i1b7jgfj4fl5bx557jnwbdsafl434i-curl-8.22.0",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
     "/nix/store/rf22h58g8n4sida3zlq7s4x2knjfpl0z-swift-foundation-icu-76142.4.7",
     "/nix/store/s4k9hrrx8gby4ya1hq7hrajvlvj3yc9h-swift-driver-6.3.3",
@@ -5630,7 +5774,6 @@
     "/nix/store/s9p26iqyxqfsz01x8w9nziay7118a6y8-swiftc-6.3.3",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
     "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0",
     "/nix/store/wbxh0870cc6lml9mbk2n1jvnj13v6v06-swift-corelibs-libdispatch-swift-overlay-6.3.3-dev",
     "/nix/store/wra7pnc8v3vk7xl597kq79bbmvncxz8j-clang-21.1.8",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
@@ -5661,6 +5804,7 @@
     "/nix/store/f07vaklaqpv9naw3vryb7qsqdm9p8ssx-swiftformat-0.63.1",
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/mfqi43pwak804fn1m07gp2k11yibzgp2-ICU-76142.4.7",
@@ -5690,6 +5834,28 @@
     "/nix/store/0sx2hsld6aywwwym521a4ymbmpaadzrh-taplo-0.10.0"
    ],
    "store": "/nix/store/0sx2hsld6aywwwym521a4ymbmpaadzrh-taplo-0.10.0"
+  },
+  "tar-1.35": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
+    "/nix/store/f9shc46n2300jbm0h60f6s4m69j0smyp-gnutar-1.35"
+   ],
+   "store": "/nix/store/f9shc46n2300jbm0h60f6s4m69j0smyp-gnutar-1.35"
+  },
+  "toybox-0.8.15": {
+   "closure_size": 6,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/1gnjb4psr9i88w4icq8wwgqh8686d58x-toybox-0.8.15",
+    "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2"
+   ],
+   "store": "/nix/store/1gnjb4psr9i88w4icq8wwgqh8686d58x-toybox-0.8.15"
   },
   "trivy-0.76.0": {
    "closure_size": 8,
@@ -5736,6 +5902,38 @@
     "/nix/store/zx4ag3v11v9rl0iqvg6vzbpflzlg0dk2-bzip2-1.0.8"
    ],
    "store": "/nix/store/9ika5s969fh9ayh4js9kd3j1n4lq8knq-unzip-6.0"
+  },
+  "util-linux-2.42.4": {
+   "closure_size": 33,
+   "deps": [
+    "base-2.44",
+    "coreutils-9.12"
+   ],
+   "own": [
+    "/nix/store/18ykcs87zl2zxgdvjnl3zdzqcp7r2m44-linux-pam-1.7.2",
+    "/nix/store/1ay4bcfpqrfci746d0i01wwwxisdhciy-libmd-1.3.0",
+    "/nix/store/2lgg8jqyzjp60svh7kmp39kqwnig31p2-util-linux-2.42.4-bin",
+    "/nix/store/30qgvhl60m3lpnj99l3xjprk776qg3ik-libxcrypt-4.5.2",
+    "/nix/store/3xaspbv6nwvihmc3ybmlv0wjjksvpamq-xz-5.8.4",
+    "/nix/store/6yhar0n69in9l6pk2z5bjifdx34zdad3-libbsd-0.12.2",
+    "/nix/store/7xkwycvjhvfyq2sjhq8yqf75y0afikaj-lz4-1.10.0-lib",
+    "/nix/store/82qxn7mh0g7wdfg7a82ndpnsai03bk5y-shadow-4.20.3",
+    "/nix/store/82spanbs1az551h0wag8z2ryb67n38vz-util-linux-2.42.4-login",
+    "/nix/store/9xzvspslb052smabjvcipmpcsi7vjjb6-util-linux-2.42.4-mount",
+    "/nix/store/b3xa3ynx8025bgwbql3ca23qyh576qhy-util-linux-2.42.4-lib",
+    "/nix/store/cgzr5afjdbx30j7g44z2h92i8h3828k2-systemd-minimal-libs-262",
+    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/fgwmn1g1n1v3kw4nj7g6bl3n2g1wrpgr-audit-4.2.1-lib",
+    "/nix/store/fkv0c0b665q6ixm9syazddzrv8qwmh1n-util-linux-2.42.4-swap",
+    "/nix/store/gar3j11kma6qrz31z6kfpn6sk6gwk16x-tcb-1.2",
+    "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
+    "/nix/store/jnzd79phi9hwp4fvm5na4hl8hczw53pa-util-linux-2.42.4-lastlog",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6",
+    "/nix/store/wz8h60wc57f240dr1f6z1d9qj9sg6548-db-4.8.30",
+    "/nix/store/xqhm88f6dgkah58ksrsyclswal2c2mzk-libcap-ng-0.9.6",
+    "/nix/store/xrzzvmqkmx68f6yj1hy16gjvc1r2bmr8-sqlite-3.53.3"
+   ],
+   "store": "/nix/store/2lgg8jqyzjp60svh7kmp39kqwnig31p2-util-linux-2.42.4-bin"
   },
   "uv-0.13.1": {
    "closure_size": 9,
@@ -5792,7 +5990,8 @@
   "vscode-langservers-1.140.06880": {
    "closure_size": 33,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "openssl-3.5.9"
    ],
    "own": [
     "/nix/store/1g70k04n1887qkfn4xn26av35jwcd8n9-libuv-1.53.0",
@@ -5809,7 +6008,6 @@
     "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/fisi9algzl2pcxb2xfhgp2yw5mzjfdwg-nodejs-slim-24.21.0",
     "/nix/store/ga4hbzf19rlshci0fdsdf7dha8xsmqj0-c-ares-1.34.8",
-    "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin",
     "/nix/store/hka7hr5qp0n92dmfv6gdigcabx9dai9r-zlib-1.3.2-static",
     "/nix/store/i3gz6v86drjzzf5q9887q5zcll0ybygv-simdjson-4.6.11",
     "/nix/store/kawnc9b3i2asg422vd4xvhpsry9flmh0-llhttp-9.4.3",
@@ -5830,10 +6028,21 @@
    ],
    "own": [
     "/nix/store/ajixkliv0pkhzlzc7m8p0z8rmxnyfvyc-wget-1.25.0",
+    "/nix/store/lazac5vw20j0pyahzbaxz8z8hyf7m9zf-openssl-3.5.9",
     "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
     "/nix/store/zsvigijjqf64yym31xg8y8ab37q1bdkg-util-linux-minimal-2.42.4-lib"
    ],
    "store": "/nix/store/ajixkliv0pkhzlzc7m8p0z8rmxnyfvyc-wget-1.25.0"
+  },
+  "which-2.25": {
+   "closure_size": 5,
+   "deps": [
+    "base-2.44"
+   ],
+   "own": [
+    "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25"
+   ],
+   "store": "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25"
   },
   "xz-5.8.4": {
    "closure_size": 6,
@@ -5900,18 +6109,15 @@
   "zig-0.17.0": {
    "closure_size": 16,
    "deps": [
-    "base-2.44"
+    "base-2.44",
+    "coreutils-9.12"
    ],
    "own": [
     "/nix/store/34wy21hkax0k707757pbgd77fjxdv6v5-zig-0.17.0",
-    "/nix/store/3hk1ngk4hsk4s53v2s7sg096irdania4-acl-2.4.0",
     "/nix/store/5ajx1np9zlq7z6ljqq18sibpzhnjakdw-clang-22.1.8-lib",
-    "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/nsgmh9gxbbpg3cla9njjh9qr3akh3f98-llvm-22.1.8-lib",
-    "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0",
-    "/nix/store/pnwvsvwppd1lsamcxmiw6g7fp1k1g2j0-attr-2.6.0",
-    "/nix/store/vs4bjcgq2r93adg875isf55hyn29dk09-gmp-with-cxx-6.3.0"
+    "/nix/store/pfds9zw10xksh0zr7qplqg1lj9avs2gz-libffi-3.8.0"
    ],
    "store": "/nix/store/34wy21hkax0k707757pbgd77fjxdv6v5-zig-0.17.0"
   },
@@ -5935,15 +6141,26 @@
    ],
    "store": "/nix/store/vj4w8j37m2lncvqkac3yz2bb6lya2drz-zls-0.17.0"
   },
-  "zstd-1.5.7": {
-   "closure_size": 11,
+  "zsh-5.9.2": {
+   "closure_size": 7,
    "deps": [
     "base-2.44"
    ],
    "own": [
-    "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12",
-    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
+    "/nix/store/d0a35flb05pwl8rkmvh6kcgvs7wpgh6b-zsh-5.9.2",
     "/nix/store/p5dwcn4wpyjmhnnzj6iwwwjynyc6yif0-pcre2-10.49",
+    "/nix/store/r9nlzwasmr1hgcbrfzcp2b2cz33scij2-ncurses-6.6"
+   ],
+   "store": "/nix/store/d0a35flb05pwl8rkmvh6kcgvs7wpgh6b-zsh-5.9.2"
+  },
+  "zstd-1.5.7": {
+   "closure_size": 11,
+   "deps": [
+    "base-2.44",
+    "grep-3.12"
+   ],
+   "own": [
+    "/nix/store/f5r77q40xh7rj30dfkajv8y6jwbf4xh2-zstd-1.5.7",
     "/nix/store/yqgkjczmmxsp6l26nwriry7h3kq981vi-zstd-1.5.7-bin"
    ],
    "store": "/nix/store/yqgkjczmmxsp6l26nwriry7h3kq981vi-zstd-1.5.7-bin"
