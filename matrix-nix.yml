@@ -157,7 +157,9 @@ setups:
   #
   # The setup mechanism still works: `bins` records where the interesting files
   # are, and a consumer points SSL_CERT_FILE at the bundle.
-  - { tool: cacert,    attr: "nixpkgs#nss-cacert", version: "3.126", bins: "etc/ssl/certs" }
+  # The attribute is `cacert`, not `nss-cacert`: the latter evaluates its name but
+  # has no `version`, and it is the flake's `cacert` that nix resolves this to.
+  - { tool: cacert,    attr: "nixpkgs#cacert", version: "3.126", bins: "etc/ssl/certs" }
   - { tool: inetutils, attr: "nixpkgs#inetutils", version: "2.7" }
   - { tool: iproute2,  attr: "nixpkgs#iproute2", version: "7.2.0" }
   - { tool: iputils,   attr: "nixpkgs#iputils", version: "20250605" }
