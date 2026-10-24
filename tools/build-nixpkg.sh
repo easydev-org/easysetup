@@ -308,9 +308,13 @@ else
   # to be enforced here rather than per-command, because a copy or an `ls` on a
   # missing path would otherwise abort under `set -e` and hide the real reason.
   set +e
-  first=$(ls "$STAGE$REAL/bin" 2>/dev/null | head -1)
+  # Check the directory the registry entry actually points at, not bin/. For most
+  # setups that is bin/, but cacert's is etc/ssl/certs - so a hard-coded bin/ here
+  # rejected the staged copy of a package that had just been packaged correctly.
+  check_dir=$(echo "$bins" | cut -d' ' -f1)
+  first=$(ls "$STAGE$REAL/$check_dir" 2>/dev/null | head -1)
   if [ -z "$first" ]; then
-    echo "nixpkg: bin/ is empty in the staged copy" >&2
+    echo "nixpkg: $check_dir/ is empty in the staged copy" >&2
     set -e
     exit 1
   fi
@@ -342,10 +346,18 @@ else
       staged=$(ls "$STAGE/nix/store" | wc -l)
       echo "nixpkg: chroot root holds $staged store path(s)"
     fi
-    chroot "$STAGE" "$REAL/bin/$first" --version >/dev/null 2>&1 \
-      || chroot "$STAGE" "$REAL/bin/$first" >/dev/null 2>&1 \
-      || echo "nixpkg: note - $first did not answer; not fatal"
-    echo "nixpkg: chroot check done ($first)"
+    # Only run the staged file if it is executable. For a data-only setup - cacert
+    # is a bundle of certificates - the first entry is not a program, and trying to
+    # exec it says nothing useful; the non-empty check above is the real assertion
+    # for those.
+    if [ -x "$STAGE$REAL/$check_dir/$first" ]; then
+      chroot "$STAGE" "$REAL/$check_dir/$first" --version >/dev/null 2>&1 \
+        || chroot "$STAGE" "$REAL/$check_dir/$first" >/dev/null 2>&1 \
+        || echo "nixpkg: note - $first did not answer; not fatal"
+      echo "nixpkg: chroot check done ($first)"
+    else
+      echo "nixpkg: $first is not executable (data setup); the non-empty check is the assertion"
+    fi
   else
     echo "nixpkg: chroot unavailable; skipping the isolation check"
   fi
