@@ -51,8 +51,10 @@ def h(*parts):
     return m.hexdigest()[:16]
 
 
-def release_exists(tag):
-    """Does GitHub already hold this release?"""
+RELEASE_TAG = "setups"
+
+
+def _token():
     token = ""
     hosts = os.path.expanduser("~/.config/gh/hosts.yml")
     if os.path.exists(hosts):
@@ -60,15 +62,46 @@ def release_exists(tag):
             if "oauth_token:" in line:
                 token = line.split("oauth_token:")[1].strip()
                 break
+    return token or os.environ.get("GITHUB_TOKEN", "")
+
+
+def published_assets():
+    """The asset names already in the single `setups` release.
+
+    Every setup used to be its own release, so this used to be one
+    releases/tags/<setup> query per setup - 199 API calls, and after the merge to
+    one release they all returned 404, which made every setup look unpublished
+    and would have rebuilt the lot.
+
+    Returning the whole set in one call also makes the check exact: it is the
+    tarball's presence that matters, not that some tag exists.
+    """
+    token = _token()
     if not token:
-        return True          # cannot check; trust the state file
+        return None          # cannot check; trust the state file
     repo = os.environ.get("GITHUB_REPOSITORY", "easydev-org/easysetup")
     r = subprocess.run(
-        ["curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}",
-         "--max-time", "30", "-H", "Authorization: Bearer " + token,
-         "https://api.github.com/repos/%s/releases/tags/%s" % (repo, tag)],
+        ["curl", "-sS", "--max-time", "60",
+         "-H", "Authorization: Bearer " + token,
+         "-H", "Accept: application/vnd.github+json",
+         "https://api.github.com/repos/%s/releases/tags/%s" % (repo, RELEASE_TAG)],
         capture_output=True, text=True)
-    return r.stdout.strip() == "200"
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    try:
+        doc = json.loads(r.stdout)
+    except ValueError:
+        return None
+    if "assets" not in doc:
+        return None
+    return {a["name"] for a in doc["assets"]}
+
+
+def release_exists(dir_name, assets=None):
+    """Is this setup's tarball present in the release?"""
+    if assets is None:
+        return True          # cannot check; trust the state file
+    return ("%s-debian-trixie-amd64.tar.zst" % dir_name) in assets
 
 
 def main(argv):
@@ -115,6 +148,8 @@ def main(argv):
             state = {}
 
     need = []
+    # One API call for the whole release, not one per setup.
+    assets = published_assets()
     for e in entries:
         name = e["dir"]
         cur = fingerprint(name)
@@ -125,8 +160,8 @@ def main(argv):
         elif cur != old:
             reasons[name] = "inputs changed"
             need.append(name)
-        elif not release_exists(e["dir"]):
-            reasons[name] = "release missing from GitHub"
+        elif not release_exists(name, assets):
+            reasons[name] = "tarball missing from the release"
             need.append(name)
 
     if record:
