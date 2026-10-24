@@ -108,6 +108,7 @@ jobs:
           PY
 
       - name: is the arm64 output substituted, for the ones that differ
+        if: false
         run: |
           set -uo pipefail
           set +e
@@ -123,3 +124,53 @@ jobs:
             c=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
             printf '  %-16s cache=%s  %s\n' "$attr" "$c" "$(basename "$o" | cut -c1-45)"
           done
+
+      # The whole manifest, arm64, one question per setup: substituted or compiled?
+      #
+      # An earlier probe listed builds as "BUILD-NEEDED" whenever `nix build
+      # --system aarch64-linux` produced nothing - but that also happens when the
+      # eval fails for an unrelated reason, so it could not distinguish "no arm64
+      # build exists" from "I asked the wrong question". This asks the cache
+      # directly for the output path, which is the fact that matters: a path in
+      # cache.nixos.org downloads on any host, and anything else would have to be
+      # compiled here, on an emulated runner, for hours.
+      - name: every setup, arm64: cached or must compile
+        run: |
+          set -uo pipefail
+          set +e
+          REV=${{ steps.pin.outputs.rev }}
+          : > /tmp/compile-needed.txt
+          ok=0; missing=0; failed=0
+
+          while read -r dir attr; do
+            # Ask for the output path without realising it. `nix path-info` on a
+            # flake installable evaluates only; whether it can be fetched is then
+            # a question for the cache, not for the local machine.
+            o=$(nix path-info --derivation "github:NixOS/nixpkgs/$REV#$attr" 2>/dev/null)
+            base=$(nix eval --raw --impure --expr "
+              let p = (builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.aarch64-linux.${attr};
+              in p.outPath" 2>/dev/null)
+            if [ -z "$base" ]; then
+              printf '  %-34s NO-ARM64-OUTPUT\n' "$dir"
+              echo "$dir NO-ARM64-OUTPUT" >> /tmp/compile-needed.txt
+              missing=$((missing+1)); continue
+            fi
+            h=$(basename "$base" | cut -d- -f1)
+            c=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+            if [ "$c" = "200" ]; then
+              ok=$((ok+1))
+            else
+              printf '  %-34s cache=%-4s %s\n' "$dir" "$c" "$(basename "$base" | cut -c1-40)"
+              echo "$dir cache=$c" >> /tmp/compile-needed.txt
+              failed=$((failed+1))
+            fi
+          done < /tmp/attrs.txt
+
+          echo
+          echo "arm64 cached: $ok   not cached: $failed   no output: $missing   total: $(wc -l < /tmp/attrs.txt)"
+          if [ -s /tmp/compile-needed.txt ]; then
+            echo "== these would have to be built, not downloaded =="
+            cat /tmp/compile-needed.txt
+          else
+            echo "every setup is available prebuilt for arm64"
+          fi
