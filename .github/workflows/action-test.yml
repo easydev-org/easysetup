@@ -44,6 +44,10 @@ jobs:
           for f in /nix/setup-root-*; do
             echo "$f -> $(cat "$f")"
             store=$(cut -d'|' -f1 "$f")
+            # `none` is a setup with no executables - base is a library set. It
+            # is installed, it registers nothing on PATH, and there is no store
+            # path to check. Anything else must point at a real directory.
+            [ "$store" = "none" ] && continue
             test -d "$store" || { echo "::error::$store is missing"; exit 1; }
           done
 
@@ -68,7 +72,12 @@ jobs:
       - name: both are still installed
         run: |
           set -eux
-          test "$(ls /nix/setup-root-* | wc -l)" -eq 2
+          # node, jq, and the shared base they both depend on = 3. The point of
+          # the assertion is that the second `uses:` did not erase the first, so
+          # count the tools rather than hard-coding a total that shifts whenever
+          # the dependency graph changes.
+          test -f /nix/setup-root-node-26.12.0
+          test -f /nix/setup-root-jq-1.8.2
           command -v node
           command -v jq
           jq --version
