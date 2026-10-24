@@ -1,0 +1,124 @@
+name: probe-pyversions
+
+# Three questions, all answered by asking the cache rather than by assuming:
+#
+#   1. can python 3.12 and 3.13 be published alongside 3.14?
+#   2. is EVERY one of our 167 setups actually substituted from cache.nixos.org,
+#      or does some of them compile from source on every build?
+#   3. if a python version is added, does its package set (pip, ruff, ...) come
+#      from the cache too, or only the interpreter?
+#
+# The measurement for (2) is the narinfo of the path the build produces: 200
+# means Hydra built it and we download it; 404 means `nix build` would compile.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: python versions and their package sets
+        run: |
+          set -uo pipefail
+          set +e
+          printf '%-38s %-14s %-6s %s\n' ATTR VERSION CACHE BIN
+          printf '%-38s %-14s %-6s %s\n' '--------------------------------------' '--------------' '-----' '---'
+          probe() {
+            local attr="$1" n v outs chosen h code nb
+            n=$(nix eval --raw "nixpkgs#$attr.name" 2>/dev/null) || n=""
+            [ -n "$n" ] || { printf '%-38s %-14s %-6s %s\n' "$attr" "-" "-" "MISSING"; return; }
+            v=$(nix eval --raw "nixpkgs#$attr.version" 2>/dev/null) || v="?"
+            outs=$(nix build --no-link --print-out-paths "nixpkgs#$attr" 2>/dev/null) || outs=""
+            [ -n "$outs" ] || { printf '%-38s %-14s %-6s %s\n' "$attr" "$v" "?" "BUILD FAILED"; return; }
+            chosen=""; nb=0
+            for p in $outs; do
+              if [ -d "$p/bin" ] || [ -d "$p/sbin" ]; then chosen="$p"; break; fi
+            done
+            [ -n "$chosen" ] || chosen=$(printf '%s\n' "$outs" | head -1)
+            for sub in bin sbin; do
+              [ -d "$chosen/$sub" ] && nb=$((nb + $(ls "$chosen/$sub" 2>/dev/null | wc -l)))
+            done
+            h=$(basename "$chosen" | cut -d- -f1)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+            printf '%-38s %-14s %-6s %s\n' "$attr" "$v" "$code" "$nb"
+          }
+
+          for v in 311 312 313 314 315; do
+            probe python$v
+          done
+          echo
+          echo "--- package sets, per interpreter ---"
+          for v in 312 313 314; do
+            probe python${v}Packages.pip
+            probe python${v}Packages.ruff
+            probe python${v}Packages.virtualenv
+          done
+
+      - name: is every setup substituted, or does something compile?
+        run: |
+          set -uo pipefail
+          set +e
+          # The decisive check. `nix build --dry-run` says how many paths would be
+          # BUILT versus FETCHED for each setup; anything "will be built" is a
+          # source build and defeats the design.
+          python3 - > /tmp/dirs.txt <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print(e["dir"])
+          PY
+          total=0; built=0; failed=0
+          : > /tmp/source-builds.txt
+          while read -r d; do
+            total=$((total + 1))
+            out=$(nix build --no-link --dry-run ".#\"$d\"" 2>&1) || { failed=$((failed+1)); echo "$d DRY-RUN-FAILED" >> /tmp/source-builds.txt; continue; }
+            n=$(printf '%s\n' "$out" | grep -c 'will be built' || true)
+            if [ "${n:-0}" -gt 0 ]; then
+              built=$((built+1))
+              echo "$d: $n path(s) would be BUILT" >> /tmp/source-builds.txt
+            fi
+          done < /tmp/dirs.txt
+          echo "checked: $total   would-compile: $built   dry-run-failed: $failed"
+          echo
+          if [ -s /tmp/source-builds.txt ]; then
+            echo "== setups that are NOT fully prebuilt =="
+            cat /tmp/source-builds.txt
+          else
+            echo "every setup is a pure download"
+          fi
+
+      - name: narinfo status of every setup's output
+        run: |
+          set -uo pipefail
+          set +e
+          python3 - > /tmp/dirs2.txt <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print(e["dir"])
+          PY
+          ok=0; miss=0
+          : > /tmp/missing.txt
+          while read -r d; do
+            out=$(nix build --no-link --print-out-paths ".#\"$d\"" 2>/dev/null | head -1) || out=""
+            [ -n "$out" ] || { echo "$d NO-OUTPUT" >> /tmp/missing.txt; miss=$((miss+1)); continue; }
+            h=$(basename "$out" | cut -d- -f1)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+            if [ "$code" = "200" ]; then ok=$((ok+1)); else miss=$((miss+1)); echo "$d $code" >> /tmp/missing.txt; fi
+          done < /tmp/dirs2.txt
+          echo "in cache: $ok   missing: $miss"
+          [ -s /tmp/missing.txt ] && { echo "== not cached =="; cat /tmp/missing.txt; }
+          true
