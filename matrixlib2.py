@@ -113,6 +113,11 @@ def load(path=MATRIX):
         # With suffix "-py3.13" the entry is `mypy-2.1.0-py3.13`, which is what a
         # user types to get the 3.13 build.
         e["dir"] = "%s-%s%s" % (e["tool"], e["version"], e.get("suffix", ""))
+        # Keep what the manifest said, before filling in the default. The build
+        # script needs the difference: an entry with no `bins:` and no bin/
+        # directory is a mistake worth failing on, while an explicit `bins:`
+        # (cacert's etc/ssl/certs) is a deliberate choice.
+        e["bins_declared"] = e.get("bins", "")
         e.setdefault("bins", "bin")
         e["artifact"] = "%s-debian-trixie-amd64.tar.zst" % e["dir"]
     return entries

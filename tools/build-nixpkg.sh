@@ -127,8 +127,30 @@ echo "nixpkg: built $REAL"
 #
 # `base` is the exception: it is a library set, not a tool, so it has no bin and
 # putting anything on PATH would be meaningless. Its registry entry says "bin"
-# anyway so the record has a consistent shape; install.sh ignores it for base.
-if [ "$DIR" = "base" ] || [ "${DIR%%-[0-9]*}" = "base" ]; then
+# anyway so the record has a consistent shape; the installer ignores it for base.
+#
+# A manifest entry may override the guess with `bins:` — cacert is the case that
+# forced it: its interesting files are at etc/ssl/certs/ca-bundle.crt and it has
+# no bin/ at all, so the inference below rejected a perfectly good package. An
+# explicit `bins:` wins, and only if there is neither an override nor a bin/ does
+# this fail.
+declared=$(python3 - "$DIR" <<'PY' 2>/dev/null || true
+import sys
+sys.path.insert(0, ".")
+import matrixlib2
+for e in matrixlib2.load("matrix-nix.yml"):
+    if e["dir"] == sys.argv[1]:
+        # Only a value the manifest set itself; the default is "bin" and would
+        # otherwise mask a package that has neither bin/ nor sbin/.
+        print(e.get("bins_declared", ""))
+        break
+PY
+)
+
+if [ -n "$declared" ]; then
+  bins="$declared"
+  echo "nixpkg: bins from the manifest: $bins"
+elif [ "$DIR" = "base" ] || [ "${DIR%%-[0-9]*}" = "base" ]; then
   bins="bin"
 else
   bins=""
@@ -136,7 +158,7 @@ else
     [ -d "$REAL/$d" ] && bins="$bins$d "
   done
   bins=$(echo "$bins" | sed 's/ *$//')
-  [ -n "$bins" ] || { echo "nixpkg: $REAL has no bin/ or sbin/" >&2; exit 1; }
+  [ -n "$bins" ] || { echo "nixpkg: $REAL has no bin/ or sbin/, and matrix-nix.yml declares no bins: for $DIR" >&2; exit 1; }
 fi
 
 STAGE=$(mktemp -d)
