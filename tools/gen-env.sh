@@ -68,7 +68,11 @@ setup_roots() {
 # already points at its own libraries through rpaths, so LD_LIBRARY_PATH and
 # JAVA_HOME are the tool's business, not ours.
 while IFS='|' read -r store dirs; do
+  # `none|` is how a setup with no executables registers itself - base is a
+  # library set, so it is installed but puts nothing on PATH. Skipping it here is
+  # what keeps /nix/setup-root-base-* from emitting a bogus PATH entry.
   [ -n "$store" ] || continue
+  [ "$store" = "none" ] && continue
   for d in $dirs; do
     printf 'PATH="%s/%s:${PATH}"\n' "$store" "$d" >> "$OUT"
   done

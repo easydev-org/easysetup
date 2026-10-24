@@ -250,8 +250,21 @@ rm -rf "$STAGE/nix/var" 2>/dev/null || true
 # nix/store/<hash>/bin, so the tarball states where its binaries are. One file
 # per setup: several nix setups can be installed side by side, and a shared file
 # would let the last install win.
+#
+# `base` is the exception. Its tarball carries a SET of store paths, not one
+# output, so recording `$REAL` produced an entry pointing at
+# `glibc-2.44-57-bin` - a path that is not in the tarball at all (it ships
+# `glibc-2.44-57`). install.sh then saw a registry entry whose store was missing,
+# which is exactly the kind of dangling record that breaks every later install.
+#
+# base provides no executables, so the honest record is "no bin dirs": it is
+# installed, it registers nothing on PATH, and nothing can dangle.
 mkdir -p "$STAGE/nix"
-printf '%s|%s\n' "$REAL" "$bins" > "$STAGE/nix/setup-root-$DIR"
+if [ "${DIR%%-[0-9]*}" = "base" ]; then
+  printf '%s|%s\n' "none" "" > "$STAGE/nix/setup-root-$DIR"
+else
+  printf '%s|%s\n' "$REAL" "$bins" > "$STAGE/nix/setup-root-$DIR"
+fi
 
 # Prove the STAGED copy runs, using nothing from /nix. A stale store on the build
 # machine would otherwise make a broken closure look fine.
