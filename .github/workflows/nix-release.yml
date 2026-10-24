@@ -483,7 +483,13 @@ jobs:
 
             for a in "${assets[@]}"; do basename "$a"; done > "$built_names"
             if [ -s "$carried" ]; then
-              awk 'NR==FNR{new[$2]=1; next} !($2 in new)' "$built_names" "$carried" > "$merged"
+              # $1, not $2: built_names has ONE column (a bare filename), while
+              # carried has two (digest, filename). Matching $2 against a
+              # one-column file keyed everything to the empty string, so nothing
+              # was filtered out and the checksum file listed every tarball twice
+              # - 400 lines for 200 assets, which sha256sum -c would then report
+              # as a pile of mismatches.
+              awk 'NR==FNR{new[$1]=1; next} !($2 in new)' "$built_names" "$carried" > "$merged"
             fi
             cat "$fresh" >> "$merged"
             sort -k2 "$merged" -o "$merged"
