@@ -1,0 +1,63 @@
+name: download-test
+
+# Prove the token actually changes the download path, and that a large asset
+# works, before trusting the fix.
+
+# The reported failure was java (565 MB) and maven (440 MB) failing while base
+# (18 MB) and node (69 MB) succeeded - which points at the anonymous rate limit
+# rather than at the releases. This job installs exactly the two that failed,
+# with the token the action now passes, on a cold runner.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  with-token:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: the two assets that failed, with a token
+        env:
+          GH_TOKEN_FOR_TEST: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          # Pass the token explicitly rather than relying on `sudo -E`: sudoers
+          # often resets the environment, and a test that silently drops the token
+          # would prove nothing.
+          time sudo GITHUB_TOKEN="$GH_TOKEN_FOR_TEST" bash install.sh java maven
+          ls -la /nix/setup-root-java-* /nix/setup-root-maven-*
+          sudo bash tools/gen-env.sh /tmp/env.sh
+          . /tmp/env.sh
+          java -version
+          mvn --version
+
+  anonymous-retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: a large asset WITHOUT a token, to check the retry actually works
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
+          # No GITHUB_TOKEN on purpose. If the anonymous limit is hit, the retry
+          # loop should ride it out rather than fail on the first 404.
+          time sudo GITHUB_TOKEN= bash install.sh java
+          ls -la /nix/setup-root-java-*
+
+      - name: the error message mentions the token when there is none
+        run: |
+          set -uo pipefail
+          # Point at a tag that cannot exist, so the fetch fails deterministically,
+          # and check the hint appears rather than a bare "download failed".
+          output=$(sudo GITHUB_TOKEN= bash install.sh nonexistent-tag-xyz 2>&1 || true)
+          echo "$output" | tail -6
+          echo "$output" | grep -q "GITHUB_TOKEN" \
+            && echo "hint present" \
+            || { echo "::error::the failure message does not mention GITHUB_TOKEN"; exit 1; }

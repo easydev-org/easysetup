@@ -147,13 +147,45 @@ for name in "$@"; do
 
   url="$BASE/$id/$artifact"
   echo "    fetch: $url"
-  curl -fsSL --http1.1 --retry 3 --retry-delay 2 -o "$WORK/asset" "$url" || {
-    echo "install.sh: download failed for $artifact" >&2; exit 1; }
+
+  # Downloads go through a helper, because release assets have three problems
+  # that a plain `curl -f` handles badly:
+  #
+  #   * anonymous downloads share a 60/hour rate limit per IP. A job installing
+  #     several setups exhausts it, and the symptom is a 403 or a 404 partway
+  #     through - which looks like a missing release.
+  #   * `--retry` does NOT retry a 404 by default. So a rate-limited request
+  #     failed immediately with no second attempt.
+  #   * the assets here are large (java 565 MB, maven 440 MB), so a transient
+  #     failure half way through is more likely than for a small file.
+  #
+  # With GITHUB_TOKEN set the request uses the authenticated quota (5000/hour),
+  # which is a separate pool from the anonymous one. --location-trusted matters:
+  # release assets redirect to objects.githubusercontent.com, and curl drops
+  # Authorization on a cross-host redirect unless told otherwise.
+  fetch() {
+    local dest="$1" src="$2"
+    local -a auth=()
+    [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    curl -fsSL --http1.1 \
+         --retry 5 --retry-delay 3 --retry-all-errors \
+         --location-trusted "${auth[@]}" \
+         -o "$dest" "$src"
+  }
+
+  fetch "$WORK/asset" "$url" || {
+    echo "install.sh: download failed for $artifact" >&2
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+      echo "install.sh: no GITHUB_TOKEN was set; anonymous downloads are limited" >&2
+      echo "install.sh: to 60 requests/hour per IP. Set GITHUB_TOKEN to use the" >&2
+      echo "install.sh: authenticated quota instead." >&2
+    fi
+    exit 1; }
 
   # The pin lives beside the release, not in the manifest: CI computes it from
   # the tarball it just produced, so it cannot describe a file that was never
   # uploaded.
-  curl -fsSL --retry 3 -o "$WORK/sha" "$BASE/$id/$artifact.sha256" || {
+  fetch "$WORK/sha" "$BASE/$id/$artifact.sha256" || {
     echo "install.sh: no sha256 published for $id; refusing to unpack" >&2
     exit 1; }
   expected=$(cut -d' ' -f1 "$WORK/sha")
