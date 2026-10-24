@@ -223,6 +223,19 @@ for name in "$@"; do
     echo "install.sh: need root to write /nix, and sudo is not available" >&2
     exit 1
   fi
+
+  # `cp -a` preserves the archive's modes, which include 0555 on store
+  # directories. That silently undoes a chmod that was done before the install -
+  # and the next step of the job needs to write here too (it restores a cache,
+  # and a later `uses:` installs more setups). Restore write access on the two
+  # directories themselves; the files inside keep their own read-only modes,
+  # which is correct and is what protects the store's integrity.
+  if [ "$(id -u)" = "0" ]; then
+    chmod 777 /nix /nix/store 2>/dev/null || true
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo chmod 777 /nix /nix/store 2>/dev/null || true
+  fi
+
   # The extracted tree keeps the store's read-only modes (0555 on directories),
   # so a plain `rm -rf` fails with Permission denied - the same thing that bit the
   # build script. Make it writable first.

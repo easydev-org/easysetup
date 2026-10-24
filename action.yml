@@ -84,6 +84,48 @@ runs:
         fi
         echo "prerequisites installed"
 
+    # Make /nix usable by the rest of the job.
+    #
+    # This is the one thing that needs root, and it cannot be avoided: every
+    # binary in the closures names `/nix/store/<hash>-glibc/lib/ld-linux-x86-64.so.2`
+    # as its ELF interpreter, the kernel resolves that before the program starts,
+    # and no environment variable redirects it. So the PATH /nix/store has to
+    # exist. Where the bytes physically live is free - a symlink is fine - but the
+    # name has to be there.
+    #
+    # Runs as root when the job is already root (containers), and via sudo when it
+    # is not (bare runners). 777 rather than chown because the install itself runs
+    # as whatever user the job uses, and the cache step needs to write there too.
+    #
+    # Idempotent: when /nix/store already exists and is writable this is one test
+    # and an exit.
+    - name: prepare /nix/store
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -d /nix/store ] && [ -w /nix/store ]; then
+          echo "/nix/store is already writable by $(id -un)"
+          exit 0
+        fi
+
+        # `sudo` when not root. If neither is available, say exactly why this
+        # cannot work rather than failing later at unpack time with EACCES.
+        if [ "$(id -u)" = "0" ]; then
+          as_root() { "$@"; }
+        elif command -v sudo >/dev/null 2>&1; then
+          as_root() { sudo "$@"; }
+        else
+          echo "::error::cannot create /nix/store: not root, and sudo is not installed."
+          echo "::error::Every easysetup binary names /nix/store as its ELF interpreter,"
+          echo "::error::so the path must exist. Either run the job as root, install sudo,"
+          echo "::error::or add to the image: RUN mkdir -p /nix/store && chmod -R 777 /nix"
+          exit 1
+        fi
+
+        as_root mkdir -p /nix/store
+        as_root chmod -R 777 /nix
+        echo "created /nix/store (mode $(stat -c '%a' /nix/store 2>/dev/null || echo '?'))"
+
     # Keyed on the setup list AND on what those setups currently resolve to.
     #
     # Keying on the list alone was a real bug: `tools: python` kept hitting a
