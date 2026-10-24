@@ -85,8 +85,17 @@ def run(args, timeout=300):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
-def out_path(attr):
+def out_path(dir_name):
     """Resolve a setup's REAL store path.
+
+    Takes the DIRECTORY name (`base-2.44`, `jq-1.8.2`), not the manifest's
+    attribute (`nixpkgs#glibc`). The flake exposes `packages.<system>.<dir>`, so
+    asking for `.#"glibc"` fails - there is no such attribute - even though
+    `nixpkgs#glibc` resolves fine through the channel.
+
+    That distinction is why the old code had a channel fallback and appeared to
+    work: every flake lookup failed, the fallback answered, and the recorded paths
+    came from the channel rather than the lock.
 
     Two decisions here, both from observed failures:
 
@@ -103,7 +112,7 @@ def out_path(attr):
     The setup name contains dots (jq-1.8.2), so it is quoted inside the attribute
     path or nix reads the dots as separators.
     """
-    name = attr.rsplit("#", 1)[-1]
+    name = dir_name
     # ONLY our flake, never the bare `nixpkgs#<attr>` that the manifest carries.
     #
     # There used to be a fallback to that second form, and it quietly broke the
@@ -188,9 +197,10 @@ def main(argv):
 
     clos, outs = {}, {}
     for e in entries:
-        p = out_path(e["attr"])
+        p = out_path(e["dir"])
         if not p:
-            print("  SKIP %-22s cannot resolve %s" % (e["dir"], e["attr"]))
+            print("  SKIP %-22s cannot resolve .#\"%s\" (attr %s)"
+                  % (e["dir"], e["dir"], e["attr"]))
             continue
         c = closure(p, name=e["dir"])
         if c is None:
