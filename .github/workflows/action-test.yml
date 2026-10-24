@@ -122,3 +122,79 @@ jobs:
           echo "the artifact's own interpreter:"
           readelf -l "$(command -v jq)" 2>/dev/null | sed -n 's/.*interpreter: \(.*\)\]/  \1/p' \
             || echo "  (readelf unavailable)"
+
+  # /nix/store must survive the whole job, not just the install.
+  #
+  # The install itself runs as one user; the cache step before it and any later
+  # `uses:` run as the same one, but a later step that unpacks more setups needs
+  # the directories writable again. `cp -a` preserves the archive's 0555 on store
+  # directories, which silently undid the chmod - so this asserts the mode AFTER
+  # an install, and that a second install still succeeds.
+  nix-stays-writable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with: { tools: jq }
+      - name: the directories are writable after the install
+        run: |
+          set -euo pipefail
+          for d in /nix /nix/store; do
+            mode=$(stat -c '%a' "$d")
+            echo "$d mode=$mode owner=$(stat -c '%U' "$d") user=$(id -un)"
+            # Group/other write must be set, because the next steps run as the
+            # same unprivileged user that did not create these directories.
+            case "$mode" in
+              *7*|*[2367]) : ;;
+              *) echo "::error::$d is not group/other writable (mode $mode)"; exit 1 ;;
+            esac
+          done
+      - name: a second install still works
+        uses: ./
+        with: { tools: yq }
+      - name: both are present
+        run: |
+          set -euo pipefail
+          . /opt/setup/env.sh
+          jq --version
+          yq --version
+          ls /nix/setup-root-*
+
+  # A job that is not root and has no sudo must fail with a message that explains
+  # why, rather than at unpack time with EACCES. Simulated by running the
+  # prepare step with sudo hidden and the identity forced.
+  no-root-no-sudo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the message names the constraint
+        run: |
+          set -uo pipefail
+          python3 tools/extract-step.py "prepare /nix/store" > /tmp/prep.sh
+          chmod 755 /tmp/prep.sh
+
+          # /nix must be absent, or the script's "already writable" check exits
+          # before the branch under test.
+          sudo rm -rf /nix
+
+          # Run as `nobody` with a PATH holding only the utilities the script
+          # uses and no sudo. An earlier attempt faked `id` but left sudo on
+          # PATH, so the script took the sudo branch and succeeded - the branch
+          # under test never ran. Here sudo is genuinely not findable.
+          rm -rf /tmp/nosudo && mkdir -p /tmp/nosudo
+          for f in sh sed grep cut head dirname basename stat mkdir chmod cat tr id; do
+            p=$(command -v "$f" 2>/dev/null) || continue
+            cp -L "$p" "/tmp/nosudo/$f"
+          done
+          chmod -R 755 /tmp/nosudo
+
+          out=$(sudo -u nobody env -i PATH=/tmp/nosudo HOME=/tmp \
+                  /tmp/nosudo/sh /tmp/prep.sh 2>&1 || true)
+          echo "$out"
+
+          echo "$out" | grep -q "sudo is not installed" \
+            && echo "correctly explains the missing sudo" \
+            || { echo "::error::the failure does not explain why"; exit 1; }
+          echo "$out" | grep -q "chmod -R 777 /nix" \
+            && echo "and gives the Dockerfile fix" \
+            || { echo "::error::no actionable fix in the message"; exit 1; }
