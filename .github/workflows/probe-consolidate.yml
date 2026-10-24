@@ -1,0 +1,109 @@
+name: probe-consolidate
+
+# Before deleting tools in favour of "one workflow per language", check that the
+# one being kept actually covers what the others did. Name-similarity is not
+# coverage - and this project has already been wrong twice by assuming it.
+#
+# The questions that cannot be answered by reading names:
+#   * does biome cover formatting AND linting, the way prettier + eslint do?
+#   * does golangci-lint include gofmt/gofumpt/staticcheck, so those can go?
+#   * does clang-tools cover what ccls and cpplint do?
+#   * does php-cs-fixer do what phpmd and phan do, or only formatting?
+#   * does rubocop cover both lint and format (i.e. can stylua-like splits go)?
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: what each candidate actually ships
+        run: |
+          set -uo pipefail
+          set +e
+
+          show() {
+            local dir="$1"
+            local out
+            out=$(nix build --no-link --print-out-paths ".#\"$dir\"" 2>/dev/null) || {
+              printf '%-34s cannot build\n' "$dir"; return; }
+            # The output with bin/, not head or tail of the list.
+            for p in $out; do
+              case "$p" in *-bin|*-out) if [ -d "$p/bin" ]; then out="$p"; break; fi;; esac
+            done
+            printf '== %s\n' "$dir"
+            printf '   output: %s\n' "$(basename "$out")"
+            printf '   bin/:   %s\n' "$(ls "$out/bin" 2>/dev/null | tr '\n' ' ')"
+          }
+
+          echo "########## JS/TS: does biome cover prettier + eslint? ##########"
+          show biome-2.5.15
+          show prettier-3.9.10
+          show eslint-10.12.0
+
+          echo
+          echo "########## Go: does golangci-lint cover the others? ##########"
+          show golangci-lint-2.15.0
+          show gofumpt-0.12.0
+          show gotools-0.44.0
+
+          echo
+          echo "########## C/C++: does clang-tools cover ccls / cpplint / cppcheck? ##########"
+          show clang-tools-23.1.3
+          show ccls-0.20250815.1
+          show cpplint-2.0.2
+          show cppcheck-2.22.0
+
+          echo
+          echo "########## PHP: do these do the same job? ##########"
+          show php-cs-fixer-3.95.1
+          show phpmd-2.15.0
+          show phan-6.0.7
+          show psalm-6.18.0
+
+          echo
+          echo "########## Ruby: rubocop covers lint+format? ##########"
+          show rubocop-1.80.2
+          show ruby-lsp-0.26.3
+          show solargraph-0.57.0
+
+          echo
+          echo "########## Rust: one toolchain, or separate? ##########"
+          show rustfmt-1.99.0
+          show clippy-1.99.0
+          show rust-analyzer-2026-10-12
+
+          echo
+          echo "########## coverage: gcovr vs lcov ##########"
+          show gcovr-8.4
+          show lcov-2.4
+
+      - name: run biome to see what subcommands it has
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(nix build --no-link --print-out-paths '.#"biome-2.5.15"' 2>/dev/null | tail -1)
+          echo "== biome --help =="
+          timeout 60 "$out/bin/biome" --help > /tmp/b 2>&1; echo "exit=$?"
+          head -40 /tmp/b
+
+      - name: run golangci-lint linters list
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(nix build --no-link --print-out-paths '.#"golangci-lint-2.15.0"' 2>/dev/null | tail -1)
+          timeout 120 "$out/bin/golangci-lint" linters > /tmp/g 2>&1; echo "exit=$?"
+          grep -cE '^[a-z0-9-]+:' /tmp/g
+          echo "--- does it list formatters/staticcheck? ---"
+          grep -iE 'gofmt|gofumpt|staticcheck|gosimple|govet|errcheck' /tmp/g | head -10
