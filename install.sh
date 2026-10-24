@@ -95,6 +95,22 @@ fi
 
 installed=""
 
+# A registry entry whose store path no longer exists is worse than no entry: the
+# "already installed, skipping" check trusts it, so the setup is never reinstalled
+# and nothing works. That happens when a cache is restored across a version bump -
+# /nix/setup-root-python-3.15.0 survived while python moved to 3.14.
+#
+# Drop such entries before deciding what is installed.
+for f in /nix/setup-root-*; do
+  [ -f "$f" ] || continue
+  store=$(cut -d'|' -f1 "$f")
+  [ -d "$store" ] && continue
+  echo "pruning stale registry entry $(basename "$f"): $store is gone"
+  if [ "$(id -u)" = "0" ]; then rm -f "$f"
+  elif command -v sudo >/dev/null 2>&1; then sudo rm -f "$f"
+  else rm -f "$f" 2>/dev/null || true; fi
+done
+
 for name in "$@"; do
   wanted=$(mlib resolve "$name") || {
     echo "install.sh: cannot resolve '$name'" >&2
