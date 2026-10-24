@@ -44,7 +44,10 @@ RUN set -eu; \
     curl -fsSL -o /usr/local/bin/easysetup "$base/easysetup-linux-$arch"; \
     curl -fsSL -o /tmp/es.sha256 "$base/easysetup-linux-$arch.sha256"; \
     chmod +x /usr/local/bin/easysetup; \
-    /usr/local/bin/easysetup checksum --check /tmp/es.sha256 /usr/local/bin/easysetup
+    want=$(awk '{print $1}' /tmp/es.sha256); \
+    got=$(sha256sum /usr/local/bin/easysetup | awk '{print $1}'); \
+    [ "$want" = "$got" ] || { echo "checksum mismatch: want $want got $got" >&2; exit 1; }; \
+    echo "easysetup binary verified"
 
 # `prepare` is the one step needing root, and this stage has it. It creates
 # /nix/store and makes it writable, which is all the install needs.
@@ -62,8 +65,8 @@ RUN set -eu; \
     for d in bash busybox curl coreutils; do \
       f="/nix/setup-root-$d"; \
       [ -f "$f" ] || { echo "no registry entry for $d" >&2; exit 1; }; \
-      store=$(cut -d'|' -f1 "$f"); \
-      [ "$store" = none ] && continue; \
+      store=$(awk -F'|' '{print $1}' "$f"); \
+      if [ "$store" = none ]; then continue; fi; \
       for b in "$store"/bin/*; do \
         [ -f "$b" ] || continue; \
         ln -sf "$b" "/nix/bin/$(basename "$b")"; \
@@ -77,7 +80,7 @@ RUN set -eu; \
 # inside the image fails with "unable to get local issuer certificate", which
 # reads like a broken network rather than a missing bundle.
 RUN set -eu; \
-    store=$(cut -d'|' -f1 /nix/setup-root-cacert-*); \
+    store=$(awk -F'|' '{print $1}' /nix/setup-root-cacert-*); \
     cert="$store/etc/ssl/certs/ca-bundle.crt"; \
     [ -f "$cert" ] || { echo "no ca bundle at $cert" >&2; exit 1; }; \
     ln -sf "$cert" /nix/bin/ca-bundle.crt; \
