@@ -63,7 +63,10 @@ setups:
   - { tool: helm,      attr: "nixpkgs#kubernetes-helm", version: "4.3.1" }
   - { tool: java,      attr: "nixpkgs#jdk25", version: "25.0.4.1+1" }
   - { tool: jq,        attr: "nixpkgs#jq", version: "1.8.2" }
-  - { tool: julia,     attr: "nixpkgs#julia", version: "1.13.2" }
+  # arm64: nixpkgs has an output but cache.nixos.org has never been built it, so
+  # an arm64 release would have to compile julia on an emulated runner. Left out
+  # rather than quietly spending hours; remove only_arch once Hydra covers it.
+  - { tool: julia,     attr: "nixpkgs#julia", version: "1.13.2", only_arch: "amd64" }
   - { tool: lua,       attr: "nixpkgs#lua5_5", version: "5.5.1" }
   - { tool: luarocks,  attr: "nixpkgs#luarocks", version: "3.13.0-1" }
   - { tool: maven,     attr: "nixpkgs#maven", version: "3.9.16" }
@@ -248,7 +251,10 @@ setups:
   # only the difference.
   - { tool: cargo,     attr: "nixpkgs#cargo", version: "1.99.0" }
   - { tool: sbt,       attr: "nixpkgs#sbt", version: "2.0.10" }
-  - { tool: swift,     attr: "nixpkgs#swift", version: "6.3.3" }
+  # swift, sourcekit-lsp and swiftformat have no aarch64 output at all in this
+  # nixpkgs - not a failed build, no derivation. They cannot appear in an arm64
+  # release whatever the CI does.
+  - { tool: swift,     attr: "nixpkgs#swift", version: "6.3.3", only_arch: "amd64" }
   - { tool: yq,        attr: "nixpkgs#yq-go", version: "4.54.1" }
   - { tool: zig,       attr: "nixpkgs#zig", version: "0.17.0" }
 
@@ -327,8 +333,8 @@ setups:
 
   # Swift - the toolchain entry above is the compiler; these are the dev tools
   - { tool: swiftlint,  attr: "nixpkgs#swiftlint", version: "0.65.1" }
-  - { tool: swiftformat, attr: "nixpkgs#swiftformat", version: "0.63.1" }
-  - { tool: sourcekit-lsp, attr: "nixpkgs#sourcekit-lsp", version: "6.3.3" }
+  - { tool: swiftformat, attr: "nixpkgs#swiftformat", version: "0.63.1", only_arch: "amd64" }
+  - { tool: sourcekit-lsp, attr: "nixpkgs#sourcekit-lsp", version: "6.3.3", only_arch: "amd64" }
 
   # Haskell
   - { tool: ormolu,     attr: "nixpkgs#ormolu", version: "0.8.0.2" }

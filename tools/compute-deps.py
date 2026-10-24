@@ -64,6 +64,18 @@ NIX = (os.environ.get("NIX_BIN")
            if os.path.exists("/nix/var/nix/profiles/default/bin/nix") else "nix"))
 CACHE = os.environ.get("EASYSETUP_CACHE", "https://cache.nixos.org")
 
+# Which architecture this run computes for. The graph is not the same for both:
+# a package can depend on different things once the platform changes, and the
+# store paths themselves differ. Setting ARCH turns every nix invocation below
+# into an evaluation for that system.
+#
+# An arm64 graph is computed on an amd64 runner by evaluating, never building -
+# every path in it is in cache.nixos.org, which the earlier probe established.
+ARCH = os.environ.get("ARCH", "amd64")
+NIX_SYSTEM = {"amd64": "x86_64-linux", "arm64": "aarch64-linux"}.get(ARCH)
+if NIX_SYSTEM is None:
+    raise SystemExit("compute-deps: ARCH must be amd64 or arm64, got %r" % ARCH)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 import matrixlib2  # noqa: E402
@@ -93,7 +105,8 @@ def out_path(attr):
     """
     name = attr.rsplit("#", 1)[-1]
     for ref in ('.#%s' % _quoted(name), attr):
-        r = run([NIX, "build", "--no-link", "--print-out-paths", ref],
+        r = run([NIX, "build", "--no-link", "--print-out-paths",
+                 "--system", NIX_SYSTEM, ref],
                 timeout=1800)
         if r.returncode != 0:
             continue
@@ -133,7 +146,8 @@ def closure(path, name=None):
     # being skipped after the fallback was added.
     print("      (not in cache, building locally: %s)" % path.split("-", 1)[-1])
     target = '.#%s' % _quoted(name) if name else path
-    b = run([NIX, "build", "--no-link", target], timeout=1800)
+    b = run([NIX, "build", "--no-link", "--system", NIX_SYSTEM, target],
+            timeout=1800)
     if b.returncode != 0:
         return None
     r2 = run([NIX, "path-info", "-r", path], timeout=600)
@@ -144,6 +158,14 @@ def closure(path, name=None):
 
 def main(argv):
     entries = matrixlib2.load(os.path.join(ROOT, "matrix-nix.yml"))
+    # Drop what this architecture cannot have before anything else. swift and
+    # friends have no aarch64 derivation, so including them would make the arm64
+    # graph depend on setups that do not exist and fail at every reference.
+    skipped = [e for e in entries if not matrixlib2.available_on(e, ARCH)]
+    if skipped:
+        print("not available on %s: %s"
+              % (ARCH, ", ".join(e["dir"] for e in skipped)))
+    entries = [e for e in entries if matrixlib2.available_on(e, ARCH)]
     print("resolving %d setups" % len(entries))
 
     clos, outs = {}, {}
@@ -308,6 +330,7 @@ def main(argv):
     doc = {
         "generated_by": "tools/compute-deps.py",
         "note": "Derived from nix closures. Do not edit by hand.",
+        "arch": ARCH,
         "cache": CACHE,
         "base": sorted(base),
         "setups": {
@@ -320,7 +343,9 @@ def main(argv):
             for name in sorted(clos)
         },
     }
-    outfile = os.path.join(ROOT, "closures.json")
+    # One file per architecture: the store paths are different, so one graph
+    # cannot describe both. The installer picks the file matching its own GOARCH.
+    outfile = os.path.join(ROOT, "closures-%s.json" % ARCH)
     with open(outfile, "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
     print()

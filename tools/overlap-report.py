@@ -56,7 +56,7 @@ GROUPS = [
 
 
 def main(argv):
-    doc = json.load(open(os.path.join(ROOT, "closures.json")))
+    doc = json.load(open(matrixlib2.closures_path(ROOT)))
     setups = doc["setups"]
     base = set(doc.get("base", []))
 

@@ -33,7 +33,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 import matrixlib2  # noqa: E402
 
-STATE = os.path.join(ROOT, "build-state.json")
+# One release and one state file per architecture.
+#
+# The fingerprint of a setup's inputs is the same either way, but whether it is
+# PUBLISHED differs, and a shared state file would let an amd64 record make the
+# arm64 run believe a missing arm64 tarball is already there.
+ARCH = os.environ.get("ARCH", "amd64")
+if ARCH not in ("amd64", "arm64"):
+    raise SystemExit("build-plan: ARCH must be amd64 or arm64, got %r" % ARCH)
+RELEASE_TAG = "setups-%s" % ARCH
+STATE = os.path.join(ROOT, "build-state-%s.json" % ARCH)
 
 
 def read(path, default=None):
@@ -49,9 +58,6 @@ def h(*parts):
         m.update(p if isinstance(p, bytes) else str(p).encode())
         m.update(b"\0")
     return m.hexdigest()[:16]
-
-
-RELEASE_TAG = "setups"
 
 
 def _token():
@@ -101,7 +107,7 @@ def release_exists(dir_name, assets=None):
     """Is this setup's tarball present in the release?"""
     if assets is None:
         return True          # cannot check; trust the state file
-    return ("%s-debian-trixie-amd64.tar.zst" % dir_name) in assets
+    return ("%s-debian-trixie-%s.tar.zst" % (dir_name, ARCH)) in assets
 
 
 def main(argv):
@@ -109,8 +115,12 @@ def main(argv):
     report = "--report" in argv
     record = argv[argv.index("--record") + 1:] if "--record" in argv else []
 
-    entries = matrixlib2.load(os.path.join(ROOT, "matrix-nix.yml"))
-    closures = json.load(open(os.path.join(ROOT, "closures.json")))
+    # Only what this architecture can actually have. swift has no aarch64
+    # derivation at all, so scheduling it for arm64 would produce a job that can
+    # never succeed.
+    entries = [e for e in matrixlib2.load(os.path.join(ROOT, "matrix-nix.yml"))
+               if matrixlib2.available_on(e, ARCH)]
+    closures = json.load(open(matrixlib2.closures_path(ROOT)))
     lock = read(os.path.join(ROOT, "flake.lock"), b"")
 
     by_dir = {e["dir"]: e for e in entries}

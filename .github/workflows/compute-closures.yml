@@ -35,10 +35,17 @@ jobs:
             experimental-features = nix-command flakes
             substituters = https://cache.nixos.org
 
-      - name: compute closures.json
+      # One graph per architecture. The store paths differ, so a single file
+      # cannot describe both, and computing arm64 needs no emulator: every path
+      # in it is already in cache.nixos.org, so nix evaluates and downloads
+      # rather than builds.
+      - name: compute the dependency graph, per architecture
         run: |
           set -euo pipefail
-          python3 tools/compute-deps.py
+          for arch in amd64 arm64; do
+            echo "===== $arch ====="
+            ARCH="$arch" python3 tools/compute-deps.py
+          done
 
       # Every manifest version must equal what nix reports, because build-nixpkg.sh
       # refuses to build when they disagree - a tarball named 1.140.0 while nix
@@ -49,7 +56,13 @@ jobs:
       - name: versions in the manifest match nix
         run: |
           set -uo pipefail
-          python3 tools/check-versions.py || {
+          for arch in amd64 arm64; do
+            echo "===== $arch ====="
+            ARCH="$arch" python3 tools/check-versions.py || {
+              echo "::error::the manifest disagrees with nix for $arch; run tools/check-versions.py --fix and regenerate setups/"
+              exit 1
+            }
+          done || {
             echo "::error::the manifest disagrees with nix; run tools/check-versions.py --fix and regenerate setups/"
             exit 1
           }
@@ -61,31 +74,24 @@ jobs:
       - name: list anything the graph could not include
         run: |
           set -uo pipefail
-          python3 tools/probe-closure-fails.py | tee /tmp/missing.txt
-          echo
-          n=$(grep -cE 'FAILED|CACHE MISS' /tmp/missing.txt || true)
-          echo "setups missing from closures.json: $n"
-          if [ "$n" -gt 0 ]; then
-            echo "::warning::$n setup(s) were skipped - see the list above"
-          fi
+          for arch in amd64 arm64; do
+            echo "===== $arch ====="
+            ARCH="$arch" python3 tools/probe-closure-fails.py | tee /tmp/missing-$arch.txt
+            echo
+            n=$(grep -cE 'FAILED|CACHE MISS' /tmp/missing-$arch.txt || true)
+            echo "setups missing from closures-$arch.json: $n"
+            if [ "$n" -gt 0 ]; then
+              echo "::warning::$arch: $n setup(s) were skipped - see the list above"
+            fi
+          done
 
       - name: show the result
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          d = json.load(open("closures.json"))
-          print("== base ==")
-          for p in d["base"]:
-              print("  ", p.split("-", 1)[-1])
-          print()
-          print("== setups that can drop paths ==")
-          for name, e in sorted(d["setups"].items()):
-              kept, total = len(e["own"]), e["closure_size"]
-              if kept < total:
-                  print("  %-24s %4d/%4d kept  deps=%s"
-                        % (name, kept, total, e["deps"] or "-"))
-          PY
+          for arch in amd64 arm64; do
+            echo "########## $arch ##########"
+            ARCH="$arch" python3 tools/show-graph.py
+          done
 
       - name: commit
         if: inputs.commit
@@ -93,9 +99,9 @@ jobs:
           set -euo pipefail
           git config user.name  "easysetup"
           git config user.email "easysetup@easydev.local"
-          git add closures.json
+          git add closures-amd64.json closures-arm64.json
           if git diff --cached --quiet; then
-            echo "closures.json unchanged"
+            echo "closure graphs unchanged"
             exit 0
           fi
           git commit -F - <<'MSG'

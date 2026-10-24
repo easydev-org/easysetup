@@ -123,7 +123,10 @@ runs:
     # Keying on the list alone was a real bug: `tools: python` kept hitting a
     # cache built when python was 3.15, so /nix held a `setup-root-python-3.15.0`
     # entry whose store path no longer existed. The hash suffix is the manifest
-    # plus closures.json, so a version change produces a different key.
+    # plus the closure graph, so a version change produces a different key. The
+    # graph is per architecture, but the cache key need not be: it also includes
+    # github.run_id, which keeps one architecture's cache from being restored onto
+    # the other - and the tools installed differ anyway.
     - name: restore the nix store
       if: inputs.cache == 'true'
       uses: actions/cache@v4

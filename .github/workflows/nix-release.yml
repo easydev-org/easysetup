@@ -66,7 +66,10 @@ jobs:
             # skip the unchanged-set logic entirely.
             python3 - "$ONLY" <<'PY' > /tmp/list.json
           import json, pathlib, sys
+          sys.path.insert(0, ".")
+          import matrixlib2
           only = sys.argv[1]
+          avail = {e["dir"]: e for e in matrixlib2.load("matrix-nix.yml")}
           names = sorted(p.stem for p in pathlib.Path("setups").glob("*.nix"))
           if only in names:
               picked = [only]
@@ -75,7 +78,13 @@ jobs:
               if len(hits) != 1:
                   sys.exit("only=%r matches %d setups" % (only, len(hits)))
               picked = hits
-          print(json.dumps({"include": [{"name": n} for n in picked]}))
+          # Every requested setup is built for both architectures it exists on.
+          inc = []
+          for n in picked:
+              for arch in ("amd64", "arm64"):
+                  if n in avail and matrixlib2.available_on(avail[n], arch):
+                      inc.append({"name": n, "arch": arch})
+          print(json.dumps({"include": inc}))
           PY
           else
             # Nothing asks for a specific setup, so build only what changed.
@@ -83,8 +92,23 @@ jobs:
             # path list, flake.lock and its dependencies - so anything else is
             # unchanged bytes, and 155-job rebuilds of an unchanged manifest were
             # the normal case before this.
-            python3 tools/build-plan.py --report
-            python3 tools/build-plan.py --outputs > /tmp/list.json
+            # Run the plan once per architecture: "unchanged" is per (setup, arch),
+            # because the two tarballs are different bytes and one can be missing
+            # while the other is published.
+            ARCH=amd64 python3 tools/build-plan.py --report
+            ARCH=arm64 python3 tools/build-plan.py --report
+            python3 - <<'PY' > /tmp/list.json
+          import json, os, subprocess, sys
+          inc = []
+          for arch in ("amd64", "arm64"):
+              env = dict(os.environ, ARCH=arch)
+              out = subprocess.run([sys.executable, "tools/build-plan.py", "--outputs"],
+                                   capture_output=True, text=True, env=env)
+              if out.returncode == 0 and out.stdout.strip():
+                  for name in json.loads(out.stdout).get("include", []):
+                      inc.append({"name": name["name"], "arch": arch})
+          print(json.dumps({"include": inc}))
+          PY
           fi
           echo "list=$(cat /tmp/list.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
@@ -143,8 +167,11 @@ jobs:
           fi
 
       - name: build ${{ matrix.name }} with nix
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
+          echo "architecture: $ARCH"
           # Report whether nix will DOWNLOAD or COMPILE, because that is the
           # property the design depends on. `grep -c` exits 1 when it counts
           # zero, which under `set -e` aborted this step before the build even
@@ -153,9 +180,22 @@ jobs:
           echo "::group::what nix will do"
           # The name has dots in it (jq-1.8.2) and an unquoted dot is an attribute
           # path separator to nix, so the segment must be quoted.
-          dry=$(nix build --dry-run ".#\"${{ matrix.name }}\"" 2>&1 || true)
+          case "$ARCH" in
+            amd64) sys=x86_64-linux ;;
+            arm64) sys=aarch64-linux ;;
+          esac
+          dry=$(nix build --dry-run --system "$sys" ".#\"${{ matrix.name }}\"" 2>&1 || true)
           built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
           echo "paths built locally: $built"
+          # A non-zero count means the arm64 (or amd64) output is not in the cache
+          # and would be compiled here. That is worth failing on: an emulated build
+          # of a toolchain closure can run for hours, and the resulting tarball is
+          # indistinguishable from a fast one.
+          if [ "${built:-0}" -gt 0 ]; then
+            echo "::error::${{ matrix.name }} ($ARCH) is not fully substitutable: $built path(s) would be compiled"
+            printf '%s\n' "$dry" | grep 'will be built' | head -10
+            exit 1
+          fi
           printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
           echo "::endgroup::"
           bash tools/build-nixpkg.sh "${{ matrix.name }}" out
@@ -198,7 +238,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: setup-${{ matrix.name }}
+          name: setup-${{ matrix.name }}-${{ matrix.arch }}
           path: out/*.tar.zst
           retention-days: 1
           if-no-files-found: error
@@ -246,73 +286,74 @@ jobs:
       - name: publish every built asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # All setups share this tag.
-          RELEASE_TAG: setups
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          assets=(/tmp/assets/*.tar.zst)
-          if [ "${#assets[@]}" -eq 0 ]; then
-            echo "no assets were produced; nothing to publish"
-            exit 0
-          fi
-
-          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
-            gh release create "$RELEASE_TAG" \
-              --title "prebuilt nix closures" \
-              --notes "Every easysetup setup, prebuilt for linux/amd64. Assets are added incrementally: a setup that has not changed keeps its existing tarball. Checksums are in SHA256SUMS."
-
-          # What is already published, so the new SHA256SUMS covers the whole set
-          # rather than only this run's files. Without this the checksum file
-          # would silently lose every setup that did not change.
-          # --jq, not python: `gh` has a built-in JSON filter, so this needs no
-          # interpreter on the runner. (A previous version shelled out to python3
-          # with a multi-line program, which also broke the YAML block scalar -
-          # the second line began at column 0 and ended the `run: |` block.)
-          existing=$(mktemp)
-          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
-            > "$existing" || true
-          echo "already published: $(wc -l < "$existing")"
-
-          # Checksums carried over from the previous SHA256SUMS, for tarballs this
-          # run did not rebuild. Read from the release asset, because that is the
-          # file that describes what is actually downloadable.
-          carried=$(mktemp)
-          if grep -qx 'SHA256SUMS' "$existing"; then
-            gh release download "$RELEASE_TAG" --pattern 'SHA256SUMS' \
-              --output "$carried" --clobber || true
-          fi
-
-          # Compute this run's checksums from the files about to be uploaded. A
-          # pin written anywhere else could describe a tarball that was never
-          # published - which is how an earlier pipeline shipped empty pins.
+          # One release per architecture, not one release with both.
           #
-          # The digest is written by hand rather than by `sha256sum "$a"`, which
-          # would record the path it was given - /tmp/assets/foo.tar.zst - and a
-          # consumer looking the entry up by bare filename would find nothing.
-          # Two spaces and the basename is the format coreutils itself writes, so
-          # `sha256sum -c SHA256SUMS` still works.
-          fresh=$(mktemp)
-          for a in "${assets[@]}"; do
-            printf '%s  %s\n' "$(sha256sum "$a" | cut -d' ' -f1)" "$(basename "$a")" >> "$fresh"
+          # A single release would put ~400 tarballs plus a checksum file against
+          # GitHub's 1000-asset limit - comfortable today, half gone at 250
+          # setups. Two releases give each architecture the full allowance, and
+          # they are separate things: a consumer on arm64 never wants the amd64
+          # assets and vice versa.
+          publish_arch() {
+            local arch="$1" tag="setups-$1"
+            local assets=(/tmp/assets/*-"$arch".tar.zst)
+            if [ "${#assets[@]}" -eq 0 ]; then
+              echo "$arch: no assets were produced; nothing to publish"
+              return 0
+            fi
+            echo "== $arch -> $tag (${#assets[@]} tarball(s))"
+
+            gh release view "$tag" >/dev/null 2>&1 || \
+              gh release create "$tag" \
+                --title "prebuilt nix closures ($arch)" \
+                --notes "Every easysetup setup that exists for linux/$arch, prebuilt. Assets are added incrementally: a setup that has not changed keeps its existing tarball. Checksums are in SHA256SUMS."
+
+            # What is already published, so the new SHA256SUMS covers the whole set
+            # rather than only this run's files. Without this the checksum file
+            # would silently lose every setup that did not change.
+            local existing carried fresh built_names merged
+            existing=$(mktemp); carried=$(mktemp); fresh=$(mktemp)
+            built_names=$(mktemp); merged=$(mktemp)
+            gh release view "$tag" --json assets --jq '.assets[].name' \
+              > "$existing" || true
+            echo "already published: $(wc -l < "$existing")"
+
+            if grep -qx 'SHA256SUMS' "$existing"; then
+              gh release download "$tag" --pattern 'SHA256SUMS' \
+                --output "$carried" --clobber || true
+            fi
+
+            # The digest is written by hand rather than by `sha256sum "$a"`, which
+            # would record the path it was given - /tmp/assets/foo.tar.zst - and a
+            # consumer looking an entry up by bare filename would find nothing.
+            local a
+            for a in "${assets[@]}"; do
+              printf '%s  %s\n' "$(sha256sum "$a" | cut -d' ' -f1)" "$(basename "$a")" >> "$fresh"
+            done
+
+            for a in "${assets[@]}"; do basename "$a"; done > "$built_names"
+            if [ -s "$carried" ]; then
+              awk 'NR==FNR{new[$2]=1; next} !($2 in new)' "$built_names" "$carried" > "$merged"
+            fi
+            cat "$fresh" >> "$merged"
+            sort -k2 "$merged" -o "$merged"
+            echo "SHA256SUMS covers $(wc -l < "$merged") tarballs"
+
+            # Uploaded under a per-architecture temp name, then renamed in the
+            # release. gh takes the asset name from the file name, and both
+            # releases want an asset called plain SHA256SUMS - so a staging
+            # directory per architecture is what keeps the two loops from writing
+            # over each other's file before it is uploaded.
+            local stage="/tmp/sums-$arch"
+            rm -rf "$stage" && mkdir -p "$stage"
+            cp "$merged" "$stage/SHA256SUMS"
+            gh release upload "$tag" "${assets[@]}" "$stage/SHA256SUMS" --clobber
+          }
+
+          for arch in amd64 arm64; do
+            publish_arch "$arch"
           done
-          cat "$fresh"
-
-          # Merge: keep a old line only if its tarball is absent from this run.
-          built_names=$(mktemp)
-          for a in "${assets[@]}"; do basename "$a"; done > "$built_names"
-
-          merged=$(mktemp)
-          if [ -s "$carried" ]; then
-            awk 'NR==FNR{new[$2]=1; next} !($2 in new)' "$built_names" "$carried" > "$merged"
-          fi
-          cat "$fresh" >> "$merged"
-          sort -k2 "$merged" -o "$merged"
-          mv "$merged" /tmp/assets/SHA256SUMS
-          echo "SHA256SUMS covers $(wc -l < /tmp/assets/SHA256SUMS) tarballs"
-
-          echo "uploading ${#assets[@]} new tarball(s)"
-          gh release upload "$RELEASE_TAG" "${assets[@]}" /tmp/assets/SHA256SUMS --clobber
 
       # Record what was built, so the next run can tell what is genuinely
       # unchanged. Done only AFTER every upload succeeded: a fingerprint written
@@ -330,12 +371,19 @@ jobs:
             echo "nothing was published; leaving the state file alone"
             exit 0
           fi
-          built=()
-          for a in "${assets[@]}"; do
-            base=$(basename "$a")
-            built+=("${base%-debian-trixie-amd64.tar.zst}")
+          # Recorded per architecture, because build-state is what decides whether
+          # the next run rebuilds something. amd64 and arm64 tarballs of one setup
+          # are different bytes and can be out of step - one published, the other
+          # not - so a single entry would make the next run skip the missing one.
+          for arch in amd64 arm64; do
+            built=()
+            for a in /tmp/assets/*-"$arch".tar.zst; do
+              base=$(basename "$a")
+              built+=("${base%-debian-trixie-$arch.tar.zst}")
+            done
+            [ "${#built[@]}" -gt 0 ] || continue
+            ARCH="$arch" python3 tools/build-plan.py --record "${built[@]}"
           done
-          python3 tools/build-plan.py --record "${built[@]}"
 
           if git diff --quiet build-state.json 2>/dev/null; then
             echo "state unchanged"

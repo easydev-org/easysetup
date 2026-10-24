@@ -119,8 +119,55 @@ def load(path=MATRIX):
         # (cacert's etc/ssl/certs) is a deliberate choice.
         e["bins_declared"] = e.get("bins", "")
         e.setdefault("bins", "bin")
-        e["artifact"] = "%s-debian-trixie-amd64.tar.zst" % e["dir"]
+        # One artifact name per architecture. The tag already separates the two
+        # releases, but the name has to carry it too: both tarballs travel through
+        # Actions artifacts and a local output directory, and a bare name would
+        # make the amd64 and arm64 builds of one setup collide before either
+        # reaches its release.
+        e["artifact"] = artifact_name(e["dir"], ARCH)
     return entries
+
+
+def available_on(entry, arch):
+    """Is this setup buildable for `arch`?
+
+    Three setups are x86_64-linux only in this nixpkgs: swift, sourcekit-lsp and
+    swiftformat. On aarch64 they produce no output at all - not a compile error,
+    no derivation - so an arm64 release simply cannot contain them.
+
+    The manifest marks them rather than the code hard-coding names, because which
+    packages a platform lacks is a fact about nixpkgs that will change, and it
+    belongs next to the package it describes.
+    """
+    only = entry.get("only_arch", "")
+    if not only:
+        return True
+    return arch in [a.strip() for a in only.split(",")]
+
+
+def closures_path(root, arch=None):
+    """Where the dependency graph for `arch` lives.
+
+    One file per architecture: the store paths in it are platform-specific, so a
+    single graph cannot describe both. Every consumer goes through this rather
+    than spelling the name, so adding a third architecture later is one edit.
+    """
+    return "%s/closures-%s.json" % (root.rstrip("/"), arch or ARCH)
+
+
+ARCH = "amd64"
+
+
+def artifact_name(dir_name, arch):
+    """The tarball name for one setup on one architecture.
+
+    The recorded platform is the one the closure was actually built for. The
+    tarball itself is not Debian-specific any more - it runs on alpine and
+    scratch too - but renaming every asset now would invalidate every published
+    URL for no benefit, so the historical `debian-trixie` marker stays and only
+    the architecture varies.
+    """
+    return "%s-debian-trixie-%s.tar.zst" % (dir_name, arch)
 
 
 def by_dir(d, path=MATRIX):

@@ -31,6 +31,19 @@ cd "$REPO"
 [ -f "setups/$NAME.nix" ] || {
   echo "nixpkg: no setups/$NAME.nix" >&2; exit 1; }
 
+# Which architecture to build for. Defaults to the host's, so the existing
+# invocations keep working unchanged.
+#
+# The vendor is dropped because nix calls it x86_64-linux while the artifacts are
+# named amd64 - and the name is what consumers see and what the installer looks
+# up, so the asset name is the one that has to be predictable.
+case "${ARCH:-$(uname -m)}" in
+  amd64|x86_64)  ARCH=amd64;  NIX_SYSTEM=x86_64-linux ;;
+  arm64|aarch64) ARCH=arm64;  NIX_SYSTEM=aarch64-linux ;;
+  *) echo "nixpkg: unsupported ARCH, want amd64 or arm64" >&2; exit 1 ;;
+esac
+echo "nixpkg: building for $ARCH ($NIX_SYSTEM)"
+
 NIX=$(command -v nix || echo /nix/var/nix/profiles/default/bin/nix)
 [ -x "$NIX" ] || { echo "nixpkg: nix is not installed" >&2; exit 1; }
 
@@ -97,7 +110,13 @@ fi
 # answer, so the outputs are collected and the one that actually holds the
 # executables is chosen. A setup that overrides its output (`pkgs.jq.bin`) has
 # exactly one line, so this picks it trivially.
-OUTLIST=$("$NIX" build --no-link --print-out-paths ".#\"$NAME\"" 2>/tmp/nixpkg-err.log)
+# --system, not the host default: an arm64 closure is fetched from
+# cache.nixos.org without running a single arm64 instruction, so an amd64 runner
+# can produce it. Only a path that is NOT in the cache would need an emulator,
+# and that is exactly what this fails on rather than silently compiling for
+# hours.
+OUTLIST=$("$NIX" build --no-link --print-out-paths --system "$NIX_SYSTEM" \
+            ".#\"$NAME\"" 2>/tmp/nixpkg-err.log)
 if [ $? -ne 0 ] || [ -z "$OUTLIST" ]; then
   echo "nixpkg: nix build failed" >&2
   tail -40 /tmp/nixpkg-err.log >&2
@@ -367,7 +386,7 @@ else
 fi
 
 mkdir -p "$OUT"
-ASSET="$OUT/$DIR-debian-trixie-amd64.tar.zst"
+ASSET="$OUT/$DIR-debian-trixie-$ARCH.tar.zst"
 
 # zstd, not xz. Measured on swift (5.8 GB unpacked): `tar -cJf` spent 34m49s in
 # single-threaded xz compression while the download and unpack took 23s and the

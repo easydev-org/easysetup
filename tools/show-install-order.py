@@ -28,7 +28,7 @@ def order(setups, name, acc=None):
 
 
 def main(argv):
-    doc = json.load(open(os.path.join(ROOT, "closures.json")))
+    doc = json.load(open(matrixlib2.closures_path(ROOT)))
     setups = doc["setups"]
     names = argv[1:] or ["composer-2.10.3", "cargo-1.99.0",
                          "pip-26.1.2", "jq-1.8.2"]
