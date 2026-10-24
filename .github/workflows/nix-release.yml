@@ -69,17 +69,38 @@ jobs:
           # nested inside an if/else inside this block scalar, which produced a
           # matrix the workflow read as empty - the setup job succeeded and
           # scheduled nothing, looking like "everything up to date".
-          if [ -n "$ONLY" ]; then
-            python3 tools/build-plan.py --report >/dev/null 2>&1 || true
-            python3 tools/build-matrix.py "$ONLY" > /tmp/list.json
-          else
+          # One matrix per architecture, not one matrix with both.
+          #
+          # GitHub caps a matrix at 256 jobs and an over-large matrix does not
+          # fail - it schedules nothing while the job reports success, which is
+          # how a 396-entry matrix produced "0 jobs" twice without an error.
+          # 200 and 196 each fit comfortably.
+          if [ -z "$ONLY" ]; then
             ARCH=amd64 python3 tools/build-plan.py --report
             ARCH=arm64 python3 tools/build-plan.py --report
-            python3 tools/build-matrix.py > /tmp/list.json
           fi
-          echo "list=$(cat /tmp/list.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          if [ -n "$ONLY" ]; then
+            python3 tools/build-matrix.py "$ONLY" --arch amd64 > /tmp/list-amd64.json
+            python3 tools/build-matrix.py "$ONLY" --arch arm64 > /tmp/list-arm64.json
+          else
+            python3 tools/build-matrix.py --arch amd64 > /tmp/list-amd64.json
+            python3 tools/build-matrix.py --arch arm64 > /tmp/list-arm64.json
+          fi
+          for a in amd64 arm64; do
+            n=$(python3 -c "import json;print(len(json.load(open('/tmp/list-$a.json'))['include']))")
+            echo "$a: $n job(s)"
+            # A matrix of zero is legitimate only when nothing changed; a matrix
+            # larger than 256 is never legitimate.
+            if [ "$n" -gt 256 ]; then
+              echo "::error::$a matrix has $n entries, over GitHub's limit of 256"
+              exit 1
+            fi
+          done
+          echo "list_amd64=$(cat /tmp/list-amd64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          echo "list_arm64=$(cat /tmp/list-arm64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
-          cat /tmp/list.json
+          echo "amd64=$(python3 -c "import json;print(len(json.load(open('/tmp/list-amd64.json'))['include']))")" >> "$GITHUB_OUTPUT"
+          echo "arm64=$(python3 -c "import json;print(len(json.load(open('/tmp/list-arm64.json'))['include']))")" >> "$GITHUB_OUTPUT"
 
       - name: resolve the versions nix will actually give us
         run: |
@@ -97,11 +118,19 @@ jobs:
 
   build:
     needs: setup
-    if: needs.setup.outputs.list != ''
+    if: needs.setup.outputs.amd64 != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.list) }}
+      # One job per architecture, each with its own matrix.
+      #
+      # A single matrix carrying both architectures is ~400 entries and GitHub
+      # silently schedules nothing above 256 - the job reports success with zero
+      # builds, which is the least useful way to fail. Two jobs of 200 and 196
+      # stay well inside the limit.
+      matrix: ${{ fromJSON(needs.setup.outputs.list_amd64) }}
+      # arch is fixed per job rather than read from the matrix, so the two jobs
+      # cannot be confused for each other.
     steps:
       - uses: actions/checkout@v4
 
@@ -135,7 +164,7 @@ jobs:
 
       - name: build ${{ matrix.name }} with nix
         env:
-          ARCH: ${{ matrix.arch }}
+          ARCH: amd64
         run: |
           set -euo pipefail
           echo "architecture: $ARCH"
@@ -205,13 +234,136 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: setup-${{ matrix.name }}-${{ matrix.arch }}
+          name: setup-${{ matrix.name }}-amd64
+          path: out/*.tar.zst
+          retention-days: 1
+          if-no-files-found: error
+
+  build-arm64:
+    needs: setup
+    if: needs.setup.outputs.arm64 != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # One job per architecture, each with its own matrix.
+      #
+      # A single matrix carrying both architectures is ~400 entries and GitHub
+      # silently schedules nothing above 256 - the job reports success with zero
+      # builds, which is the least useful way to fail. Two jobs of 200 and 196
+      # stay well inside the limit.
+      matrix: ${{ fromJSON(needs.setup.outputs.list_arm64) }}
+      # Same shape as `build`, for arm64. Kept as a separate job rather than a
+      # matrix dimension because the two together exceed GitHub's 256-job cap.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            # The whole design depends on downloading rather than compiling. If
+            # this is ever false the build silently becomes a source build, so
+            # the log shows the substitution counts below.
+            substituters = https://cache.nixos.org
+
+      # closures.json decides what each tarball carries: the shared base and the
+      # paths a dependency already provides are subtracted from it. It must exist
+      # before build-nixpkg.sh runs, so every build job fetches it.
+      #
+      # Absent is tolerated and falls back to the full closure - a first run, or a
+      # manifest change that has not been recomputed yet, should publish something
+      # usable rather than nothing.
+      - name: fetch closures.json
+        run: |
+          set -euo pipefail
+          if curl -fsSL --retry 3 -o closures.json \
+               "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/closures.json"; then
+            n=$(python3 -c "import json;print(len(json.load(open('closures.json'))['setups']))")
+            echo "closures.json present: $n setups, $(python3 -c "import json;print(len(json.load(open('closures.json'))['base']))") base paths"
+          else
+            echo "no closures.json yet; tarballs will carry their full closure"
+          fi
+
+      - name: build ${{ matrix.name }} with nix
+        env:
+          ARCH: arm64
+        run: |
+          set -euo pipefail
+          echo "architecture: $ARCH"
+          # Report whether nix will DOWNLOAD or COMPILE, because that is the
+          # property the design depends on. `grep -c` exits 1 when it counts
+          # zero, which under `set -e` aborted this step before the build even
+          # started - so the count is captured without letting the exit status
+          # escape.
+          echo "::group::what nix will do"
+          # The name has dots in it (jq-1.8.2) and an unquoted dot is an attribute
+          # path separator to nix, so the segment must be quoted.
+          case "$ARCH" in
+            amd64) sys=x86_64-linux ;;
+            arm64) sys=aarch64-linux ;;
+          esac
+          dry=$(nix build --dry-run --system "$sys" ".#\"${{ matrix.name }}\"" 2>&1 || true)
+          built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
+          echo "paths built locally: $built"
+          # A non-zero count means the arm64 (or amd64) output is not in the cache
+          # and would be compiled here. That is worth failing on: an emulated build
+          # of a toolchain closure can run for hours, and the resulting tarball is
+          # indistinguishable from a fast one.
+          if [ "${built:-0}" -gt 0 ]; then
+            echo "::error::${{ matrix.name }} ($ARCH) is not fully substitutable: $built path(s) would be compiled"
+            printf '%s\n' "$dry" | grep 'will be built' | head -10
+            exit 1
+          fi
+          printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
+          echo "::endgroup::"
+          bash tools/build-nixpkg.sh "${{ matrix.name }}" out
+
+      # Prove the tarball is usable on its OWN, in a root that has nothing else.
+      # A delta tarball makes this sharper than before: if the subtraction removed
+      # something the tool needs, only an actual run reveals it.
+      - name: the tarball runs in an empty root
+        run: |
+          set -euo pipefail
+          asset=$(ls out/*.tar.zst | head -1)
+          root=/tmp/vroot
+          rm -rf "$root" && mkdir -p "$root"
+          zstd -d --quiet -c "$asset" | tar -xf - -C "$root"
+          reg=$(ls "$root"/nix/setup-root-* 2>/dev/null | head -1)
+          echo "registry: $(cat "$reg")"
+          store=$(cut -d'|' -f1 "$reg")
+          first=$(cut -d'|' -f2 "$reg" | awk '{print $1}')
+
+          # `base` is a library set: it has no bin/, so there is no binary to run.
+          # Its tarball is still worth checking, just differently - that every
+          # recorded path unpacked and is non-empty.
+          if [ ! -d "$root$store/$first" ]; then
+            echo "no $first/ in the tarball - treating as a library set"
+            n=$(ls "$root/nix/store" | wc -l)
+            echo "store paths unpacked: $n"
+            [ "$n" -gt 0 ] || { echo "::error::empty tarball"; exit 1; }
+            echo "library set unpacked correctly"
+            exit 0
+          fi
+
+          bin=$(ls "$root$store/$first" | head -1)
+          echo "running: $store/$first/$bin"
+          # A chroot has no /nix of its own, so the only store present is what the
+          # tarball carried. A missing interpreter or library fails here.
+          chroot "$root" "$store/$first/$bin" --version 2>&1 | head -3 \
+            || chroot "$root" "$store/$first/$bin" 2>&1 | head -3 \
+            || echo "::warning::$bin did not answer --version"
+          echo "self-sufficient in an empty root"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-${{ matrix.name }}-arm64
           path: out/*.tar.zst
           retention-days: 1
           if-no-files-found: error
 
   publish:
-    needs: [setup, build]
+    needs: [setup, build, build-arm64]
     if: always() && needs.setup.result == 'success'
     runs-on: ubuntu-latest
     steps:
