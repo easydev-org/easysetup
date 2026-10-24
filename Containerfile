@@ -25,13 +25,19 @@ FROM alpine:3.21 AS installer
 RUN apk add --no-cache curl ca-certificates
 
 ARG EASYSETUP_VERSION=
-ARG TARGETARCH=amd64
+# No default for TARGETARCH, deliberately. buildx defines it per platform, and an
+# `ARG TARGETARCH=amd64` line overrides that injection - so an arm64 build then
+# fetched the amd64 binary and died with "Invalid ELF image for this architecture"
+# while the log showed a perfectly normal install. The fallback for a plain
+# `docker build` is computed below instead.
+ARG TARGETARCH
 
 RUN set -eu; \
-    case "$TARGETARCH" in \
-      amd64) arch=amd64 ;; \
-      arm64) arch=arm64 ;; \
-      *) echo "unsupported TARGETARCH=$TARGETARCH" >&2; exit 1 ;; \
+    raw="${TARGETARCH:-$(uname -m)}"; \
+    case "$raw" in \
+      amd64|x86_64)  arch=amd64 ;; \
+      arm64|aarch64) arch=arm64 ;; \
+      *) echo "unsupported architecture: $raw" >&2; exit 1 ;; \
     esac; \
     if [ -z "$EASYSETUP_VERSION" ]; then \
       EASYSETUP_VERSION=$(curl -fsSI https://github.com/easydev-org/easysetup-cli/releases/latest \
