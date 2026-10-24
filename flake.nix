@@ -33,9 +33,26 @@
           files = builtins.attrNames (builtins.readDir ./setups);
         in
         map (f: builtins.replaceStrings [ ".nix" ] [ "" ] f) files;
+
+      # Setups this nixpkgs has no derivation for on a given system.
+      #
+      # swift, sourcekit-lsp and swiftformat exist only on x86_64-linux. Building
+      # the attribute tree eagerly means one missing attribute fails the WHOLE
+      # tree - including the x86_64 packages that are perfectly fine - so they are
+      # filtered out per system instead. The list matches `only_arch` in
+      # matrix-nix.yml; keeping it here as well is what lets `packages` evaluate
+      # for both systems at all.
+      missingOn = system: names:
+        if system == "aarch64-linux"
+        then [ "swift-6.3.3" "swiftformat-0.63.1" "sourcekit-lsp-6.3.3" ]
+        else [];
     in {
       packages = forAll (pkgs:
-        let names = setupNames pkgs; in
+        let
+          system = pkgs.system;
+          skip = missingOn system (setupNames pkgs);
+          names = builtins.filter (n: !(builtins.elem n skip)) (setupNames pkgs);
+        in
         builtins.listToAttrs (map
           (n: {
             name = n;

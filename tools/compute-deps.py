@@ -121,6 +121,12 @@ def out_path(attr):
                  "--system", NIX_SYSTEM, ref],
                 timeout=1800)
         if r.returncode != 0:
+            # Print nix's own message. Without it "cannot resolve" tells you
+            # nothing about whether the attribute is missing, the flake is
+            # broken, or the system is not in `systems`.
+            err = (r.stderr or "").strip().splitlines()
+            if err:
+                print("      nix said: %s" % err[-1][:160])
             continue
         lines = [x for x in r.stdout.splitlines() if x.strip()]
         if not lines:
