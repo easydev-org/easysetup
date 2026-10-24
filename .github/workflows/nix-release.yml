@@ -32,7 +32,15 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      list: ${{ steps.matrix.outputs.list }}
+      # Every output the downstream jobs read must be declared here. They were
+      # being written to $GITHUB_OUTPUT but never promoted to job level, so
+      # `needs.setup.outputs.list_amd64` was empty and both build jobs were
+      # skipped while this job reported success - the same silent shape as the
+      # over-large matrix, from a different cause.
+      list_amd64: ${{ steps.matrix.outputs.list_amd64 }}
+      list_arm64: ${{ steps.matrix.outputs.list_arm64 }}
+      n_amd64: ${{ steps.matrix.outputs.n_amd64 }}
+      n_arm64: ${{ steps.matrix.outputs.n_arm64 }}
       only: ${{ steps.matrix.outputs.only }}
     steps:
       - uses: actions/checkout@v4
