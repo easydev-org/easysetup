@@ -12,12 +12,33 @@ That is the whole interface. Each tool arrives as a complete nix store closure,
 unpacked and put on `PATH` for the following steps - no apt, no dependency
 resolution, no compilation, no version pinning to maintain.
 
-Supported: node, python, go, java, rust, cargo, swift, clang, php, ruby, perl,
-r, julia, crystal, dart, deno, elixir, erlang, ghc, dotnet, lua, nim, opam, zig,
-bazel, cmake, ninja, maven, gradle, sbt, cabal, conan, micromamba, pixi, luarocks,
-pip, virtualenv, black, ruff, mypy, pytest, composer, php-cs-fixer, psalm, phpmd,
-phing, box, kubectl, opentofu, helm, jenkins, shellcheck, ripgrep, fd, jq, yq,
-git-lfs, protobuf, buf, nix.
+Runtimes: node, bun, deno, python, go, java, kotlin, scala, clojure, rust,
+swift, clang, gcc, php, ruby, perl, r, julia, crystal, dart, elixir, erlang,
+ghc, dotnet, lua, nim, opam, zig.
+
+Build and package: cargo, bazel, cmake, ninja, meson, maven, gradle, sbt, cabal,
+conan, pnpm, yarn, npm (with node), uv, pip, composer, micromamba, pixi,
+luarocks, nix.
+
+Dev tooling, one workflow per language:
+
+| language | lint | format | LSP | test |
+|---|---|---|---|---|
+| TypeScript/JS | **biome** | **biome** | typescript-language-server, vscode-langservers | — |
+| Python | **ruff**, pylint | **ruff** | basedpyright | pytest, coverage |
+| Go | **golangci-lint** (109 linters) | gofmt (in `go`) | gopls | go test |
+| Rust | **clippy** | **rustfmt** | rust-analyzer | cargo-nextest |
+| C/C++ | **clang-tidy**, cppcheck | **clang-format** | **clangd** | gcovr, lcov |
+| PHP | **psalm**, phpmd | **php-cs-fixer** | psalm-language-server | — |
+| Ruby | **rubocop** | **rubocop -a** | ruby-lsp | rake |
+| Lua | — | **stylua** | lua-language-server | — |
+| JVM | pmd | google-java-format | jdtls | — |
+
+Infra and CLI: kubectl, helm, kustomize, kind, podman, skopeo, opentofu,
+awscli2, jenkins, git, gh, glab, git-lfs, curl, wget, rsync, openssh, gnupg,
+zip, unzip, xz, zstd, make, shellcheck, shfmt, actionlint, yamllint, taplo,
+markdownlint-cli2, pre-commit, trivy, gitleaks, hadolint, ripgrep, fd, jq, yq,
+jqp, dasel, miller, protobuf, buf.
 
 ## Why this exists
 
@@ -98,6 +119,32 @@ without naming it:
 That is PEP 668 working as intended, not a defect: the interpreter is in the
 read-only `/nix/store`. Use `python3 -m venv`. See [docs/pip.md](docs/pip.md) for
 what is happening and the four options.
+
+## One workflow per language, not every tool that exists
+
+The rule is one recommended tool per job. Offering black *and* ruff *and* flake8
+means three ways to do the same thing and no answer to "which should I use".
+Each removal was checked against the tool being kept:
+
+| removed | because |
+|---|---|
+| black, isort, flake8 | `ruff format` and `ruff check` cover all three, in one fast binary |
+| pyright | basedpyright is its fork; keeping both shipped the same 27 paths twice (96% measured overlap) |
+| prettier, eslint | `biome check` formats and lints in one binary, `biome ci` does it non-destructively |
+| gofumpt, gotools | `go` ships gofmt; golangci-lint reviews with 109 linters including staticcheck and govet |
+| ccls, cpplint | clang-tools ships clangd and clang-tidy already |
+| phan | psalm analyses whole programs and ships psalm-language-server |
+| solargraph | ruby-lsp is the official language server |
+
+Kept because they are not duplicates:
+
+* **gcc and clang** - projects require one or the other; the 84% payload they
+  share is glibc.
+* **micromamba and pixi** - a conda-compatible CLI versus a project-based
+  workflow are different models.
+* **gcovr and lcov** - gcovr is the friendly front-end, lcov's `genhtml` is
+  invoked directly by many C projects.
+* **cppcheck** - a different analysis from clang-tidy, not a subset.
 
 ## Things that are deliberately absent
 

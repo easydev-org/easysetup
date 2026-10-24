@@ -76,7 +76,6 @@ setups:
   # tarball carries only the 2 paths python does not already provide.
   - { tool: pip,        attr: "nixpkgs#python314Packages.pip", version: "26.1.2" }
   - { tool: virtualenv, attr: "nixpkgs#python314Packages.virtualenv", version: "21.6.1" }
-  - { tool: black,      attr: "nixpkgs#python314Packages.black", version: "26.5.1" }
   - { tool: ruff,       attr: "nixpkgs#python314Packages.ruff", version: "0.17.1" }
   - { tool: mypy,       attr: "nixpkgs#python314Packages.mypy", version: "2.1.0" }
   - { tool: pytest,     attr: "nixpkgs#python314Packages.pytest", version: "9.1.1" }
@@ -131,8 +130,6 @@ setups:
   - { tool: typescript, attr: "nixpkgs#typescript", version: "7.0.2" }
   - { tool: esbuild,    attr: "nixpkgs#esbuild", version: "0.27.2" }
   - { tool: biome,      attr: "nixpkgs#biome", version: "2.5.15" }
-  - { tool: prettier,   attr: "nixpkgs#prettier", version: "3.9.10" }
-  - { tool: eslint,     attr: "nixpkgs#eslint", version: "10.12.0" }
   - { tool: hadolint,   attr: "nixpkgs#hadolint", version: "2.14.0" }
   - { tool: golangci-lint, attr: "nixpkgs#golangci-lint", version: "2.15.0" }
   - { tool: trivy,      attr: "nixpkgs#trivy", version: "0.76.0" }
@@ -205,18 +202,13 @@ setups:
 
   # Python - lint, format, type-check, test, REPL, language server
   - { tool: pylint,     attr: "nixpkgs#python314Packages.pylint", version: "4.0.7" }
-  - { tool: flake8,     attr: "nixpkgs#python314Packages.flake8", version: "7.3.0" }
-  - { tool: isort,      attr: "nixpkgs#python314Packages.isort", version: "8.0.1" }
   - { tool: coverage,   attr: "nixpkgs#python314Packages.coverage", version: "7.16.2" }
   - { tool: ipython,    attr: "nixpkgs#python314Packages.ipython", version: "9.16.1" }
-  - { tool: pyright,    attr: "nixpkgs#pyright", version: "1.1.414" }
   - { tool: basedpyright, attr: "nixpkgs#basedpyright", version: "1.39.8" }
 
   # Go
   - { tool: gopls,      attr: "nixpkgs#gopls", version: "0.24.0" }
-  - { tool: gotools,    attr: "nixpkgs#gotools", version: "0.44.0" }
   - { tool: go-tools,   attr: "nixpkgs#go-tools", version: "2026.2.2" }
-  - { tool: gofumpt,    attr: "nixpkgs#gofumpt", version: "0.12.0" }
   - { tool: delve,      attr: "nixpkgs#delve", version: "1.27.2" }
   - { tool: goreleaser, attr: "nixpkgs#goreleaser", version: "2.17.1" }
 
@@ -230,12 +222,10 @@ setups:
   - { tool: cargo-audit, attr: "nixpkgs#cargo-audit", version: "0.22.2" }
 
   # PHP - psalm already ships psalm-language-server, so the LSP needs no entry.
-  - { tool: phan,       attr: "nixpkgs#php85Packages.phan", version: "6.0.7" }
 
   # Ruby
   - { tool: rubocop,    attr: "nixpkgs#rubyPackages.rubocop", version: "1.80.2" }
   - { tool: ruby-lsp,   attr: "nixpkgs#rubyPackages.ruby-lsp", version: "0.26.3" }
-  - { tool: solargraph, attr: "nixpkgs#rubyPackages.solargraph", version: "0.57.0" }
   - { tool: rake,       attr: "nixpkgs#rubyPackages.rake", version: "13.3.1" }
 
   # Lua
@@ -244,13 +234,11 @@ setups:
 
   # C / C++
   - { tool: cppcheck,   attr: "nixpkgs#cppcheck", version: "2.22.0" }
-  - { tool: cpplint,    attr: "nixpkgs#cpplint", version: "2.0.2" }
   - { tool: iwyu,       attr: "nixpkgs#include-what-you-use", version: "0.26" }
   - { tool: gcovr,      attr: "nixpkgs#gcovr", version: "8.4" }
   - { tool: lcov,       attr: "nixpkgs#lcov", version: "2.4" }
   # The probe truncated this to 0.20250815 when it printed an 11-character
   # version column; nix reports 0.20250815.1 and the build refuses to disagree.
-  - { tool: ccls,       attr: "nixpkgs#ccls", version: "0.20250815.1" }
 
   # JVM
   - { tool: pmd,        attr: "nixpkgs#pmd", version: "6.55.0" }
