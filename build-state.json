@@ -173,6 +173,7 @@
  "uv-0.13.1": "c1da42c46cc23759",
  "valgrind-3.27.1": "847c93cd8228955f",
  "virtualenv-21.6.1": "9f3aa7c332b07e00",
+ "virtualenv-21.6.1-py3.13": "869834cbef19012d",
  "vscode-langservers-1.140.06880": "93a05daa1e9bfe4d",
  "wget-1.25.0": "235fd21d02d237bf",
  "xz-5.8.4": "37c0caa4e40ac60f",
