@@ -1,23 +1,21 @@
 name: probe-bootstrap
 
-# Can a two-stage build use easysetup to put a shell into a scratch image?
+# Does the Containerfile produce a scratch image whose shell came from easysetup?
 
-# The shape under test:
+# The claim being tested: bash, busybox and curl are installed BY EASYSETUP into
+# a scratch image. Stage 1 is only a launchpad - it exists because something has
+# to download the easysetup binary, and a scratch image has nothing to download
+# with. It is not part of the result: stage 2 copies /nix and nothing else, so
+# no part of alpine's userland reaches the final image.
 
-#   stage 1  a tiny image WITH a downloader
-#            fetch easysetup-cli, then `easysetup install bash busybox curl`
-#   stage 2  FROM scratch
-#            COPY --from=stage1 /nix /nix
-
-# This works because every path in the closures is absolute and self-contained:
+# That works because every path in the closures is absolute and self-contained:
 # /nix/store/<hash>-glibc/lib/ld-linux-x86-64.so.2 is the interpreter for every
-# binary, and copying /nix at the same absolute path keeps it valid. Nothing
-# refers to the stage-1 userland.
+# binary, and copying /nix to the same absolute path keeps it valid.
 
-# The question is which image stage 1 can be. busybox is the smallest candidate
-# and the one worth checking, but its wget is built without TLS in the official
-# image - so HTTPS fails, and GitHub only serves HTTPS. This measures that rather
-# than assuming either way.
+# alpine for stage 1, not busybox: the official busybox image's wget reports
+# "TLS certificate validation not implemented" - it fetches but verifies nothing,
+# and GitHub serves releases only over HTTPS. That was measured, and it is the
+# one thing about this design that depends on the launcher image.
 on:
   workflow_dispatch:
 
@@ -26,33 +24,6 @@ permissions:
   packages: write
 
 jobs:
-  can-busybox-download:
-    runs-on: ubuntu-latest
-    steps:
-      - name: busybox wget over https
-        run: |
-          set -uo pipefail
-          set +e
-          echo "== official busybox image =="
-          docker run --rm busybox:latest sh -c 'wget --help 2>&1 | head -2' || true
-          echo
-          echo "== does it fetch an https url? =="
-          docker run --rm busybox:latest \
-            wget -q -O /tmp/x https://github.com/easydev-org/easysetup-cli/releases/latest 2>&1 | head -5
-          echo "exit=$?"
-          echo
-          echo "== is there a CA bundle in the image? =="
-          docker run --rm busybox:latest sh -c 'ls /etc/ssl/certs 2>&1 | head -3'
-
-      - name: alpine, for comparison
-        run: |
-          set -uo pipefail
-          set +e
-          echo "== alpine wget over https =="
-          docker run --rm alpine:3 sh -c '
-            apk add --no-cache ca-certificates >/dev/null 2>&1
-            wget -q -O /dev/null https://github.com/easydev-org/easysetup-cli/releases/latest && echo "alpine wget https: OK"'
-          echo "exit=$?"
 
   build-scratch-with-shell:
     runs-on: ubuntu-latest

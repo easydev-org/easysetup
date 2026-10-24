@@ -35,9 +35,11 @@ RUN set -eu; \
     esac; \
     if [ -z "$EASYSETUP_VERSION" ]; then \
       EASYSETUP_VERSION=$(curl -fsSI https://github.com/easydev-org/easysetup-cli/releases/latest \
-        | sed -n 's|^[Ll]ocation: .*/tag/||p' | tr -d '\r'); \
+        | awk 'tolower($1)=="location:" {n=split($2,a,"/"); print a[n]; exit}'); \
     fi; \
+    EASYSETUP_VERSION=$(printf '%s' "$EASYSETUP_VERSION" | tr -d '\r'); \
     [ -n "$EASYSETUP_VERSION" ] || { echo "could not resolve a version" >&2; exit 1; }; \
+    echo "easysetup $EASYSETUP_VERSION for linux/$arch"; \
     base="https://github.com/easydev-org/easysetup-cli/releases/download/$EASYSETUP_VERSION"; \
     curl -fsSL -o /usr/local/bin/easysetup "$base/easysetup-linux-$arch"; \
     curl -fsSL -o /tmp/es.sha256 "$base/easysetup-linux-$arch.sha256"; \
