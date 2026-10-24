@@ -1,18 +1,17 @@
 name: probe-arm64
 
-# Can the arm64 closures be built the same way the amd64 ones are?
+# Do the arm64 closures exist, at the SAME versions, for the pinned nixpkgs?
 
-# The whole design rests on substitution: every setup must be downloadable from
-# cache.nixos.org, never compiled. That was verified for x86_64-linux. arm64 is a
-# different system and Hydra does not necessarily build both, so before changing
-# the build matrix this checks, per setup:
+# The previous probe reported cacert 3.126 on amd64 against 3.131.1 on arm64, and
+# go 1.26.9 against 1.26.10. That is not an architecture difference, it is a
+# nixpkgs revision difference: the probe evaluated `nixpkgs#attr` through
+# NIX_PATH=channel:nixos-unstable, which is whatever the channel points at today,
+# while the manifest pins versions from flake.lock.
 
-#   * does the attribute evaluate for aarch64-linux
-#   * is the resulting path in the cache
-#   * what does it cost in bytes
-
-# A setup that would compile from source is disqualifying: 200 of them compiled
-# on an emulated runner is not a build, it is a day.
+# So this probe uses the LOCKED revision for both systems. If the versions then
+# match, arm64 is a pure rebuild of the same tree and the manifest needs no
+# per-architecture versions at all. If they still differ, the difference is real
+# and worth designing around.
 on:
   workflow_dispatch:
 
@@ -27,50 +26,100 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
           extra_nix_config: |
             experimental-features = nix-command flakes
             extra-platforms = aarch64-linux
 
-      - name: a sample across the categories, on aarch64
+      - name: what revision is pinned
+        id: pin
         run: |
-          set -uo pipefail
-          set +e
-          printf '%-26s %-14s %-6s %s\n' ATTR VERSION CACHE OUT
-          probe() {
-            local attr="$1" out v h c
-            out=$(nix build --no-link --print-out-paths --system aarch64-linux \
-                    "nixpkgs#$attr" 2>/dev/null | head -1) || out=""
-            if [ -z "$out" ]; then printf '%-26s %-14s %-6s %s\n' "$attr" "-" "-" "BUILD-NEEDED"; return; fi
-            v=$(nix eval --raw "nixpkgs#$attr.version" 2>/dev/null) || v="?"
-            h=$(basename "$out" | cut -d- -f1)
-            c=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
-            printf '%-26s %-14s %-6s %s\n' "$attr" "${v:0:13}" "$c" "$(basename "$out" | cut -c1-40)"
-          }
-          echo "== the ones that matter for the shell image =="
-          for a in bash busybox curl coreutils cacert; do probe "$a"; done
-          echo
-          echo "== a spread of the rest, including the heavy ones =="
-          for a in jq nodejs_26 python314 go rust-1.99.0 openjdk swift llvmPackages_23.clang flutter; do
-            probe "$a"
-          done
-          echo
-          echo "== the ones most likely to have no arm64 build =="
-          for a in dotnet-sdk_10 kotlin scala-cli ghidra; do probe "$a"; done
+          set -euo pipefail
+          rev=$(nix flake metadata --json | \
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["locks"]["nodes"]["nixpkgs"]["locked"]["rev"])')
+          echo "pinned nixpkgs: $rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
 
-      - name: can the amd64 runner even evaluate aarch64 without emulation
+      # Every setup's version on both systems, read from the flake's own pinned
+      # nixpkgs. Versions only - no builds. Whether the arm64 output is substituted
+      # is checked separately below for the few that matter.
+      - name: versions, both systems, one pinned revision
+        run: |
+          set -euo pipefail
+          python3 - > /tmp/attrs.txt <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          import matrixlib2
+          for e in matrixlib2.load("matrix-nix.yml"):
+              print("%s\t%s" % (e["dir"], e["attr"].split("#", 1)[1]))
+          PY
+          echo "setups to compare: $(wc -l < /tmp/attrs.txt)"
+
+          # One nix eval per system over the whole attribute list, not one per
+          # setup: the pinned nixpkgs is already in the store, so this is seconds
+          # instead of minutes.
+          attrs=$(cut -f2 /tmp/attrs.txt | python3 -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+
+          nix eval --json --impure --expr "
+            let
+              pkgs = (builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.x86_64-linux;
+              names = builtins.fromJSON ''${attrs}'';
+              get = path: let m = builtins.match \"([^.]*)[.](.*)\" path;
+                    in if m == null then (builtins.getAttr path pkgs)
+                       else (builtins.getAttr (builtins.elemAt m 1) (builtins.getAttr (builtins.elemAt m 0) pkgs));
+            in builtins.listToAttrs (map (n: { name = n; value = (get n).version; }) names)
+          " > /tmp/v-amd64.json 2>/dev/null || echo '{}' > /tmp/v-amd64.json
+
+          nix eval --json --impure --expr "
+            let
+              pkgs = (builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.aarch64-linux;
+              names = builtins.fromJSON ''${attrs}'';
+              get = path: let m = builtins.match \"([^.]*)[.](.*)\" path;
+                    in if m == null then (builtins.getAttr path pkgs)
+                       else (builtins.getAttr (builtins.elemAt m 1) (builtins.getAttr (builtins.elemAt m 0) pkgs));
+            in builtins.listToAttrs (map (n: { name = n; value = (get n).version; }) names)
+          " > /tmp/v-arm64.json 2>/dev/null || echo '{}' > /tmp/v-arm64.json
+
+          python3 - <<'PY'
+          import json
+          a = json.load(open("/tmp/v-amd64.json"))
+          b = json.load(open("/tmp/v-arm64.json"))
+          rows = [l.split("\t") for l in open("/tmp/attrs.txt").read().splitlines()]
+          print("%-34s %-16s %-16s %s" % ("SETUP", "AMD64", "ARM64", "VERDICT"))
+          print("%-34s %-16s %-16s %s" % ("------", "------", "------", "-------"))
+          diff = same = missing = 0
+          for d, attr in rows:
+              va, vb = a.get(attr), b.get(attr)
+              if vb is None:
+                  verdict = "NO ARM64 ATTR"; missing += 1
+              elif va == vb:
+                  verdict = "same"; same += 1
+              else:
+                  verdict = "DIFFERS"; diff += 1
+              print("%-34s %-16s %-16s %s" % (d, va or "?", vb or "-", verdict))
+          print()
+          print("same: %d   differs: %d   no arm64 attr: %d   total: %d"
+                % (same, diff, missing, len(rows)))
+          open("/tmp/differs.txt", "w").write(
+              "\n".join("%s\t%s\t%s\t%s" % (d, attr, a.get(attr), b.get(attr))
+                        for d, attr in rows
+                        if a.get(attr) and b.get(attr) and a.get(attr) != b.get(attr)))
+          open("/tmp/nomatch.txt", "w").write(
+              "\n".join("%s\t%s" % (d, attr) for d, attr in rows if b.get(attr) is None))
+          PY
+
+      - name: is the arm64 output substituted, for the ones that differ
         run: |
           set -uo pipefail
           set +e
-          # `--system aarch64-linux` makes nix *evaluate* for that platform. If the
-          # output is in the cache it is never compiled, so no emulator is needed -
-          # this is the property the whole plan depends on.
-          echo "== a path in the cache downloads without running arm64 code =="
-          time nix build --no-link --print-out-paths --system aarch64-linux 'nixpkgs#bash' 2>&1 | tail -2
-          echo
-          echo "== confirm the binary really is aarch64 =="
-          o=$(nix build --no-link --print-out-paths --system aarch64-linux 'nixpkgs#bash' 2>/dev/null | head -1)
-          file "$o/bin/bash" 2>/dev/null
-          echo
-          echo "== and that it cannot run here, as expected =="
-          "$o/bin/bash" --version 2>&1 | head -2
+          echo "== arm64 substitution status for the same-version setups that matter =="
+          # The question that decides feasibility: can an amd64 runner produce the
+          # arm64 tarball without compiling? `--system aarch64-linux` plus a cache
+          # hit means yes.
+          for attr in bash busybox curl coreutils cacert jq nodejs_26 python314 go; do
+            o=$(nix build --no-link --print-out-paths --system aarch64-linux \
+                  "github:NixOS/nixpkgs/${{ steps.pin.outputs.rev }}#$attr" 2>/dev/null | head -1)
+            if [ -z "$o" ]; then printf '  %-16s COMPILE-NEEDED\n' "$attr"; continue; fi
+            h=$(basename "$o" | cut -d- -f1)
+            c=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+            printf '  %-16s cache=%s  %s\n' "$attr" "$c" "$(basename "$o" | cut -c1-45)"
+          done
