@@ -256,6 +256,31 @@ fi
 
 echo "nixpkg: packaging $mode"
 
+# Cross-check the graph against what nix just built.
+#
+# The graph records store paths, and a path is only valid for the exact nixpkgs
+# revision it was computed from. If the two disagree the subtraction is silently
+# wrong: it removes paths the tarball does not contain, and the build fails later
+# at "$check_dir/ is empty in the staged copy", which reads like a broken package
+# rather than a stale graph.
+if [ -f "$CLOSURES" ] && command -v python3 >/dev/null 2>&1; then
+  recorded=$(python3 - "$CLOSURES" "$DIR" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+print(doc.get("setups", {}).get(sys.argv[2], {}).get("store", ""))
+PY
+)
+  if [ -n "$recorded" ] && [ "$recorded" != "$REAL" ]; then
+    echo "nixpkg: $CLOSURES records" >&2
+    echo "nixpkg:   $recorded" >&2
+    echo "nixpkg: but nix built" >&2
+    echo "nixpkg:   $REAL" >&2
+    echo "nixpkg: the graph is stale - rerun tools/compute-deps.py and commit" >&2
+    exit 1
+  fi
+  echo "nixpkg: graph matches the build ($(basename "$REAL"))"
+fi
+
 # Ensure every path in the list exists locally. For a normal setup the closure is
 # already present because `nix build` realised it. `base` is different: its paths
 # come from many packages (bash, gcc, xz, acl...) that no single build pulls in,
