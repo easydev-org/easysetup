@@ -132,9 +132,17 @@ def resolve(name, path=MATRIX):
         swift-6.3.3   full directory
         mypy-py3.13   a tool plus a suffix, for entries that share a version
         swift-6       a version prefix, if unambiguous
-        swift         the only entry with that tool name
-    Anything ambiguous is an error rather than a silent pick: installing a
-    different version than asked for is worse than failing.
+        swift         the NEWEST entry with that tool name
+
+    The bare-name rule picks the newest version rather than erroring. Erroring
+    was the original behaviour and it made `tools: node` unusable the moment a
+    second node existed - the most obvious thing to type became the one thing
+    that failed. "Newest" is what a bare name should mean, and a caller who wants
+    a specific version says so: `node-24`.
+
+    Anything still ambiguous after that (two entries with the same tool AND the
+    same version, differing only by suffix) remains an error rather than a silent
+    pick.
 
     The order matters. `python-3.13` must hit the version-prefix rule before the
     bare-name rule, because there are two pythons and the bare name is ambiguous
@@ -175,18 +183,37 @@ def resolve(name, path=MATRIX):
         if len(prefix) == 1:
             return prefix[0]
 
-    # Nothing resolved to exactly one setup, so report the ambiguity that best
-    # explains the input. Listing `go`'s candidates must not include `go-tools`:
-    # that is a different tool, and naming it makes the error read as if `go` had
-    # three versions.
-    # `as_tool` is the one to report when the input is a bare tool name: it holds
-    # only entries whose tool IS this name, so `go` lists its two versions rather
-    # than also dragging in `go-tools`, which is a different tool.
+    # Several versions of one tool: a bare name means the newest.
+    #
+    # Comparing versions needs the numeric segments, not the strings - `1.9` sorts
+    # after `1.10` as text. `sort_key` handles the shapes in this manifest,
+    # including a trailing +N build tag and a -suffix.
+    if len(as_tool) > 1 and all(e["tool"] == name for e in as_tool):
+        newest = max(as_tool, key=lambda e: sort_key(e["version"]))
+        return newest
+
     hits = as_tool if len(as_tool) > 1 else (as_dir if len(as_dir) > 1 else by_suffix)
     if len(hits) > 1:
         raise ValueError("matrixlib2: %r is ambiguous: %s"
                          % (name, ", ".join(e["dir"] for e in hits)))
     raise ValueError("matrixlib2: no setup matches %r" % name)
+
+
+def sort_key(version):
+    """A comparable key for the version strings in this manifest.
+
+    Numeric segments, so 1.10 > 1.9; a `+N` build tag as a tie-break; anything
+    non-numeric sorts low rather than raising, because some versions here carry a
+    date-like prefix (2026-10-12) and some are plain numbers.
+    """
+    import re
+    main, _, build = version.partition("+")
+    nums = []
+    for part in re.split(r"[.\-]", main):
+        m = re.match(r"^(\d+)$", part)
+        nums.append(int(m.group(1)) if m else -1)
+    bs = [int(x) for x in re.findall(r"\d+", build)]
+    return (nums, bs)
 
 
 def main(argv):
