@@ -65,8 +65,11 @@ def main(argv):
         return 1
 
     for e, v in bad:
+        # A suffixed entry carries a `suffix:` field after the version, so the
+        # pattern has to allow for it - otherwise the rewrite would not match and
+        # the mismatch would be reported forever without being fixed.
         line = re.compile(
-            r'(- \{ tool: %s,\s+attr: "%s", version: ")[^"]*(" \})'
+            r'(- \{ tool: %s,\s+attr: "%s", version: ")[^"]*(")' 
             % (re.escape(e["tool"]), re.escape(e["attr"])))
         new_text, n = line.subn(lambda m: m.group(1) + v + m.group(2), text)
         if n != 1:

@@ -57,8 +57,14 @@ echo "nixpkg: $NAME (nix reports version $VERSION) -> $DIR"
 # The version nix reports must match what the name claims. If nixpkgs moved a
 # patch release, the setup file name is stale and the tag would lie; failing here
 # is better than publishing a mislabelled asset.
+#
+# The name may carry a SUFFIX after the version - `mypy-2.1.0-py3.13` is mypy
+# 2.1.0 built for python 3.13, and its version is still 2.1.0. So the version has
+# to appear as a whole `-<version>` segment, at the end or before a suffix -
+# matching only "ends with the version" rejected every suffixed setup.
 case "$NAME" in
-  *-"$VERSION") : ;;
+  *-"$VERSION")          : ;;      # tool-1.2.3
+  *-"$VERSION"-?*)       : ;;      # tool-1.2.3-suffix
   *) echo "nixpkg: name says $NAME but nix builds $VERSION - run tools/check-versions.py --fix, then regenerate setups/" >&2
      exit 1 ;;
 esac
