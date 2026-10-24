@@ -69,11 +69,14 @@ runs:
         if [ -n "$WANT" ]; then
           tag="$WANT"
         else
-          tag=$(curl -fsSL --retry 3 \
+          # `/releases/latest` answers with a redirect whose Location ends in the
+          # tag. Reading that header avoids both a JSON parser and an API call -
+          # the previous version needed python3 purely to pull tag_name out.
+          tag=$(curl -fsSI --retry 3 \
             -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/easydev-org/easysetup-cli/releases/latest" \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+            "https://github.com/easydev-org/easysetup-cli/releases/latest" \
+            | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r\n')
+          [ -n "$tag" ] || { echo "::error::could not work out the latest easysetup tag"; exit 1; }
         fi
         echo "easysetup $tag for linux/$arch"
 
@@ -82,12 +85,23 @@ runs:
         curl -fsSL --retry 3 --retry-all-errors \
           -H "Authorization: Bearer $GH_TOKEN" \
           -o "$bin" "$base/easysetup-linux-$arch"
-        # The checksum is published beside the binary; verifying it means a
-        # truncated download fails here rather than as a mysterious exec error.
+        # Verify with the binary itself rather than sha256sum. A minimal image may
+        # not have sha256sum, and the freshly downloaded binary can check its own
+        # file before anything is trusted to it - the expected digest is read from
+        # the published .sha256 with a shell substitution, so no external tool is
+        # involved in either side of the comparison.
+        #
+        # What this catches is the failure that actually happens: a truncated or
+        # corrupted download. It cannot prove the binary is ours, since an attacker
+        # able to replace the download could replace the checksum too - that would
+        # need a signed pin, which is more machinery than a TLS download from our
+        # own releases justifies.
         curl -fsSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
           -o "$bin.sha256" "$base/easysetup-linux-$arch.sha256"
-        ( cd "$RUNNER_TEMP" && echo "$(cat "$bin.sha256")  easysetup" | sha256sum -c - )
+        want=$(sed -n '1s/[[:space:]].*//p' "$bin.sha256")
+        [ -n "$want" ] || { echo "::error::published checksum is empty"; exit 1; }
         chmod +x "$bin"
+        "$bin" checksum --expect "$want" "$bin"
         "$bin" --help > /dev/null
         echo "bin=$bin" >> "$GITHUB_OUTPUT"
 

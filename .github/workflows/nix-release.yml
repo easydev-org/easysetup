@@ -220,9 +220,34 @@ jobs:
         # and report it instead.
         continue-on-error: true
 
+      # One release for every setup, rather than one release per setup.
+
+      # Why: 194 releases each holding two assets is a lot of clutter for one
+      # concept, and every new setup added another. GitHub allows 1000 assets per
+      # release and there is no cap on total size, so a single release holds all
+      # of them - 194 tarballs plus one checksum file, well inside the limit.
+
+      # The tag is FIXED, not dated. A dated tag would mean every release is a new
+      # release, so `releases/latest/download/<asset>` could only ever find the
+      # assets uploaded in the most recent run - and an unchanged setup would
+      # vanish from `latest` the first time anything else changed. A fixed tag
+      # keeps every asset reachable at one stable URL for ever, and makes the
+      # incremental upload below meaningful: assets accumulate rather than being
+      # replaced wholesale.
+
+      # Uploads are incremental. Only the tarballs this run actually built are
+      # sent; everything already in the release stays. That is what keeps a
+      # one-setup change from re-uploading 33 GB.
+
+      # The checksums go in ONE SHA256SUMS file rather than a .sha256 beside each
+      # tarball. Halving the asset count doubles the headroom under the 1000
+      # limit, and coreutils' standard format means `sha256sum -c SHA256SUMS`
+      # works on the whole set.
       - name: publish every built asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # All setups share this tag.
+          RELEASE_TAG: setups
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -231,22 +256,55 @@ jobs:
             echo "no assets were produced; nothing to publish"
             exit 0
           fi
+
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" \
+              --title "prebuilt nix closures" \
+              --notes "Every easysetup setup, prebuilt for linux/amd64. Assets are added incrementally: a setup that has not changed keeps its existing tarball. Checksums are in SHA256SUMS."
+
+          # What is already published, so the new SHA256SUMS covers the whole set
+          # rather than only this run's files. Without this the checksum file
+          # would silently lose every setup that did not change.
+          existing=$(mktemp)
+          gh release view "$RELEASE_TAG" --json assets \
+            | python3 -c 'import json,sys
+for a in json.load(sys.stdin)["assets"]:
+    print(a["name"])' > "$existing" || true
+          echo "already published: $(wc -l < "$existing")"
+
+          # Checksums carried over from the previous SHA256SUMS, for tarballs this
+          # run did not rebuild. Read from the release asset, because that is the
+          # file that describes what is actually downloadable.
+          carried=$(mktemp)
+          if grep -qx 'SHA256SUMS' "$existing"; then
+            gh release download "$RELEASE_TAG" --pattern 'SHA256SUMS' \
+              --output "$carried" --clobber || true
+          fi
+
+          # Compute this run's checksums from the files about to be uploaded. A
+          # pin written anywhere else could describe a tarball that was never
+          # published - which is how an earlier pipeline shipped empty pins.
+          fresh=$(mktemp)
           for a in "${assets[@]}"; do
-            base=$(basename "$a")
-            dir=${base%-debian-trixie-amd64.tar.zst}
-            echo "== $dir"
-            # The checksum is computed HERE, from the file about to be uploaded.
-            # A pin written anywhere else could describe a tarball that was never
-            # published - which is how the old pipeline once shipped empty pins.
-            sha=$(sha256sum "$a" | cut -d' ' -f1)
-            echo "$sha  $base" > "/tmp/assets/$base.sha256"
-            if gh release view "$dir" >/dev/null 2>&1; then
-              gh release upload "$dir" "$a" "/tmp/assets/$base.sha256" --clobber
-            else
-              gh release create "$dir" "$a" "/tmp/assets/$base.sha256" \
-                --title "$dir" --notes "nix closure, prebuilt for linux/amd64"
-            fi
+            sha256sum "$a" >> "$fresh"
           done
+          cat "$fresh"
+
+          # Merge: keep a old line only if its tarball is absent from this run.
+          built_names=$(mktemp)
+          for a in "${assets[@]}"; do basename "$a"; done > "$built_names"
+
+          merged=$(mktemp)
+          if [ -s "$carried" ]; then
+            awk 'NR==FNR{new[$2]=1; next} !($2 in new)' "$built_names" "$carried" > "$merged"
+          fi
+          cat "$fresh" >> "$merged"
+          sort -k2 "$merged" -o "$merged"
+          mv "$merged" /tmp/assets/SHA256SUMS
+          echo "SHA256SUMS covers $(wc -l < /tmp/assets/SHA256SUMS) tarballs"
+
+          echo "uploading ${#assets[@]} new tarball(s)"
+          gh release upload "$RELEASE_TAG" "${assets[@]}" /tmp/assets/SHA256SUMS --clobber
 
       # Record what was built, so the next run can tell what is genuinely
       # unchanged. Done only AFTER every upload succeeded: a fingerprint written
