@@ -25,8 +25,24 @@ sys.path.insert(0, ROOT)
 import matrixlib2  # noqa: E402
 
 
-def actual(attr):
-    r = subprocess.run([NIX, "eval", "--raw", attr + ".version"],
+def actual(attr, arch):
+    """What version nix reports for this attribute, on this architecture.
+
+    Evaluated through OUR flake, not `nixpkgs#...`.
+
+    This was the source of a false alarm that read like a real bug: the manifest
+    pins versions from flake.lock, while `nixpkgs#x` resolves through NIX_PATH's
+    channel - whatever the channel points at *today*. The two drift apart as soon
+    as the channel advances, and thirteen entries then "disagreed" with nix while
+    being perfectly correct for the revision the tarballs are actually built
+    from. It surfaced during the arm64 work only because that run happened after
+    a channel update.
+    """
+    system = {"amd64": "x86_64-linux", "arm64": "aarch64-linux"}[arch]
+    name = attr.split("#", 1)[-1]
+    expr = ('((builtins.getFlake (toString ./.)).inputs.nixpkgs'
+            '.legacyPackages.%s.%s).version' % (system, name))
+    r = subprocess.run([NIX, "eval", "--raw", "--impure", "--expr", expr],
                        capture_output=True, text=True, timeout=300)
     if r.returncode != 0 or not r.stdout.strip():
         return None
@@ -35,9 +51,15 @@ def actual(attr):
 
 def main(argv):
     fix = "--fix" in argv
+    arch = os.environ.get("ARCH", "amd64")
     path = os.path.join(ROOT, "matrix-nix.yml")
     text = open(path).read()
-    entries = matrixlib2.load(path)
+    # Only the setups this architecture actually has: swift has no aarch64
+    # derivation, so asking for its version there fails for a reason that is not
+    # a mismatch.
+    entries = [e for e in matrixlib2.load(path)
+               if matrixlib2.available_on(e, arch)]
+    print("checking %d setups for %s" % (len(entries), arch))
 
     bad = []
     for e in entries:
@@ -46,7 +68,7 @@ def main(argv):
         # everywhere else.
         if e["tool"] == "base":
             continue
-        v = actual(e["attr"])
+        v = actual(e["attr"], arch)
         if v is None:
             print("%-26s %-12s cannot read .version" % (e["dir"], e["version"]))
             continue
