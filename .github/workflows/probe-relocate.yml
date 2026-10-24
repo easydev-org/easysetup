@@ -2,21 +2,19 @@ name: probe-relocate
 
 # How deeply is /nix/store baked into the artifacts?
 
-# The question is whether the install root can be an arbitrary path such as
-# ~/.easysetup. The answer depends on how many places name /nix/store, and in
-# what form - the four kinds have different fixes:
+# Whether the install root can be an arbitrary path (say ~/.easysetup) depends on
+# how many references there are and of which kind, because the fixes differ:
 #
-#   ELF PT_INTERP    the kernel loads this before the program runs. Not
-#                    overridable by environment; needs patchelf, or a mount.
-#   ELF RPATH        where the loader looks for libraries. patchelf can rewrite
-#                    it; a mount makes it unnecessary.
-#   #! shebang       scripts point at a store bash/python. patchelf does nothing
-#                    here; the file has to be rewritten.
-#   plain references strings in .pc/.la/.cmake/config files. Only rewriting
-#                    helps, and missing one produces a confusing failure later.
+#   ELF PT_INTERP   the kernel loads it before the program runs. No environment
+#                   variable overrides it. patchelf can rewrite it, or a mount
+#                   can satisfy it.
+#   ELF DT_RPATH    where the loader finds libraries. patchelf rewrites it.
+#   #! shebang      patchelf does nothing; the file has to be rewritten.
+#   plain strings   .pc/.la/.cmake/config contents. Only rewriting helps, and a
+#                   missed one fails later in a way that does not name the cause.
 #
-# This measures how many files of each kind a single setup contains, so the cost
-# of each strategy is a number rather than a guess.
+# Counting is done in Python: the shell version kept dying on `file`/`readelf`
+# exit codes partway through 1000+ files, so it never printed its own numbers.
 on:
   workflow_dispatch:
 
@@ -30,94 +28,111 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: install a small setup and count what hard-codes /nix/store
+
+      - name: install a small setup
         run: |
           set -euo pipefail
-          # The counting below runs `file` and `readelf` over a thousand files;
-          # both exit non-zero on inputs they do not recognise, and `set -e` would
-          # then end the step before printing anything useful. Only the first
-          # block (the install) needs strictness.
           apt-get update -qq
-          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates file binutils patchelf
+          apt-get install -y -qq --no-install-recommends \
+            curl zstd python3 ca-certificates file binutils patchelf
           bash install.sh jq
+
+      - name: count the four kinds of reference
+        run: |
+          set -uo pipefail
           set +e
+          python3 - <<'PY'
+          import os, subprocess, sys
 
-          root=/tmp/tree
-          rm -rf "$root"; mkdir -p "$root"
-          # Collect exactly what the jq tarball plus its base dependency unpack.
-          for d in jq-1.8.2 base-2.44; do
-            reg=/nix/setup-root-$d
-            [ -f "$reg" ] || continue
-            store=$(cut -d'|' -f1 "$reg")
-            [ "$store" = none ] && continue
-            echo "== $d -> $store"
-          done
-          # Simplest: count over everything the install put in the store for these.
-          files=$(find /nix/store -type f 2>/dev/null | wc -l)
-          echo "total files in /nix/store: $files"
-          echo
+          STORE = "/nix/store"
+          MARK = "/nix/store"
 
-          echo "== ELF executables, and do their PT_INTERP / RPATH name /nix/store? =="
-          n=0; withinterp=0
-          while IFS= read -r f; do
-            case "$(file -b "$f" 2>/dev/null)" in
-              ELF*executable*|ELF*shared\ object*)
-                n=$((n+1))
-                if readelf -l "$f" 2>/dev/null | grep -q '/nix/store'; then
-                  withinterp=$((withinterp+1))
-                fi ;;
-            esac
-          done < <(find /nix/store -type f 2>/dev/null)
-          echo "  ELF files: $n   of which reference /nix/store in headers: $withinterp"
-          echo
+          files = []
+          for dp, _dn, fn in os.walk(STORE):
+              for f in fn:
+                  p = os.path.join(dp, f)
+                  if not os.path.islink(p):
+                      files.append(p)
+          print("total files in %s: %d" % (STORE, len(files)))
 
-          echo "== scripts whose shebang names /nix/store =="
-          sc=0
-          while IFS= read -r f; do
-            head -c 2 "$f" 2>/dev/null | grep -q '#!' || continue
-            head -1 "$f" 2>/dev/null | grep -q '/nix/store' && sc=$((sc+1))
-          done < <(find /nix/store -type f 2>/dev/null)
-          echo "  shebang scripts pointing at /nix/store: $sc"
-          echo
+          elf = interp = rpath = shebang = mention = 0
+          elf_nostore = []
+          interp_samples = []
+          for p in files:
+              # content scan, cheap first
+              try:
+                  with open(p, "rb") as fh:
+                      head = fh.read(2)
+              except OSError:
+                  continue
+              if head == b"#!":
+                  try:
+                      first = open(p, "rb").readline(200)
+                  except OSError:
+                      first = b""
+                  if MARK.encode() in first:
+                      shebang += 1
+              # ELF magic
+              if head == b"\x7fE":
+                  elf += 1
+                  r = subprocess.run(["readelf", "-l", p],
+                                     capture_output=True, text=True)
+                  out = r.stdout
+                  if "Requesting program interpreter" in out:
+                      line = [l for l in out.splitlines()
+                              if "Requesting program interpreter" in l]
+                      if line and MARK in line[0]:
+                          interp += 1
+                          if len(interp_samples) < 3:
+                              interp_samples.append(line[0].strip()[:110])
+                      else:
+                          elf_nostore.append(p)
+                  if "RPATH" in out or "RUNPATH" in out:
+                      if MARK in out:
+                          rpath += 1
 
-          echo "== any file whose CONTENT mentions /nix/store =="
-          grep -rl '/nix/store' /nix/store 2>/dev/null | wc -l
+          # cheap: files whose bytes mention the marker at all
+          r = subprocess.run(["grep", "-rl", MARK, STORE],
+                             capture_output=True, text=True)
+          mention = len([x for x in r.stdout.splitlines() if x.strip()])
 
-      - name: can patchelf actually rewrite one of them?
+          print()
+          print("ELF files:                  %5d" % elf)
+          print("  with PT_INTERP in store:  %5d" % interp)
+          print("  with RPATH/RUNPATH in store: %3d" % rpath)
+          print("  ELF with NO store interpreter: %d" % len(elf_nostore))
+          for p in elf_nostore[:5]:
+              print("      ", p)
+          print("shebang scripts -> store:   %5d" % shebang)
+          print("files mentioning store:     %5d" % mention)
+          print()
+          print("sample interpreters:")
+          for s in interp_samples:
+              print("   ", s)
+          PY
+
+      - name: can patchelf rewrite one, and is a mount available without root?
         run: |
           set -uo pipefail
           set +e
           reg=/nix/setup-root-jq-1.8.2
           store=$(cut -d'|' -f1 "$reg")
-          cp -a "$store" /tmp/jqtree
-          chmod -R u+w /tmp/jqtree
+          rm -rf /tmp/jqtree
+          cp -a "$store" /tmp/jqtree && chmod -R u+w /tmp/jqtree
           echo "== before =="
-          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | grep -A1 INTERP | tail -1
-          patchelf --print-rpath /tmp/jqtree/bin/jq 2>/dev/null
+          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | sed -n 's/.*interpreter: \(.*\)\]/\1/p'
+          echo "rpath: $(patchelf --print-rpath /tmp/jqtree/bin/jq 2>/dev/null)"
           echo
-          echo "== rewriting to /tmp/easysetup/store =="
-          patchelf --set-interpreter /tmp/easysetup/store/glibc/lib/ld-linux-x86-64.so.2 \
-                   --set-rpath /tmp/easysetup/store/glibc/lib \
-                   /tmp/jqtree/bin/jq 2>&1 | head -5
-          echo "exit=$?"
+          echo "== patchelf to /opt/easysetup/store/glibc =="
+          patchelf --set-interpreter /opt/easysetup/store/glibc/lib/ld-linux-x86-64.so.2 \
+                   --set-rpath /opt/easysetup/store/glibc/lib \
+                   /tmp/jqtree/bin/jq 2>&1 | head -3
+          echo "patchelf exit=$?"
+          echo "after:"
+          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | sed -n 's/.*interpreter: \(.*\)\]/\1/p'
           echo
-          echo "== after =="
-          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | grep -A1 INTERP | tail -1
-          echo
-          echo "== does it still run? (it should NOT - the target does not exist) =="
-          /tmp/jqtree/bin/jq --version 2>&1 | head -3
-          echo "exit=$?"
-
-      - name: is a mount / namespace available without root?
-        run: |
-          set -uo pipefail
-          set +e
-          echo "== unprivileged user namespaces? =="
-          cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo "(no such sysctl)"
+          echo "== unprivileged user namespaces =="
           cat /proc/sys/user/max_user_namespaces 2>/dev/null
           echo
-          echo "== can bwrap bind a directory without root? =="
-          command -v bwrap >/dev/null || { echo "bwrap not installed"; exit 0; }
-          mkdir -p /tmp/fakeroot/nix
-          bwrap --dev-bind / / --bind /tmp/fakeroot/nix /tmp/fakeroot/nix true 2>&1 | head -3
-          echo "exit=$?"
+          echo "== symlink-only approach: does a relative symlink work for the interpreter? =="
+          echo "(the kernel resolves PT_INTERP as an absolute path, so no)"
