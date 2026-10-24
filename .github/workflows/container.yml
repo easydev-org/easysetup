@@ -1,0 +1,100 @@
+name: container
+
+# Build and publish the scratch image with a shell in it.
+
+# The image is built by easysetup from a Containerfile in this repository, and
+# what it demonstrates is the thing the whole project exists for: a userland can
+# be assembled from prebuilt closures without a distro underneath.
+
+# Rebuild triggers, and why each one:
+#   Containerfile        - the recipe changed
+#   matrix-nix.yml       - a tool or version the recipe installs changed
+#   closures.json        - the dependency graph changed, so what gets fetched did
+#   this workflow        - the build itself changed
+#   manual               - to republish
+
+# NOT on every push. The image is derived from things that change on their own
+# schedule, and rebuilding on unrelated commits would spend minutes producing
+# identical layers.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Containerfile
+      - matrix-nix.yml
+      - closures.json
+      - .github/workflows/container.yml
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # arm64 as well, because a container that only runs on amd64 is half a
+      # container. Buildx does this under emulation, which is slow but exact:
+      # the RUN steps execute real arm64 binaries.
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/easydev-org/easysetup-shell:latest
+            ghcr.io/easydev-org/easysetup-shell:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/easydev-org/easysetup
+            org.opencontainers.image.description=A shell from scratch: bash, busybox, curl and coreutils installed by easysetup, with no distro underneath.
+
+      # Prove it, on the image that was actually pushed - not on a local build
+      # that might differ from what consumers pull.
+      - name: the published image works
+        run: |
+          set -euo pipefail
+          img=ghcr.io/easydev-org/easysetup-shell:latest
+          docker pull --platform linux/amd64 "$img"
+
+          echo "== not a distro: no /bin/sh =="
+          if docker run --rm --platform linux/amd64 --entrypoint /bin/sh "$img" -c true 2>/dev/null; then
+            echo "::error::/bin/sh exists - this is not a scratch image"; exit 1
+          fi
+          echo "   /bin/sh absent, as expected"
+
+          echo "== bash, busybox and curl all come from /nix =="
+          docker run --rm --platform linux/amd64 "$img" -c 'echo "bash $BASH_VERSION"'
+          docker run --rm --platform linux/amd64 "$img" -c 'busybox | head -1'
+          docker run --rm --platform linux/amd64 "$img" -c 'curl --version | head -1'
+
+          echo "== every binary resolves inside /nix/store =="
+          docker run --rm --platform linux/amd64 "$img" -c 'readlink -f /nix/bin/bash'
+
+          echo "== https works, which is what cacert is for =="
+          docker run --rm --platform linux/amd64 "$img" \
+            -c 'curl -fsS -o /dev/null -w "https: %{http_code}\n" https://api.github.com'
+
+      - name: report what was published
+        run: |
+          set -euo pipefail
+          echo "== digests =="
+          docker buildx imagetools inspect ghcr.io/easydev-org/easysetup-shell:latest | head -20
+          echo
+          echo "== size per platform =="
+          docker manifest inspect ghcr.io/easydev-org/easysetup-shell:latest \
+            | grep -E '"architecture"|"size"' | paste - - | head -4
