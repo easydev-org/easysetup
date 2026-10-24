@@ -60,15 +60,21 @@ RUN /usr/local/bin/easysetup install bash busybox curl coreutils cacert
 # `COPY --from=installer /usr /usr` then dragged in alpine's entire userland,
 # musl included, so the result was not scratch at all. /nix/bin is ours alone:
 # /nix is the only tree stage 2 takes from this stage.
+#
+# The registry files are named setup-root-<tool>-<version>, not setup-root-<tool>,
+# so they are globbed. Hard-coding the version would break on every upgrade, and
+# assuming the bare tool name - which is what an earlier version of this file did
+# - simply finds nothing.
 RUN set -eu; \
     mkdir -p /nix/bin; \
-    for d in bash busybox curl coreutils; do \
-      f="/nix/setup-root-$d"; \
-      [ -f "$f" ] || { echo "no registry entry for $d" >&2; exit 1; }; \
+    for tool in bash busybox curl coreutils; do \
+      f=$(ls /nix/setup-root-$tool-[0-9]* 2>/dev/null | head -1); \
+      [ -n "$f" ] || { echo "no registry entry for $tool" >&2; ls /nix/ >&2; exit 1; }; \
       store=$(awk -F'|' '{print $1}' "$f"); \
+      echo "$tool -> $store"; \
       if [ "$store" = none ]; then continue; fi; \
       for b in "$store"/bin/*; do \
-        [ -f "$b" ] || continue; \
+        [ -e "$b" ] || continue; \
         ln -sf "$b" "/nix/bin/$(basename "$b")"; \
       done; \
     done; \
