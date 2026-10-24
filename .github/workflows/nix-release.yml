@@ -286,9 +286,15 @@ jobs:
           # Compute this run's checksums from the files about to be uploaded. A
           # pin written anywhere else could describe a tarball that was never
           # published - which is how an earlier pipeline shipped empty pins.
+          #
+          # The digest is written by hand rather than by `sha256sum "$a"`, which
+          # would record the path it was given - /tmp/assets/foo.tar.zst - and a
+          # consumer looking the entry up by bare filename would find nothing.
+          # Two spaces and the basename is the format coreutils itself writes, so
+          # `sha256sum -c SHA256SUMS` still works.
           fresh=$(mktemp)
           for a in "${assets[@]}"; do
-            sha256sum "$a" >> "$fresh"
+            printf '%s  %s\n' "$(sha256sum "$a" | cut -d' ' -f1)" "$(basename "$a")" >> "$fresh"
           done
           cat "$fresh"
 
