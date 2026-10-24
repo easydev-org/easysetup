@@ -123,6 +123,36 @@ setups:
   - { tool: fd,         attr: "nixpkgs#fd", version: "10.5.0" }
 
   # ---- the basics ---------------------------------------------------------
+  # What a distroless-style image does not have. bash and make were already here;
+  # these are the rest of a working shell environment.
+  #
+  # busybox is deliberately included even though coreutils is: busybox is a single
+  # 1.4 MB static binary carrying 804 applets (sh, tar, xz, gzip, awk, ...), so it
+  # can serve as an almost-complete rescue shell on an image with nothing else.
+  # coreutils is the real GNU implementations, which some scripts require.
+  - { tool: bash,      attr: "nixpkgs#bash", version: "5.3p20" }
+  - { tool: dash,      attr: "nixpkgs#dash", version: "0.5.13.5" }
+  - { tool: zsh,       attr: "nixpkgs#zsh", version: "5.9.2" }
+  - { tool: busybox,   attr: "nixpkgs#busybox", version: "1.37.0" }
+  - { tool: toybox,    attr: "nixpkgs#toybox", version: "0.8.15" }
+  - { tool: coreutils, attr: "nixpkgs#coreutils", version: "9.12" }
+  - { tool: findutils, attr: "nixpkgs#findutils", version: "4.11.0" }
+  - { tool: grep,      attr: "nixpkgs#gnugrep", version: "3.12" }
+  - { tool: sed,       attr: "nixpkgs#gnused", version: "4.10" }
+  - { tool: gawk,      attr: "nixpkgs#gawk", version: "5.4.1" }
+  - { tool: tar,       attr: "nixpkgs#gnutar", version: "1.35" }
+  - { tool: gzip,      attr: "nixpkgs#gzip", version: "1.15" }
+  - { tool: bzip2,     attr: "nixpkgs#bzip2", version: "1.0.8" }
+  - { tool: diffutils, attr: "nixpkgs#diffutils", version: "3.12" }
+  - { tool: patch,     attr: "nixpkgs#patch", version: "2.8" }
+  - { tool: which,     attr: "nixpkgs#which", version: "2.25" }
+  - { tool: procps,    attr: "nixpkgs#procps", version: "4.0.7" }
+  - { tool: util-linux, attr: "nixpkgs#util-linux", version: "2.42.4" }
+  - { tool: openssl,   attr: "nixpkgs#openssl", version: "3.5.9" }
+  - { tool: inetutils, attr: "nixpkgs#inetutils", version: "2.7" }
+  - { tool: iproute2,  attr: "nixpkgs#iproute2", version: "7.2.0" }
+  - { tool: iputils,   attr: "nixpkgs#iputils", version: "20250605" }
+
   # git and make were simply absent, which made the whole set unusable for a
   # real build despite 94 toolchains being present.
   - { tool: git,        attr: "nixpkgs#git", version: "2.56.0" }
