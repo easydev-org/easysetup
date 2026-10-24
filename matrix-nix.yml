@@ -149,6 +149,15 @@ setups:
   - { tool: procps,    attr: "nixpkgs#procps", version: "4.0.7" }
   - { tool: util-linux, attr: "nixpkgs#util-linux", version: "2.42.4" }
   - { tool: openssl,   attr: "nixpkgs#openssl", version: "3.5.9" }
+  # Certificates, not a program: the closure is /nix/store/<hash>-nss-cacert-*/,
+  # with the bundle at etc/ssl/certs/ca-bundle.crt and no bin/ anywhere. It is
+  # shipped because curl and wget do not carry a trust store of their own - install
+  # curl alone and every https request fails with "unable to get local issuer
+  # certificate", which reads like a broken network rather than a missing bundle.
+  #
+  # The setup mechanism still works: `bins` records where the interesting files
+  # are, and a consumer points SSL_CERT_FILE at the bundle.
+  - { tool: cacert,    attr: "nixpkgs#nss-cacert", version: "3.126", bins: "etc/ssl/certs" }
   - { tool: inetutils, attr: "nixpkgs#inetutils", version: "2.7" }
   - { tool: iproute2,  attr: "nixpkgs#iproute2", version: "7.2.0" }
   - { tool: iputils,   attr: "nixpkgs#iputils", version: "20250605" }

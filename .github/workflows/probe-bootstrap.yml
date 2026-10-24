@@ -1,0 +1,94 @@
+name: probe-bootstrap
+
+# Can a two-stage build use easysetup to put a shell into a scratch image?
+
+# The shape under test:
+
+#   stage 1  a tiny image WITH a downloader
+#            fetch easysetup-cli, then `easysetup install bash busybox curl`
+#   stage 2  FROM scratch
+#            COPY --from=stage1 /nix /nix
+
+# This works because every path in the closures is absolute and self-contained:
+# /nix/store/<hash>-glibc/lib/ld-linux-x86-64.so.2 is the interpreter for every
+# binary, and copying /nix at the same absolute path keeps it valid. Nothing
+# refers to the stage-1 userland.
+
+# The question is which image stage 1 can be. busybox is the smallest candidate
+# and the one worth checking, but its wget is built without TLS in the official
+# image - so HTTPS fails, and GitHub only serves HTTPS. This measures that rather
+# than assuming either way.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  can-busybox-download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: busybox wget over https
+        run: |
+          set -uo pipefail
+          set +e
+          echo "== official busybox image =="
+          docker run --rm busybox:latest sh -c 'wget --help 2>&1 | head -2' || true
+          echo
+          echo "== does it fetch an https url? =="
+          docker run --rm busybox:latest \
+            wget -q -O /tmp/x https://github.com/easydev-org/easysetup-cli/releases/latest 2>&1 | head -5
+          echo "exit=$?"
+          echo
+          echo "== is there a CA bundle in the image? =="
+          docker run --rm busybox:latest sh -c 'ls /etc/ssl/certs 2>&1 | head -3'
+
+      - name: alpine, for comparison
+        run: |
+          set -uo pipefail
+          set +e
+          echo "== alpine wget over https =="
+          docker run --rm alpine:3 sh -c '
+            apk add --no-cache ca-certificates >/dev/null 2>&1
+            wget -q -O /dev/null https://github.com/easydev-org/easysetup-cli/releases/latest && echo "alpine wget https: OK"'
+          echo "exit=$?"
+
+  build-scratch-with-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build the image
+        run: |
+          set -euo pipefail
+          docker build -f Containerfile -t easysetup-shell:test .
+
+      - name: inspect it
+        run: |
+          set -euo pipefail
+          docker images easysetup-shell:test --format 'size: {{.Size}}'
+          echo "== layers =="
+          docker history easysetup-shell:test --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' | head -8
+
+      - name: it has a working shell and busybox, from scratch
+        run: |
+          set -euo pipefail
+          echo "== /bin/sh does not exist (this is not a distro) =="
+          docker run --rm --entrypoint /bin/sh easysetup-shell:test -c 'echo hi' 2>&1 | head -2 || echo "  (no /bin/sh - expected)"
+          echo
+          echo "== but bash from /nix/store does =="
+          docker run --rm easysetup-shell:test -c 'echo "bash says: $BASH_VERSION"'
+          echo
+          echo "== and busybox, and curl =="
+          docker run --rm easysetup-shell:test -c 'busybox | head -1'
+          docker run --rm easysetup-shell:test -c 'curl --version | head -1'
+          echo
+          echo "== no distro files at all =="
+          docker run --rm --entrypoint /bin/sh easysetup-shell:test -c 'ls /' 2>/dev/null || \
+            docker run --rm easysetup-shell:test -c 'echo "top level:"; ls -1 /'
+
+      - name: it can still reach the network
+        run: |
+          set -euo pipefail
+          docker run --rm easysetup-shell:test -c 'curl -fsS -o /dev/null -w "curl https: %{http_code}\n" https://api.github.com'
