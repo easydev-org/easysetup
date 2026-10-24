@@ -56,6 +56,9 @@ setups:
   - { tool: ghc,       attr: "nixpkgs#ghc", version: "9.10.3" }
   - { tool: git-lfs,   attr: "nixpkgs#git-lfs", version: "3.8.0" }
   - { tool: go,        attr: "nixpkgs#go", version: "1.26.9" }
+  # go_1_27 is the other version nixpkgs carries. go_1_24 and go_1_25 answered
+  # MISSING when probed, so 24 cannot be published whatever the manifest says.
+  - { tool: go,        attr: "nixpkgs#go_1_27", version: "1.27.3" }
   - { tool: gradle,    attr: "nixpkgs#gradle_9", version: "9.8.0" }
   - { tool: helm,      attr: "nixpkgs#kubernetes-helm", version: "4.3.1" }
   - { tool: java,      attr: "nixpkgs#jdk25", version: "25.0.4.1+1" }
@@ -68,6 +71,7 @@ setups:
   - { tool: ninja,     attr: "nixpkgs#ninja", version: "1.13.2" }
   - { tool: nix,       attr: "nixpkgs#nix", version: "2.34.9" }
   - { tool: node,      attr: "nixpkgs#nodejs_26", version: "26.12.0" }
+  - { tool: node,      attr: "nixpkgs#nodejs_24", version: "24.21.0" }
   - { tool: opam,      attr: "nixpkgs#opam", version: "2.6.1" }
   - { tool: perl,      attr: "nixpkgs#perl", version: "5.42.3" }
   # ---- python's package set ------------------------------------------------
@@ -79,6 +83,21 @@ setups:
   - { tool: ruff,       attr: "nixpkgs#python314Packages.ruff", version: "0.17.1" }
   - { tool: mypy,       attr: "nixpkgs#python314Packages.mypy", version: "2.1.0" }
   - { tool: pytest,     attr: "nixpkgs#python314Packages.pytest", version: "9.1.1" }
+
+  # ---- python 3.13's tools ------------------------------------------------
+  # Same versions as the 3.14 entries above (mypy 2.1.0 either way), so a
+  # `suffix` is what keeps them apart: the directory becomes
+  # `mypy-2.1.0-py3.13`, and `install.sh mypy-py3.13` is the short form.
+  #
+  # ruff is NOT here: it is a standalone Rust binary, and the ruff inside
+  # python314Packages is a symlink to nixpkgs#ruff. One setup, both interpreters.
+  - { tool: pip,        attr: "nixpkgs#python313Packages.pip", version: "26.1.2", suffix: "-py3.13" }
+  - { tool: virtualenv, attr: "nixpkgs#python313Packages.virtualenv", version: "21.6.1", suffix: "-py3.13" }
+  - { tool: mypy,       attr: "nixpkgs#python313Packages.mypy", version: "2.1.0", suffix: "-py3.13" }
+  - { tool: pytest,     attr: "nixpkgs#python313Packages.pytest", version: "9.1.1", suffix: "-py3.13" }
+  - { tool: pylint,     attr: "nixpkgs#python313Packages.pylint", version: "4.0.7", suffix: "-py3.13" }
+  - { tool: coverage,   attr: "nixpkgs#python313Packages.coverage", version: "7.16.2", suffix: "-py3.13" }
+  - { tool: ipython,    attr: "nixpkgs#python313Packages.ipython", version: "9.16.1", suffix: "-py3.13" }
 
   # ---- php's package set --------------------------------------------------
   - { tool: composer,   attr: "nixpkgs#php85Packages.composer", version: "2.10.3" }
@@ -175,6 +194,9 @@ setups:
   - { tool: php,       attr: "nixpkgs#php85", version: "8.5.11" }
   - { tool: protobuf,  attr: "nixpkgs#protobuf", version: "36.2" }
   - { tool: python,    attr: "nixpkgs#python314", version: "3.14.8" }
+  # 3.13 alongside 3.14. Its tools are separate entries below because they are
+  # Python programs bound to one interpreter, unlike ruff.
+  - { tool: python,    attr: "nixpkgs#python313", version: "3.13.16" }
   - { tool: r,         attr: "nixpkgs#R", version: "4.6.1" }
   - { tool: ruby,      attr: "nixpkgs#ruby_4_0", version: "4.0.7" }
   - { tool: rust,      attr: "nixpkgs#rustc", version: "1.99.0" }
