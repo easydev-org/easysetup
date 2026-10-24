@@ -1,0 +1,118 @@
+name: probe-relocate
+
+# How deeply is /nix/store baked into the artifacts?
+
+# The question is whether the install root can be an arbitrary path such as
+# ~/.easysetup. The answer depends on how many places name /nix/store, and in
+# what form - the four kinds have different fixes:
+#
+#   ELF PT_INTERP    the kernel loads this before the program runs. Not
+#                    overridable by environment; needs patchelf, or a mount.
+#   ELF RPATH        where the loader looks for libraries. patchelf can rewrite
+#                    it; a mount makes it unnecessary.
+#   #! shebang       scripts point at a store bash/python. patchelf does nothing
+#                    here; the file has to be rewritten.
+#   plain references strings in .pc/.la/.cmake/config files. Only rewriting
+#                    helps, and missing one produces a confusing failure later.
+#
+# This measures how many files of each kind a single setup contains, so the cost
+# of each strategy is a number rather than a guess.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: install a small setup and count what hard-codes /nix/store
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates file binutils patchelf
+          bash install.sh jq
+
+          root=/tmp/tree
+          rm -rf "$root"; mkdir -p "$root"
+          # Collect exactly what the jq tarball plus its base dependency unpack.
+          for d in jq-1.8.2 base-2.44; do
+            reg=/nix/setup-root-$d
+            [ -f "$reg" ] || continue
+            store=$(cut -d'|' -f1 "$reg")
+            [ "$store" = none ] && continue
+            echo "== $d -> $store"
+          done
+          # Simplest: count over everything the install put in the store for these.
+          files=$(find /nix/store -type f 2>/dev/null | wc -l)
+          echo "total files in /nix/store: $files"
+          echo
+
+          echo "== ELF executables, and do their PT_INTERP / RPATH name /nix/store? =="
+          n=0; withinterp=0
+          while IFS= read -r f; do
+            case "$(file -b "$f" 2>/dev/null)" in
+              ELF*executable*|ELF*shared\ object*)
+                n=$((n+1))
+                if readelf -l "$f" 2>/dev/null | grep -q '/nix/store'; then
+                  withinterp=$((withinterp+1))
+                fi ;;
+            esac
+          done < <(find /nix/store -type f 2>/dev/null)
+          echo "  ELF files: $n   of which reference /nix/store in headers: $withinterp"
+          echo
+
+          echo "== scripts whose shebang names /nix/store =="
+          sc=0
+          while IFS= read -r f; do
+            head -c 2 "$f" 2>/dev/null | grep -q '#!' || continue
+            head -1 "$f" 2>/dev/null | grep -q '/nix/store' && sc=$((sc+1))
+          done < <(find /nix/store -type f 2>/dev/null)
+          echo "  shebang scripts pointing at /nix/store: $sc"
+          echo
+
+          echo "== any file whose CONTENT mentions /nix/store =="
+          grep -rl '/nix/store' /nix/store 2>/dev/null | wc -l
+
+      - name: can patchelf actually rewrite one of them?
+        run: |
+          set -uo pipefail
+          set +e
+          reg=/nix/setup-root-jq-1.8.2
+          store=$(cut -d'|' -f1 "$reg")
+          cp -a "$store" /tmp/jqtree
+          chmod -R u+w /tmp/jqtree
+          echo "== before =="
+          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | grep -A1 INTERP | tail -1
+          patchelf --print-rpath /tmp/jqtree/bin/jq 2>/dev/null
+          echo
+          echo "== rewriting to /tmp/easysetup/store =="
+          patchelf --set-interpreter /tmp/easysetup/store/glibc/lib/ld-linux-x86-64.so.2 \
+                   --set-rpath /tmp/easysetup/store/glibc/lib \
+                   /tmp/jqtree/bin/jq 2>&1 | head -5
+          echo "exit=$?"
+          echo
+          echo "== after =="
+          readelf -l /tmp/jqtree/bin/jq 2>/dev/null | grep -A1 INTERP | tail -1
+          echo
+          echo "== does it still run? (it should NOT - the target does not exist) =="
+          /tmp/jqtree/bin/jq --version 2>&1 | head -3
+          echo "exit=$?"
+
+      - name: is a mount / namespace available without root?
+        run: |
+          set -uo pipefail
+          set +e
+          echo "== unprivileged user namespaces? =="
+          cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo "(no such sysctl)"
+          cat /proc/sys/user/max_user_namespaces 2>/dev/null
+          echo
+          echo "== can bwrap bind a directory without root? =="
+          command -v bwrap >/dev/null || { echo "bwrap not installed"; exit 0; }
+          mkdir -p /tmp/fakeroot/nix
+          bwrap --dev-bind / / --bind /tmp/fakeroot/nix /tmp/fakeroot/nix true 2>&1 | head -3
+          echo "exit=$?"
