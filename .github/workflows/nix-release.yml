@@ -61,54 +61,21 @@ jobs:
               sys.exit(1)
           print("%d setup files match the manifest" % len(want))
           PY
+          # Two architectures, so the plan is run once per architecture:
+          # "unchanged" is per (setup, arch), because the two tarballs are
+          # different bytes and one can be missing while the other is published.
+          #
+          # In a separate script rather than an inline heredoc: the heredoc was
+          # nested inside an if/else inside this block scalar, which produced a
+          # matrix the workflow read as empty - the setup job succeeded and
+          # scheduled nothing, looking like "everything up to date".
           if [ -n "$ONLY" ]; then
-            # An explicit request always wins: build exactly what was asked for,
-            # skip the unchanged-set logic entirely.
-            python3 - "$ONLY" <<'PY' > /tmp/list.json
-          import json, pathlib, sys
-          sys.path.insert(0, ".")
-          import matrixlib2
-          only = sys.argv[1]
-          avail = {e["dir"]: e for e in matrixlib2.load("matrix-nix.yml")}
-          names = sorted(p.stem for p in pathlib.Path("setups").glob("*.nix"))
-          if only in names:
-              picked = [only]
-          else:
-              hits = [n for n in names if n.startswith(only)]
-              if len(hits) != 1:
-                  sys.exit("only=%r matches %d setups" % (only, len(hits)))
-              picked = hits
-          # Every requested setup is built for both architectures it exists on.
-          inc = []
-          for n in picked:
-              for arch in ("amd64", "arm64"):
-                  if n in avail and matrixlib2.available_on(avail[n], arch):
-                      inc.append({"name": n, "arch": arch})
-          print(json.dumps({"include": inc}))
-          PY
+            python3 tools/build-plan.py --report >/dev/null 2>&1 || true
+            python3 tools/build-matrix.py "$ONLY" > /tmp/list.json
           else
-            # Nothing asks for a specific setup, so build only what changed.
-            # A setup's tarball is a pure function of its .nix file, its derived
-            # path list, flake.lock and its dependencies - so anything else is
-            # unchanged bytes, and 155-job rebuilds of an unchanged manifest were
-            # the normal case before this.
-            # Run the plan once per architecture: "unchanged" is per (setup, arch),
-            # because the two tarballs are different bytes and one can be missing
-            # while the other is published.
             ARCH=amd64 python3 tools/build-plan.py --report
             ARCH=arm64 python3 tools/build-plan.py --report
-            python3 - <<'PY' > /tmp/list.json
-          import json, os, subprocess, sys
-          inc = []
-          for arch in ("amd64", "arm64"):
-              env = dict(os.environ, ARCH=arch)
-              out = subprocess.run([sys.executable, "tools/build-plan.py", "--outputs"],
-                                   capture_output=True, text=True, env=env)
-              if out.returncode == 0 and out.stdout.strip():
-                  for name in json.loads(out.stdout).get("include", []):
-                      inc.append({"name": name["name"], "arch": arch})
-          print(json.dumps({"include": inc}))
-          PY
+            python3 tools/build-matrix.py > /tmp/list.json
           fi
           echo "list=$(cat /tmp/list.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
