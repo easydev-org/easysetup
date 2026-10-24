@@ -61,25 +61,31 @@ jobs:
               sys.exit(1)
           print("%d setup files match the manifest" % len(want))
           PY
-          python3 - <<'PY' > /tmp/list.json
-          import json, os, pathlib, sys
-
-          only = os.environ.get("ONLY", "").strip()
-          names = sorted(
-              p.stem for p in pathlib.Path("setups").glob("*.nix")
-          )
-          if only:
-              # Accept the short name or a name with a version suffix; either
-              # way it must match exactly one setup file.
-              if only in names:
-                  names = [only]
-              else:
-                  hits = [n for n in names if n.startswith(only)]
-                  if len(hits) != 1:
-                      sys.exit("only=%r matches %d setups" % (only, len(hits)))
-                  names = hits
-          print(json.dumps({"include": [{"name": n} for n in names]}))
+          if [ -n "$ONLY" ]; then
+            # An explicit request always wins: build exactly what was asked for,
+            # skip the unchanged-set logic entirely.
+            python3 - "$ONLY" <<'PY' > /tmp/list.json
+          import json, pathlib, sys
+          only = sys.argv[1]
+          names = sorted(p.stem for p in pathlib.Path("setups").glob("*.nix"))
+          if only in names:
+              picked = [only]
+          else:
+              hits = [n for n in names if n.startswith(only)]
+              if len(hits) != 1:
+                  sys.exit("only=%r matches %d setups" % (only, len(hits)))
+              picked = hits
+          print(json.dumps({"include": [{"name": n} for n in picked]}))
           PY
+          else
+            # Nothing asks for a specific setup, so build only what changed.
+            # A setup's tarball is a pure function of its .nix file, its derived
+            # path list, flake.lock and its dependencies - so anything else is
+            # unchanged bytes, and 155-job rebuilds of an unchanged manifest were
+            # the normal case before this.
+            python3 tools/build-plan.py --report
+            python3 tools/build-plan.py --outputs > /tmp/list.json
+          fi
           echo "list=$(cat /tmp/list.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
           cat /tmp/list.json
@@ -241,3 +247,43 @@ jobs:
                 --title "$dir" --notes "nix closure, prebuilt for linux/amd64"
             fi
           done
+
+      # Record what was built, so the next run can tell what is genuinely
+      # unchanged. Done only AFTER every upload succeeded: a fingerprint written
+      # for a setup whose asset failed to upload would make the next run skip a
+      # release that does not exist. build-plan.py also cross-checks GitHub as a
+      # second guard.
+      - name: record what was built
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(/tmp/assets/*.tar.zst)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "nothing was published; leaving the state file alone"
+            exit 0
+          fi
+          built=()
+          for a in "${assets[@]}"; do
+            base=$(basename "$a")
+            built+=("${base%-debian-trixie-amd64.tar.zst}")
+          done
+          python3 tools/build-plan.py --record "${built[@]}"
+
+          if git diff --quiet build-state.json 2>/dev/null; then
+            echo "state unchanged"
+            exit 0
+          fi
+          # Committed so the next run starts from it. A rebase may be needed if
+          # another workflow touched main meanwhile; retry a couple of times.
+          git config user.name  "easysetup"
+          git config user.email "easysetup@easydev.local"
+          git add build-state.json
+          git commit -q -m "chore: record ${#built[@]} published builds so the next run only rebuilds what changed"
+          for i in 1 2 3; do
+            if git push -q origin HEAD:main 2>/dev/null; then echo "pushed"; exit 0; fi
+            git pull --rebase -q origin main || true
+            sleep 5
+          done
+          echo "::warning::could not push build-state.json; the next run will rebuild more than necessary"
