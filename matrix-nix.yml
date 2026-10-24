@@ -253,6 +253,56 @@ setups:
   - { tool: actionlint, attr: "nixpkgs#actionlint", version: "1.7.12" }
   - { tool: pre-commit, attr: "nixpkgs#pre-commit", version: "4.7.0" }
 
+  # Kotlin
+  - { tool: ktlint,     attr: "nixpkgs#ktlint", version: "1.8.0" }
+  - { tool: detekt,     attr: "nixpkgs#detekt", version: "1.23.8" }
+  - { tool: kotlin-language-server, attr: "nixpkgs#kotlin-language-server", version: "1.3.13" }
+
+  # Scala
+  - { tool: scalafmt,   attr: "nixpkgs#scalafmt", version: "3.11.5" }
+  - { tool: metals,     attr: "nixpkgs#metals", version: "1.6.9" }
+
+  # Swift - the toolchain entry above is the compiler; these are the dev tools
+  - { tool: swiftlint,  attr: "nixpkgs#swiftlint", version: "0.65.1" }
+  - { tool: swiftformat, attr: "nixpkgs#swiftformat", version: "0.63.1" }
+  - { tool: sourcekit-lsp, attr: "nixpkgs#sourcekit-lsp", version: "6.3.3" }
+
+  # Haskell
+  - { tool: ormolu,     attr: "nixpkgs#ormolu", version: "0.8.0.2" }
+  - { tool: hlint,      attr: "nixpkgs#hlint", version: "3.10" }
+  - { tool: haskell-language-server, attr: "nixpkgs#haskell-language-server", version: "2.13.0.0" }
+
+  # Clojure
+  - { tool: clj-kondo,  attr: "nixpkgs#clj-kondo", version: "2026.08.04" }
+  - { tool: clojure-lsp, attr: "nixpkgs#clojure-lsp", version: "2026.10.15" }
+
+  # Elixir / Erlang. credo is not in nixpkgs (probe answered MISSING), so the
+  # formatter/linter story for Elixir is erlfmt + the compiler's own warnings.
+  - { tool: elixir-ls,  attr: "nixpkgs#elixir-ls", version: "0.31.1" }
+  - { tool: erlfmt,     attr: "nixpkgs#erlfmt", version: "1.8.0" }
+
+  # Crystal
+  - { tool: crystalline, attr: "nixpkgs#crystalline", version: "0.20.0" }
+  - { tool: ameba,      attr: "nixpkgs#ameba", version: "1.7.0" }
+
+  # Nim
+  - { tool: nimlangserver, attr: "nixpkgs#nimlangserver", version: "1.14.0" }
+  - { tool: nimlsp,     attr: "nixpkgs#nimlsp", version: "0.4.7" }
+
+  # Zig
+  - { tool: zls,        attr: "nixpkgs#zls", version: "0.17.0" }
+
+  # OCaml
+  - { tool: ocamlformat, attr: "nixpkgs#ocamlformat", version: "0.29.0" }
+
+  # Dart - the SDK ships dart format/analyze, but Flutter is a separate thing and
+  # people building Flutter need it.
+  - { tool: flutter,    attr: "nixpkgs#flutter", version: "3.47.4" }
+
+  # .NET - `dotnet format` is built in since SDK 6, so only the LSPs are added.
+  - { tool: csharp-ls,  attr: "nixpkgs#csharp-ls", version: "0.28.0" }
+  - { tool: omnisharp,  attr: "nixpkgs#omnisharp-roslyn", version: "1.39.14" }
+
   # data
   - { tool: jqp,        attr: "nixpkgs#jqp", version: "0.8.0" }
   - { tool: dasel,      attr: "nixpkgs#dasel", version: "3.11.2" }
