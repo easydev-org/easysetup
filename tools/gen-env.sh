@@ -26,7 +26,21 @@ REGISTRY="${EASYSETUP_ROOT:-/nix}"
 
 # env.sh still lives beside the old tree name. The directory is ours to create -
 # nothing else does, now that setups unpack into /nix/store.
-mkdir -p "$(dirname "$OUT")"
+#
+# On a bare runner that directory is owned by root, so creating it needs sudo.
+# Same rule as install.sh: root if we are root, sudo if it exists.
+OUTDIR="$(dirname "$OUT")"
+if ! mkdir -p "$OUTDIR" 2>/dev/null; then
+  if [ "$(id -u)" = "0" ]; then
+    mkdir -p "$OUTDIR"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo mkdir -p "$OUTDIR"
+    sudo chown "$(id -u):$(id -g)" "$OUTDIR" 2>/dev/null || true
+  else
+    echo "gen-env: cannot create $OUTDIR" >&2
+    exit 1
+  fi
+fi
 
 # One setup-root file per installed setup: "<store-path>|<dirs>".
 setup_roots() {

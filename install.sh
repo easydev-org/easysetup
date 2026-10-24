@@ -145,11 +145,37 @@ for name in "$@"; do
     echo "install.sh: sha256 mismatch for $artifact" >&2; exit 1; }
 
   # Unpack at /. The archive carries nix/store/... and nix/setup-root-<dir>;
-  # both must land at the root exactly as recorded.
+  # both must land at the root exactly as recorded - the paths are absolute and
+  # are baked into every binary, so unpacking elsewhere would not work.
+  #
   # Plain zstd: the tarballs are compressed at the default window, so any zstd
   # can read them. Piping zstd into tar extracts while decompressing instead of
   # buffering a multi-GB tree first.
-  zstd -d --quiet -c "$WORK/asset" | tar -xf - -C /
+  #
+  # Writing to / needs root. Inside a container that is automatic; on a bare
+  # GitHub runner the job runs as a normal user, where `mkdir /nix` is refused.
+  # Rather than demand a container, use sudo when it is available and we are not
+  # already root - a no-op for the container case.
+  #
+  # `sudo tar` inside a pipe would inherit the pipe as stdin correctly, but a
+  # function wrapper around it would not: the shell reads the stream, not tar.
+  # Extracting to a private directory and moving the two trees is simpler and
+  # works the same way whether or not we are root.
+  rm -rf "$WORK/root" && mkdir -p "$WORK/root"
+  zstd -d --quiet -c "$WORK/asset" | tar -xf - -C "$WORK/root"
+  if [ "$(id -u)" = "0" ]; then
+    cp -a "$WORK/root/nix/." /nix/
+  elif command -v sudo >/dev/null 2>&1; then
+    # One sudo for the whole copy, not one per file: a toolchain closure is
+    # thousands of files and a sudo per file would take minutes.
+    sudo mkdir -p /nix
+    sudo cp -a "$WORK/root/nix/." /nix/
+    sudo chown -R "$(id -u):$(id -g)" /nix 2>/dev/null || true
+  else
+    echo "install.sh: need root to write /nix, and sudo is not available" >&2
+    exit 1
+  fi
+  rm -rf "$WORK/root"
   rm -f "$WORK/asset" "$WORK/sha"
 
   [ -f "/nix/setup-root-$id" ] || {
