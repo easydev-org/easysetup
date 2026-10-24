@@ -86,29 +86,30 @@ jobs:
       - name: store is populated
         run: ls /nix/setup-root-*
 
-  # The artifacts are built against trixie's glibc. On an older libc they cannot
-  # load at all, and installing 300 MB of dead weight is the worst outcome - so
-  # the action must refuse up front.
-  wrong-os:
+  # No container, on purpose.
+  #
+  # This job used to assert the action REFUSED ubuntu-latest, because the
+  # artifacts were said to need trixie's glibc. That was wrong: every binary's
+  # PT_INTERP is an absolute /nix/store path inside the closure, and ldd resolves
+  # libc from there. The host libc is never consulted.
+  #
+  # So the assertion is now the opposite - the action must WORK here - and that
+  # makes this the most valuable job in the file: it proves a consumer needs no
+  # special container at all.
+  plain-runner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: the action must refuse
-        id: attempt
-        continue-on-error: true
-        uses: ./
-        with: { tools: node }
-      - name: and it must not have installed anything
+      - uses: ./
+        with: { tools: jq }
+      - name: it ran without a container
         run: |
           set -euo pipefail
-          if [ "${{ steps.attempt.outcome }}" != "failure" ]; then
-            echo "::error::the action succeeded on ubuntu 24.04, whose glibc is too old"
-            exit 1
-          fi
-          # Match any node version: the point is that nothing at all landed, and
-          # naming a version here would rot the moment a release moves.
-          if ls /nix/setup-root-node-* >/dev/null 2>&1; then
-            echo "::error::it installed something it cannot run"
-            exit 1
-          fi
-          echo "correctly refused on the wrong platform"
+          . /opt/setup/env.sh
+          jq --version
+          echo '{"a":1}' | jq -r .a
+          echo "host: $(. /etc/os-release; echo "$PRETTY_NAME")"
+          echo "host libc: $(ldd --version | head -1)"
+          echo "the artifact's own interpreter:"
+          readelf -l "$(command -v jq)" 2>/dev/null | sed -n 's/.*interpreter: \(.*\)\]/  \1/p' \
+            || echo "  (readelf unavailable)"

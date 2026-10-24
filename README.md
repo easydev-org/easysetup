@@ -1,6 +1,6 @@
 # easysetup
 
-Toolchains for Debian 13 CI, as prebuilt nix closures.
+Toolchains for CI, as prebuilt nix closures.
 
 ```yaml
 - uses: easydev-org/easysetup@main
@@ -54,17 +54,34 @@ than by a hand-maintained list that goes stale.
 
 ## Requirements
 
-Debian 13 (trixie). The artifacts are built against its glibc 2.41 and carry
-absolute `/nix/store` interpreter paths, so they cannot run on an older libc. The
-action checks this up front and refuses rather than installing 300 MB of
-unusable files.
+**No particular distribution.** The artifacts carry their own glibc: every
+binary's `PT_INTERP` is an absolute `/nix/store` path inside the closure, and
+`ldd` resolves `libc.so.6` from there too. The host libc is never consulted, so
+its version does not matter.
+
+Measured, running `jq` from the published artifacts:
+
+| host | host libc | result |
+|---|---|---|
+| Ubuntu 24.04 | glibc 2.39 | works |
+| Debian 12 | glibc 2.36 | works |
+| Fedora 44 | glibc 2.43 | works |
+| **Alpine** | **musl - no glibc at all** | **works** |
 
 ```yaml
 jobs:
   build:
-    runs-on: ubuntu-latest
-    container: debian:trixie-slim     # the one requirement
+    runs-on: ubuntu-latest     # no container needed
 ```
+
+What is required: `bash`, and the four packages `install.sh` uses - `curl` to
+fetch, `zstd` to unpack, `python3` to read the manifest, and a CA bundle. The
+action installs them if they are missing, picking whichever package manager the
+image has (apt, dnf, yum, apk, zypper). On runners that already have them the
+step is a no-op.
+
+Debian-slim and Alpine images ship none of the four, so a `container:` still
+helps there - but for the prerequisites, not for the libc.
 
 ## Use without the action
 

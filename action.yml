@@ -36,29 +36,24 @@ outputs:
 runs:
   using: composite
   steps:
-    # The artifacts carry an absolute /nix/store interpreter, so they need the
-    # glibc they were built against. Checking up front turns "the tool is
-    # missing" into "this runner's libc is too old", which is a different fix.
-    - name: check the platform
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [ ! -r /etc/os-release ]; then
-          echo "::warning::cannot read /etc/os-release; assuming debian 13"
-          exit 0
-        fi
-        . /etc/os-release
-        if [ "${ID:-}" != "debian" ] || [ "${VERSION_ID:-}" != "13" ]; then
-          echo "::error::easysetup artifacts are built for debian 13 (trixie); this is ${ID:-?} ${VERSION_ID:-?}."
-          echo "::error::Add 'container: debian:trixie-slim' to the job, or use a trixie-based image."
-          exit 1
-        fi
-        echo "platform ok: debian ${VERSION_ID}"
-
-    # debian:trixie-slim ships none of these, and install.sh needs all four:
-    # curl to fetch, zstd to unpack, python3 to read the manifest, and the CA
-    # bundle because the image has no /etc/ssl/certs at all (verified - without
-    # it every HTTPS request fails with curl error 77).
+    # No distro check.
+    #
+    # This used to refuse anything but Debian 13, on the grounds that the
+    # artifacts need trixie's glibc. That was wrong, and measurably so: every
+    # binary's PT_INTERP is an absolute /nix/store path inside the closure
+    # itself, and ldd resolves libc from there too. The host libc is never
+    # consulted, so the version on the runner does not matter.
+    #
+    # Measured after removing the check: jq from the published artifacts runs on
+    # Ubuntu 24.04 (glibc 2.39), Debian 12 (2.36), Fedora 44 (2.43) and Alpine
+    # (musl, no glibc at all). The only thing that actually breaks on an older or
+    # non-Debian image is this step's own prerequisites, which is a different
+    # problem with a different fix.
+    #
+    # What IS required: a POSIX-ish userland with bash, and the four packages
+    # install.sh needs - curl to fetch, zstd to unpack, python3 to read the
+    # manifest, and a CA bundle. Debian-slim images ship none of them; most other
+    # CI images already have all four, in which case this step is a no-op.
     - name: install the installer's own prerequisites
       shell: bash
       run: |
@@ -68,9 +63,25 @@ runs:
           echo "prerequisites present"
           exit 0
         fi
-        apt-get update -qq
-        apt-get install -y -qq --no-install-recommends \
-          curl zstd python3 ca-certificates
+        # Pick the package manager that is actually here rather than assuming apt.
+        if command -v apt-get >/dev/null; then
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            curl zstd python3 ca-certificates
+        elif command -v dnf >/dev/null; then
+          dnf install -y -q curl zstd python3 ca-certificates
+        elif command -v yum >/dev/null; then
+          yum install -y -q curl zstd python3 ca-certificates
+        elif command -v apk >/dev/null; then
+          apk add --no-cache curl zstd python3 ca-certificates
+        elif command -v zypper >/dev/null; then
+          zypper -q install -y curl zstd python3 ca-certificates
+        else
+          echo "::error::cannot install curl/zstd/python3/ca-certificates: no known package manager."
+          echo "::error::Install them yourself before this action, then rerun."
+          exit 1
+        fi
         echo "prerequisites installed"
 
     # Keyed on the setup list. The store is content-addressed, so a hit is
