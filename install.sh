@@ -175,7 +175,11 @@ for name in "$@"; do
     echo "install.sh: need root to write /nix, and sudo is not available" >&2
     exit 1
   fi
-  rm -rf "$WORK/root"
+  # The extracted tree keeps the store's read-only modes (0555 on directories),
+  # so a plain `rm -rf` fails with Permission denied - the same thing that bit the
+  # build script. Make it writable first.
+  chmod -R u+w "$WORK/root" 2>/dev/null || sudo chmod -R u+w "$WORK/root" 2>/dev/null || true
+  rm -rf "$WORK/root" 2>/dev/null || sudo rm -rf "$WORK/root" 2>/dev/null || true
   rm -f "$WORK/asset" "$WORK/sha"
 
   [ -f "/nix/setup-root-$id" ] || {
