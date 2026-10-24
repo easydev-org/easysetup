@@ -87,7 +87,10 @@ jobs:
             python3 tools/build-matrix.py --arch arm64 > /tmp/list-arm64.json
           fi
           for a in amd64 arm64; do
-            n=$(python3 -c "import json;print(len(json.load(open('/tmp/list-$a.json'))['include']))")
+            # Counted with tr rather than python: the previous attempt put a
+            # heredoc inside $( ), which is not portable and failed silently
+            # enough that the step just reported "failure" with no message.
+            n=$(tr ',' '\n' < "/tmp/list-$a.json" | grep -c '"name"' || true)
             echo "$a: $n job(s)"
             # A matrix of zero is legitimate only when nothing changed; a matrix
             # larger than 256 is never legitimate.
@@ -95,12 +98,11 @@ jobs:
               echo "::error::$a matrix has $n entries, over GitHub's limit of 256"
               exit 1
             fi
+            echo "$a=$n" >> "$GITHUB_OUTPUT"
           done
           echo "list_amd64=$(cat /tmp/list-amd64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "list_arm64=$(cat /tmp/list-arm64.json | tr -d '\n')" >> "$GITHUB_OUTPUT"
           echo "only=${ONLY}" >> "$GITHUB_OUTPUT"
-          echo "amd64=$(python3 -c "import json;print(len(json.load(open('/tmp/list-amd64.json'))['include']))")" >> "$GITHUB_OUTPUT"
-          echo "arm64=$(python3 -c "import json;print(len(json.load(open('/tmp/list-arm64.json'))['include']))")" >> "$GITHUB_OUTPUT"
 
       - name: resolve the versions nix will actually give us
         run: |

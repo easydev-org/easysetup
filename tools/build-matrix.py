@@ -38,16 +38,18 @@ def plan(arch):
 
 
 def main():
-    only = sys.argv[1] if len(sys.argv) > 1 else ""
-    # A single architecture, when the caller asks for one. The workflow runs this
-    # twice and gives each job its own matrix: 396 jobs in one matrix exceeds
-    # GitHub's limit of 256, and an over-large matrix does not error - it simply
-    # schedules nothing while the job reports success.
-    if "--arch" in sys.argv:
-        want = sys.argv[sys.argv.index("--arch") + 1]
-        arches = (want,)
-    else:
-        arches = ARCHES
+    # Careful with positional arguments: an earlier version took argv[1] as the
+    # setup name, so `--arch amd64` was read as "the setup called --arch" and
+    # produced an empty matrix with no error.
+    args = sys.argv[1:]
+    arches = ARCHES
+    if "--arch" in args:
+        i = args.index("--arch")
+        if i + 1 >= len(args):
+            sys.exit("--arch needs a value")
+        arches = (args[i + 1],)
+        del args[i:i + 2]
+    only = args[0] if args else ""
     avail = {e["dir"]: e for e in matrixlib2.load(os.path.join(ROOT, "matrix-nix.yml"))}
 
     if only:
