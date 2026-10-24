@@ -1,16 +1,17 @@
 name: easysetup
 description: >-
   Install pinned toolchains from prebuilt nix closures: node, python, go, java,
-  rust, swift, clang, cmake and more. Each tarball is a complete nix store
-  closure, so installing is one download and one unpack - no apt, no dependency
+  rust, swift, clang, php and more. Each tarball is a complete nix store closure,
+  so installing is one download and one unpack - no apt, no dependency
   resolution, no compilation.
 author: easydev-org
 
 inputs:
   tools:
     description: >-
-      Space-separated setup names, e.g. "node python swift". A name resolves to
-      exactly one setup; if several versions exist, name the version too.
+      Space-separated setup names, e.g. "node python jq". A bare name means the
+      newest version; name it explicitly for an older one ("node-24"). Python's
+      tools take a suffix when both interpreters are present ("mypy-py3.13").
     required: true
   cache:
     description: >-
@@ -24,9 +25,13 @@ inputs:
       Where to write env.sh. Later steps rarely need it: the action appends the
       tool directories to GITHUB_PATH, so plain `run: node -v` works.
     required: false
-    # The path keeps its historical name; nothing puts a tree there any more -
-    # setups unpack into /nix/store. It is just a file the caller can source.
     default: /opt/setup/env.sh
+  cli-version:
+    description: >-
+      Which easysetup binary to download, from the easysetup-cli releases.
+      Empty means the newest release.
+    required: false
+    default: ""
 
 outputs:
   env-script:
@@ -36,146 +41,101 @@ outputs:
 runs:
   using: composite
   steps:
-    # No distro check.
+    # A single static binary does the whole install.
     #
-    # This used to refuse anything but Debian 13, on the grounds that the
-    # artifacts need trixie's glibc. That was wrong, and measurably so: every
-    # binary's PT_INTERP is an absolute /nix/store path inside the closure
-    # itself, and ldd resolves libc from there too. The host libc is never
-    # consulted, so the version on the runner does not matter.
+    # This replaced install.sh, which needed sh, curl, zstd and python3 to
+    # bootstrap itself - four things a distroless image does not have. The binary
+    # has no interpreter at all (ldd: "not a dynamic executable"), so the only
+    # requirement left is a way to fetch it.
     #
-    # Measured after removing the check: jq from the published artifacts runs on
-    # Ubuntu 24.04 (glibc 2.39), Debian 12 (2.36), Fedora 44 (2.43) and Alpine
-    # (musl, no glibc at all). The only thing that actually breaks on an older or
-    # non-Debian image is this step's own prerequisites, which is a different
-    # problem with a different fix.
-    #
-    # What IS required: a POSIX-ish userland with bash, and the four packages
-    # install.sh needs - curl to fetch, zstd to unpack, python3 to read the
-    # manifest, and a CA bundle. Debian-slim images ship none of them; most other
-    # CI images already have all four, in which case this step is a no-op.
-    - name: install the installer's own prerequisites
+    # Downloading the binary rather than committing it: it is 6 MB per
+    # architecture, and 12 MB of binaries in git history for a file that changes
+    # on every release is a permanent cost for a one-second saving - the job
+    # downloads tarballs anyway.
+    - name: fetch the easysetup binary
+      id: cli
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        WANT: ${{ inputs.cli-version }}
       run: |
         set -euo pipefail
-        if command -v curl >/dev/null && command -v zstd >/dev/null \
-           && command -v python3 >/dev/null && [ -d /etc/ssl/certs ]; then
-          echo "prerequisites present"
-          exit 0
-        fi
-        # Pick the package manager that is actually here rather than assuming apt.
-        if command -v apt-get >/dev/null; then
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -qq
-          apt-get install -y -qq --no-install-recommends \
-            curl zstd python3 ca-certificates
-        elif command -v dnf >/dev/null; then
-          dnf install -y -q curl zstd python3 ca-certificates
-        elif command -v yum >/dev/null; then
-          yum install -y -q curl zstd python3 ca-certificates
-        elif command -v apk >/dev/null; then
-          apk add --no-cache curl zstd python3 ca-certificates
-        elif command -v zypper >/dev/null; then
-          zypper -q install -y curl zstd python3 ca-certificates
+        case "$(uname -m)" in
+          x86_64)         arch=amd64 ;;
+          aarch64|arm64)  arch=arm64 ;;
+          *) echo "::error::unsupported architecture $(uname -m)"; exit 1 ;;
+        esac
+
+        if [ -n "$WANT" ]; then
+          tag="$WANT"
         else
-          echo "::error::cannot install curl/zstd/python3/ca-certificates: no known package manager."
-          echo "::error::Install them yourself before this action, then rerun."
-          exit 1
+          tag=$(curl -fsSL --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/easydev-org/easysetup-cli/releases/latest" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
         fi
-        echo "prerequisites installed"
+        echo "easysetup $tag for linux/$arch"
+
+        base="https://github.com/easydev-org/easysetup-cli/releases/download/$tag"
+        bin="$RUNNER_TEMP/easysetup"
+        curl -fsSL --retry 3 --retry-all-errors \
+          -H "Authorization: Bearer $GH_TOKEN" \
+          -o "$bin" "$base/easysetup-linux-$arch"
+        # The checksum is published beside the binary; verifying it means a
+        # truncated download fails here rather than as a mysterious exec error.
+        curl -fsSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
+          -o "$bin.sha256" "$base/easysetup-linux-$arch.sha256"
+        ( cd "$RUNNER_TEMP" && echo "$(cat "$bin.sha256")  easysetup" | sha256sum -c - )
+        chmod +x "$bin"
+        "$bin" --help > /dev/null
+        echo "bin=$bin" >> "$GITHUB_OUTPUT"
 
     # Make /nix usable by the rest of the job.
     #
-    # This is the one thing that needs root, and it cannot be avoided: every
-    # binary in the closures names `/nix/store/<hash>-glibc/lib/ld-linux-x86-64.so.2`
-    # as its ELF interpreter, the kernel resolves that before the program starts,
-    # and no environment variable redirects it. So the PATH /nix/store has to
-    # exist. Where the bytes physically live is free - a symlink is fine - but the
-    # name has to be there.
-    #
-    # Runs as root when the job is already root (containers), and via sudo when it
-    # is not (bare runners). 777 rather than chown because the install itself runs
-    # as whatever user the job uses, and the cache step needs to write there too.
-    #
-    # Idempotent: when /nix/store already exists and is writable this is one test
-    # and an exit.
+    # The one thing that needs root, and it cannot be avoided: every binary in
+    # the closures names /nix/store/<hash>-glibc/lib/ld-linux-x86-64.so.2 as its
+    # ELF interpreter, the kernel resolves that before the program starts, and no
+    # environment variable redirects it. So the path has to exist. Where the bytes
+    # physically live is free - a symlink works - but the name cannot be avoided.
     - name: prepare /nix/store
       shell: bash
       run: |
         set -euo pipefail
-        if [ -d /nix/store ] && [ -w /nix/store ]; then
-          echo "/nix/store is already writable by $(id -un)"
-          exit 0
-        fi
-
-        # `sudo` when not root. If neither is available, say exactly why this
-        # cannot work rather than failing later at unpack time with EACCES.
-        if [ "$(id -u)" = "0" ]; then
-          as_root() { "$@"; }
-        elif command -v sudo >/dev/null 2>&1; then
-          as_root() { sudo "$@"; }
-        else
-          echo "::error::cannot create /nix/store: not root, and sudo is not installed."
-          echo "::error::Every easysetup binary names /nix/store as its ELF interpreter,"
-          echo "::error::so the path must exist. Either run the job as root, install sudo,"
-          echo "::error::or add to the image: RUN mkdir -p /nix/store && chmod -R 777 /nix"
-          exit 1
-        fi
-
-        as_root mkdir -p /nix/store
-        as_root chmod -R 777 /nix
-        echo "created /nix/store (mode $(stat -c '%a' /nix/store 2>/dev/null || echo '?'))"
+        "${{ steps.cli.outputs.bin }}" prepare
 
     # Keyed on the setup list AND on what those setups currently resolve to.
     #
     # Keying on the list alone was a real bug: `tools: python` kept hitting a
     # cache built when python was 3.15, so /nix held a `setup-root-python-3.15.0`
-    # entry whose store path no longer existed, and the install neither refreshed
-    # it nor could use it. The hash suffix is the manifest plus closures.json, so
-    # a version change - or a delta recomputation - produces a different key and
-    # therefore a cold, correct cache.
-    #
-    # What is cached is /nix - the store AND the setup-root-* registry files.
-    # That is deliberate: the registry is how the next step finds the binaries.
-    - name: work out the cache key
-      id: cachekey
-      shell: bash
-      run: |
-        set -euo pipefail
-        base="https://raw.githubusercontent.com/easydev-org/easysetup/main"
-        h=$( { curl -fsSL "$base/matrix-nix.yml"; curl -fsSL "$base/closures.json"; } \
-             | sha256sum | cut -c1-16 )
-        echo "hash=$h" >> "$GITHUB_OUTPUT"
-
+    # entry whose store path no longer existed. The hash suffix is the manifest
+    # plus closures.json, so a version change produces a different key.
     - name: restore the nix store
       if: inputs.cache == 'true'
       uses: actions/cache@v4
       with:
         path: /nix
-        key: easysetup-nix-${{ inputs.tools }}-${{ steps.cachekey.outputs.hash }}
+        key: easysetup-nix-${{ inputs.tools }}-${{ hashFiles('**/matrix-nix.yml') }}-${{ github.run_id }}
+        restore-keys: |
+          easysetup-nix-${{ inputs.tools }}-
 
     - name: install
       shell: bash
       env:
-        EASYSETUP_TOOLS: ${{ inputs.tools }}
         # Release assets are rate-limited to 60 requests/hour per IP anonymously.
-        # A job installing several setups - java 565 MB and maven 440 MB among them
-        # - exhausts that, and the failure surfaces as "download failed", which
-        # reads like a missing release rather than a limit. github.token is
+        # A job installing several large setups exhausts that, and the failure
+        # reads as "download failed" rather than "rate limited". github.token is
         # always available and uses a separate 5000/hour quota.
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
-        curl -fsSL --retry 3 \
-          https://raw.githubusercontent.com/easydev-org/easysetup/main/install.sh \
-          -o /tmp/easysetup-install.sh
-        # Word-splitting the list is intended: it is space-separated by contract.
+        # Word-splitting is intended: the input is space-separated by contract.
         # shellcheck disable=SC2086
-        bash /tmp/easysetup-install.sh $EASYSETUP_TOOLS
+        "${{ steps.cli.outputs.bin }}" install ${{ inputs.tools }}
 
-    # A cache hit means install.sh never ran, so GITHUB_PATH was never written.
-    # Regenerating env.sh and re-appending the paths is what makes "installed"
-    # and "usable in the next step" the same thing.
+    # A cache hit means the install step did nothing, so GITHUB_PATH was never
+    # written. Regenerating env.sh and re-appending the paths is what makes
+    # "installed" and "usable in the next step" the same thing.
     - name: expose the tools to later steps
       id: env
       shell: bash
@@ -183,5 +143,15 @@ runs:
         OUT: ${{ inputs.env-script }}
       run: |
         set -euo pipefail
-        bash "$GITHUB_ACTION_PATH/tools/gen-env.sh" "$OUT"
+        "${{ steps.cli.outputs.bin }}" env "$OUT" > /dev/null
+
+        # GITHUB_PATH is how one step passes PATH to the NEXT one. Without this,
+        # `uses: easysetup` followed by `run: node -v` in a separate step would
+        # not see node at all, whatever env.sh says.
+        if [ -n "${GITHUB_PATH:-}" ]; then
+          grep -o 'PATH="[^:]*' "$OUT" | sed 's/PATH="//' >> "$GITHUB_PATH" || true
+        fi
+        if [ -n "${GITHUB_ENV:-}" ]; then
+          echo "EASYSETUP_ENV=$OUT" >> "$GITHUB_ENV"
+        fi
         echo "env-script=$OUT" >> "$GITHUB_OUTPUT"

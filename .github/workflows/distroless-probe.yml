@@ -1,0 +1,49 @@
+name: distroless-probe
+
+# What actually happens when the action is used in a distroless image?
+
+# The claim to test, rather than assume: a composite action's every step needs a
+# shell, and distroless has none. But `actions/checkout` and other JS actions are
+# different - the runner injects its own node into the container, so those may
+# work even where a shell does not.
+
+# Four questions, in order of how much they would change the design:
+
+#   1. does a job with a distroless container start at all?
+#   2. does actions/checkout work there? (JS action, runner-supplied node)
+#   3. does a `run:` step with shell: bash work there?
+#   4. if the binary is checked out, can it be executed without a shell?
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  can-a-job-even-start:
+    runs-on: ubuntu-latest
+    container: gcr.io/distroless/static:nonroot
+    steps:
+      - name: is there a shell at all
+        shell: bash
+        run: |
+          echo "this should never print"
+
+  checkout-only:
+    runs-on: ubuntu-latest
+    container: gcr.io/distroless/static:nonroot
+    steps:
+      - uses: actions/checkout@v4
+      - name: did checkout work?
+        shell: bash
+        run: ls -la
+
+  normal-image-baseline:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: a normal container is fine
+        run: |
+          echo "shell works"
+          ls /bin/sh /bin/bash 2>/dev/null || true
