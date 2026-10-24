@@ -274,7 +274,10 @@ setups:
 
   # Clojure
   - { tool: clj-kondo,  attr: "nixpkgs#clj-kondo", version: "2026.08.04" }
-  - { tool: clojure-lsp, attr: "nixpkgs#clojure-lsp", version: "2026.10.15" }
+  # nix appends the release timestamp: 2026.10.15-11.42.38. The probe printed a
+  # fixed-width column and cut it, and check-versions.py caught the difference
+  # before a 169-job build ran.
+  - { tool: clojure-lsp, attr: "nixpkgs#clojure-lsp", version: "2026.10.15-11.42.38" }
 
   # Elixir / Erlang. credo is not in nixpkgs (probe answered MISSING), so the
   # formatter/linter story for Elixir is erlfmt + the compiler's own warnings.
