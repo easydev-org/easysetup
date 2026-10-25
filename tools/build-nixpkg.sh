@@ -351,7 +351,18 @@ for p in $paths; do
   count=$((count + 1))
 done
 [ "$count" -gt 0 ] || { echo "nixpkg: nothing to package" >&2; exit 1; }
-echo "nixpkg: $count store path(s) in the tarball"
+
+# What the tree actually holds, which can be fewer than $count.
+#
+# A closure's path list can contain store paths that are themselves symlinks into
+# another path in the same list (box-4.6.6 has 117 entries and 116 directories, and
+# they are all legitimate). The copy therefore creates fewer entries than it
+# iterates, and asserting equality rejected a correct build.
+#
+# What matters is that nothing EXTRA appears - that is the chroot-pollution bug -
+# and that everything intended is there.
+packed=$(find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 | wc -l)
+echo "nixpkg: $count path(s) listed, $packed in the tree"
 
 # nix/var is this machine's database and gc roots. It is not part of a package,
 # and shipping it would let the consumer's nix believe things about paths it
@@ -472,20 +483,23 @@ fi
 mkdir -p "$OUT"
 ASSET="$OUT/$DIR-debian-trixie-$ARCH.tar.zst"
 
-# What is about to be packed, and an assertion that it is what was intended.
+# The assertion that matters: nothing EXTRA is in the tree.
 #
-# The count earlier in this script counts the copy loop; this counts the tree. They
-# disagreed for a long time because the chroot check copied companion paths into
-# the staging tree, so every delta tarball silently became a full closure - 3
-# intended paths, 11 in the artifact, and the log claiming 3 throughout.
-packed=$(find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -type d | wc -l)
-echo "nixpkg: staging tree holds $packed store path(s)"
-find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -printf '  %f\n' | sort
-if [ "$packed" != "$count" ]; then
-  echo "nixpkg: REFUSING TO PACK: the tree holds $packed paths but $count were intended" >&2
+# An earlier version required equality, which rejected box-4.6.6 - its list has 117
+# entries and the tree has 116 directories because one entry is a symlink into
+# another path in the same list. That is normal.
+#
+# What is NOT normal is more than was listed, and that is exactly the pollution
+# this guards: the chroot check used to copy companion paths here, so a setup whose
+# list was 3 shipped 11 - a full closure in every tarball, with the log claiming 3.
+packed=$(find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 | wc -l)
+if [ "$packed" -gt "$count" ]; then
+  echo "nixpkg: REFUSING TO PACK: the tree holds $packed entries but only $count were listed" >&2
   echo "nixpkg: something wrote into the staging tree besides the copy loop" >&2
+  find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -printf '  %f\n' | sort >&2
   exit 1
 fi
+echo "nixpkg: packing $packed store path(s), nothing extra in the tree"
 
 # zstd, not xz. Measured on swift (5.8 GB unpacked): `tar -cJf` spent 34m49s in
 # single-threaded xz compression while the download and unpack took 23s and the
