@@ -189,39 +189,58 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: the message names the constraint
+      # This used to shell out to the action's prepare step via
+      # tools/extract-step.py. That script is gone - prepare moved into the static
+      # binary - so the test now exercises the real `easysetup prepare`, which is
+      # what the action actually runs.
+      - name: the message names the constraint, with neither root nor sudo
         run: |
           set -uo pipefail
-          python3 tools/extract-step.py "prepare /nix/store" > /tmp/prep.sh
-          chmod 755 /tmp/prep.sh
+          # Fetch a real binary, so the thing under test is the shipped code.
+          bin=/tmp/easysetup
+          tag=$(curl -fsSI https://github.com/easydev-org/easysetup-cli/releases/latest \
+            | awk 'tolower($1)=="location:" {n=split($2,a,"/"); print a[n]; exit}' | tr -d '\r')
+          curl -fsSL -o "$bin" \
+            "https://github.com/easydev-org/easysetup-cli/releases/download/$tag/easysetup-linux-amd64"
+          chmod 755 "$bin"
 
-          # /nix must be absent, or the script's "already writable" check exits
-          # before the branch under test.
           sudo rm -rf /nix
+          chmod 755 "$bin"
 
-          # Run as `nobody` with a PATH holding only the utilities the script
-          # uses and no sudo. An earlier attempt faked `id` but left sudo on
-          # PATH, so the script took the sudo branch and succeeded - the branch
-          # under test never ran. Here sudo is genuinely not findable.
+          # Run as `nobody` with a PATH that has no sudo on it. Faking `id` was
+          # not enough in an earlier version - sudo was still found and the branch
+          # under test never ran. Here sudo is genuinely not on PATH.
           rm -rf /tmp/nosudo && mkdir -p /tmp/nosudo
-          # bash, not sh: the step's first line is `set -euo pipefail`, and dash
-          # (what /bin/sh is on Debian) rejects `-o pipefail`. Putting bash in the
-          # restricted PATH is what lets the script get as far as the branch under
-          # test - otherwise it dies on its own first line and the assertion fails
-          # for a reason that has nothing to do with sudo.
-          for f in bash sed grep cut head dirname basename stat mkdir chmod cat tr id; do
+          for f in sh mkdir chmod cat id; do
             p=$(command -v "$f" 2>/dev/null) || continue
             cp -L "$p" "/tmp/nosudo/$f"
           done
           chmod -R 755 /tmp/nosudo
 
           out=$(sudo -u nobody env -i PATH=/tmp/nosudo HOME=/tmp \
-                  /tmp/nosudo/bash /tmp/prep.sh 2>&1 || true)
+                  "$bin" prepare 2>&1 || true)
           echo "$out"
 
-          echo "$out" | grep -q "sudo is not installed" \
-            && echo "correctly explains the missing sudo" \
-            || { echo "::error::the failure does not explain why"; exit 1; }
-          echo "$out" | grep -q "chmod -R 777 /nix" \
-            && echo "and gives the Dockerfile fix" \
+          echo "$out" | grep -q 'cannot create /nix/store' \
+            && echo "names the constraint" \
+            || { echo "::error::the failure does not say what went wrong"; exit 1; }
+          echo "$out" | grep -q 'sudo easysetup prepare' \
+            && echo "offers the sudo route" \
             || { echo "::error::no actionable fix in the message"; exit 1; }
+          echo "$out" | grep -q 'chmod -R 777 /nix' \
+            && echo "offers the Dockerfile route" \
+            || { echo "::error::no in-image fix in the message"; exit 1; }
+
+      - name: it succeeds when sudo is available
+        run: |
+          set -euo pipefail
+          bin=/tmp/easysetup
+          sudo rm -rf /nix
+          # The bare runner has passwordless sudo and no /nix; prepare must use it.
+          "$bin" prepare
+          test -d /nix/store
+          stat -c '%a %n' /nix /nix/store
+          # Writable by the job user, which is not root.
+          touch /nix/store/.writetest
+          rm -f /nix/store/.writetest
+          echo "prepare created a usable store as a non-root user"
