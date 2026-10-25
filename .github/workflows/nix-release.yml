@@ -518,7 +518,41 @@ jobs:
             local stage="/tmp/sums-$arch"
             rm -rf "$stage" && mkdir -p "$stage"
             cp "$merged" "$stage/SHA256SUMS"
-            gh release upload "$tag" "${assets[@]}" "$stage/SHA256SUMS" --clobber
+
+            # Delete then upload. `gh release upload --clobber` is documented as
+            # replacing an existing asset, and it reports success - but the old
+            # file stays: the release still served the previous tarball (16181163
+            # bytes, full closure) while the command had uploaded the new one
+            # (16074747, delta). Nothing in the log said so.
+            #
+            # Deleting first is unambiguous, and the verification below is what
+            # proves it worked rather than trusting the exit code.
+            # `a` is already local (declared above, for the checksum loop).
+            local name
+            for a in "${assets[@]}"; do
+              name=$(basename "$a")
+              if grep -qxF "$name" "$existing"; then
+                echo "  replacing $name"
+                gh release delete-asset "$tag" "$name" --yes >/dev/null || {
+                  echo "::error::could not delete the old $name"; exit 1; }
+              fi
+            done
+            if grep -qxF 'SHA256SUMS' "$existing"; then
+              gh release delete-asset "$tag" 'SHA256SUMS' --yes >/dev/null || true
+            fi
+            gh release upload "$tag" "${assets[@]}" "$stage/SHA256SUMS"
+
+            # Confirm the release now serves what was just built. The upload's exit
+            # code was 0 when it silently did nothing, so the size is the check
+            # that means something.
+            local want_size got_size
+            want_size=$(stat -c %s "${assets[0]}")
+            got_size=$(gh release view "$tag" --json assets \
+              --jq ".assets[] | select(.name == \"$(basename "${assets[0]}")\") | .size")
+            echo "  uploaded $(basename "${assets[0]}"): local $want_size, release $got_size"
+            [ "$want_size" = "$got_size" ] || {
+              echo "::error::the release serves $got_size bytes but the build produced $want_size"
+              exit 1; }
           }
 
           for arch in amd64 arm64; do
