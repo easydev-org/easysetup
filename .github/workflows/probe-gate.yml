@@ -9,8 +9,19 @@ name: probe-gate
 
 # If the first part passes instead of failing, the gate is broken and every
 # release since it was added has been unchecked.
+#
+# Runs on every change to the manifest or to the gate itself, because those are
+# the two things that can silently break it: a new setup that is not cached, or an
+# edit that makes the checker agree with everything.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - matrix-nix.yml
+      - tools/assert-cached.py
+      - tools/compute-deps.py
+      - .github/workflows/probe-gate.yml
 
 permissions:
   contents: read
@@ -51,11 +62,18 @@ jobs:
       - name: and rejects with a message that says what to do
         run: |
           set -uo pipefail
+          # compute-deps must SKIP an uncached setup, never compile it. The reason
+          # it names should say so plainly.
           out=$(ARCH=arm64 python3 tools/compute-deps.py 2>&1 || true)
           echo "$out" | grep -E 'not in cache|SKIP' | head -5 || true
-          # compute-deps must SKIP it rather than compile it. If the old
-          # "building locally" fallback were still there, this step would take an
-          # hour and produce a graph entry.
           echo "$out" | grep -q 'building locally' \
             && { echo "::error::compute-deps still compiles missing paths"; exit 1; } \
             || echo "compute-deps skipped instead of compiling, as intended"
+
+          # And probe-closure-fails should call julia's problem NOT CACHED, not
+          # something vague. A wrong label sends the reader to the wrong fix.
+          diag=$(ARCH=arm64 python3 tools/probe-closure-fails.py 2>&1 || true)
+          echo "$diag" | grep -E 'julia|EXCLUDED' | head -3 || true
+          echo "$diag" | grep -q 'julia.*NOT CACHED' \
+            && echo "diagnosis is specific" \
+            || { echo "::error::probe-closure-fails does not identify julia as uncached"; exit 1; }

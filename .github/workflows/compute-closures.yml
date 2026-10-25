@@ -78,10 +78,12 @@ jobs:
             echo "===== $arch ====="
             ARCH="$arch" python3 tools/probe-closure-fails.py | tee /tmp/missing-$arch.txt
             echo
-            n=$(grep -cE 'FAILED|CACHE MISS' /tmp/missing-$arch.txt || true)
-            echo "setups missing from closures-$arch.json: $n"
+            # Count the real verdicts. EXCLUDED lines are setups deliberately left
+            # out via only_arch, which is not a problem to report.
+            n=$(grep -cE 'BROKEN|PLATFORM|NOT CACHED|ATTRIBUTE GONE' /tmp/missing-$arch.txt || true)
+            echo "setups that cannot be published for $arch: $n"
             if [ "$n" -gt 0 ]; then
-              echo "::warning::$arch: $n setup(s) were skipped - see the list above"
+              echo "::warning::$arch: $n setup(s) were skipped - see the reasons above"
             fi
           done
 

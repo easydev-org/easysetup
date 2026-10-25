@@ -7,6 +7,8 @@ bytes we built.
 
     tools/assert-cached.py            both architectures
     tools/assert-cached.py arm64      one
+    tools/assert-cached.py --dir jq-1.8.2 --arch arm64
+                                      one setup, one architecture
 
 A setup counts as substitutable when its own output path has a narinfo in the
 cache AND every path in its closure does too. Checking only the top path is not
@@ -77,7 +79,24 @@ def closure_of(path):
 
 
 def main(argv):
-    want = [a for a in argv if a in SYSTEMS] or list(SYSTEMS)
+    # Single-setup mode, for the per-build check: each build job verifies exactly
+    # what it is about to package, so a failure names one setup rather than
+    # arriving as "the whole graph is bad" after 200 builds have run.
+    one_dir = None
+    if "--dir" in argv:
+        i = argv.index("--dir")
+        if i + 1 >= len(argv):
+            sys.exit("--dir needs a setup name")
+        one_dir = argv[i + 1]
+        del argv[i:i + 2]
+
+    arch_args = [a for a in argv if a in SYSTEMS]
+    if "--arch" in argv:
+        i = argv.index("--arch")
+        if i + 1 >= len(argv):
+            sys.exit("--arch needs amd64 or arm64")
+        arch_args = [argv[i + 1]]
+    want = arch_args or (list(SYSTEMS) if one_dir is None else [os.environ.get("ARCH", "amd64")])
     manifest = matrixlib2.load(os.path.join(ROOT, "matrix-nix.yml"))
     failures = 0
 
@@ -85,6 +104,12 @@ def main(argv):
         system = SYSTEMS[arch]
         graph = json.load(open(matrixlib2.closures_path(ROOT, arch)))
         entries = [e for e in manifest if matrixlib2.available_on(e, arch)]
+        if one_dir is not None:
+            entries = [e for e in entries if e["dir"] == one_dir]
+            if not entries:
+                print("%s is not in the manifest for %s - nothing to check"
+                      % (one_dir, arch))
+                return 0
         print("== %s: %d setups ==" % (arch, len(entries)))
 
         # One closure walk per setup's own output, plus the shared base set.

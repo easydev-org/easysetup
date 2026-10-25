@@ -188,6 +188,14 @@ jobs:
         run: |
           set -euo pipefail
           echo "architecture: $ARCH"
+
+          # Independent of the dry-run below: this asks cache.nixos.org over HTTP
+          # whether every path in this setup's closure exists, rather than asking
+          # nix whether it would substitute. The two mechanisms fail differently -
+          # a misconfigured substituter defeats the nix check but not this one - so
+          # running both means a mistake has to defeat two unrelated things.
+          python3 tools/assert-cached.py --dir "${{ matrix.name }}" --arch "$ARCH"
+
           # Report whether nix will DOWNLOAD or COMPILE, because that is the
           # property the design depends on. `grep -c` exits 1 when it counts
           # zero, which under `set -e` aborted this step before the build even
@@ -321,6 +329,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "architecture: $ARCH"
+
+          # Independent of the dry-run below: this asks cache.nixos.org over HTTP
+          # whether every path in this setup's closure exists, rather than asking
+          # nix whether it would substitute. The two mechanisms fail differently -
+          # a misconfigured substituter defeats the nix check but not this one.
+          python3 tools/assert-cached.py --dir "${{ matrix.name }}" --arch "$ARCH"
+
           # Report whether nix will DOWNLOAD or COMPILE, because that is the
           # property the design depends on. `grep -c` exits 1 when it counts
           # zero, which under `set -e` aborted this step before the build even
