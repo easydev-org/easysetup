@@ -1,0 +1,69 @@
+name: probe-swift2
+
+# The filtered attributes, checked through OUR flake rather than fetchGit.
+
+# The previous probe used builtins.fetchGit on every call, which re-enumerated
+# nixpkgs each time and mixed git's progress output into the results - so
+# "cannot build/eval" was ambiguous between "absent" and "timed out".
+
+# This asks the flake, which is already pinned and already in the store, and it
+# temporarily lifts the aarch64 filter by evaluating the setup expressions
+# directly rather than through packages.aarch64-linux.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-platforms = aarch64-linux
+
+      - name: evaluate the setup expressions directly for aarch64
+        run: |
+          set -uo pipefail
+          set +e
+          for n in swift-6.3.3 swiftformat-0.63.1 sourcekit-lsp-6.3.3; do
+            printf '%-26s ' "$n"
+            # import the same .nix the flake would, with an aarch64 pkgs set -
+            # bypassing packages.aarch64-linux, which filters these out.
+            out=$(nix eval --raw --impure --expr "
+              let
+                f = builtins.getFlake (toString ./.);
+                pkgs = f.inputs.nixpkgs.legacyPackages.aarch64-linux;
+              in (import (./setups + \"/$n.nix\") { inherit pkgs; }).outPath" 2>&1 | tail -2)
+            echo "$out" | tr '\n' ' ' | cut -c1-150
+            echo
+          done
+
+      - name: is that aarch64 output in the cache
+        run: |
+          set -uo pipefail
+          set +e
+          for n in swift-6.3.3 swiftformat-0.63.1 sourcekit-lsp-6.3.3; do
+            printf '%-26s ' "$n"
+            o=$(nix build --no-link --print-out-paths --system aarch64-linux \
+                  ".#\"$n\"" 2>/dev/null | head -1)
+            if [ -z "$o" ]; then echo "build failed"; continue; fi
+            h=$(basename "$o" | cut -d- -f1)
+            echo "cache=$(curl -s -o /dev/null -w '%{http_code}' https://cache.nixos.org/$h.narinfo)  $(basename "$o" | cut -c1-38)"
+          done
+
+      - name: what meta.platforms declares for swift
+        run: |
+          set -uo pipefail
+          set +e
+          nix eval --json --impure --expr '
+            let
+              f = builtins.getFlake (toString ./.);
+              a = f.inputs.nixpkgs.legacyPackages.aarch64-linux;
+              x = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
+            in { aarch64 = a.swift.meta.platforms; x86_64 = x.swift.meta.platforms; }' 2>&1 | tail -3
