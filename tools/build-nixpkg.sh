@@ -459,6 +459,18 @@ fi
 mkdir -p "$OUT"
 ASSET="$OUT/$DIR-debian-trixie-$ARCH.tar.zst"
 
+# What is about to be packed, named explicitly.
+#
+# The step above prints "3 store path(s) in the tarball" and the artifact then
+# contains eleven. Either the staging tree has more in it than was copied, or the
+# count is counting something else - and on a 16 MB artifact the difference is
+# invisible. Printing the staging tree makes the two numbers checkable against
+# each other.
+echo "nixpkg: staging tree contains:"
+find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -printf '  %f\n' | sort
+echo "nixpkg: setup-root files:"
+find "$STAGE/nix" -maxdepth 1 -name 'setup-root-*' -printf '  %f\n' | sort
+
 # zstd, not xz. Measured on swift (5.8 GB unpacked): `tar -cJf` spent 34m49s in
 # single-threaded xz compression while the download and unpack took 23s and the
 # copy 32s - so 97% of the job was the compressor. zstd with -T0 uses every core
