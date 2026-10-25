@@ -41,7 +41,12 @@ jobs:
       # consumer writes `uses: easydev-org/easysetup@main`.
       - uses: ./
         with:
-          tools: ${{ inputs.tools }}
+          # `|| 'node python'` because a push-triggered run has no inputs at all:
+          # workflow_dispatch defaults are not applied to it, so inputs.tools is
+          # the empty string and the action is asked to install nothing. That made
+          # every job fail with "name at least one setup" the moment this workflow
+          # gained a push trigger.
+          tools: ${{ inputs.tools || 'node python' }}
 
       # The point of the whole action: the tools must work in a LATER step, not
       # only inside the step that installed them. GITHUB_PATH is what carries
