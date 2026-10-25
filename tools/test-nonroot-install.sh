@@ -48,15 +48,21 @@ fresh_store() {
 # Run as nobody, with HOME somewhere writable - the runner's own home is not.
 as_nobody() { sudo -u nobody env HOME=/tmp/nb-home bash -c "$*"; }
 
+# Every install is bounded. A hung download would otherwise run until the job's
+# overall timeout, hiding which setup it was and why - and one of these closures is
+# 200+ paths, so "slow" and "stuck" look identical without a limit.
+INSTALL_TIMEOUT=${INSTALL_TIMEOUT:-600}
+
 echo "== install as a normal user =="
 for combo in "jq" "java maven" "node" "python pip" "elixir erlang" "micromamba pixi"; do
   fresh_store
-  out=$(as_nobody "$BIN install $combo 2>&1")
+  echo "  -- $combo"
+  out=$(as_nobody "timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1)
   if echo "$out" | grep -q "installed:"; then
     ok "$combo installs"
   else
     bad "$combo"
-    echo "$out" | tail -4 | sed 's/^/        /'
+    echo "$out" | tail -6 | sed 's/^/        /'
   fi
 done
 
