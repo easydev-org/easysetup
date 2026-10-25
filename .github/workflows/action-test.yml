@@ -10,11 +10,28 @@ on:
         description: 'tool list for the basic job'
         required: false
         default: 'node python'
+  push:
+    branches: [main]
+    # The checksum parsing lives in action.yml and reads a file the CLI repo
+    # publishes; those two files are the whole surface of the bug this guards.
+    paths:
+      - action.yml
+      - tools/test-checksum-parse.sh
+      - .github/workflows/action-test.yml
 
 permissions:
   contents: read
 
 jobs:
+  # Runs first and in seconds: it needs no nix, no network and no container, so a
+  # broken checksum parser is reported before the slow jobs even start.
+  checksum-parsing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the .sha256 parser accepts every published shape
+        run: tools/test-checksum-parse.sh
+
   basic:
     runs-on: ubuntu-latest
     container: debian:trixie-slim

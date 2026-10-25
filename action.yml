@@ -98,8 +98,34 @@ runs:
         # own releases justifies.
         curl -fsSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
           -o "$bin.sha256" "$base/easysetup-linux-$arch.sha256"
-        want=$(sed -n '1s/[[:space:]].*//p' "$bin.sha256")
-        [ -n "$want" ] || { echo "::error::published checksum is empty"; exit 1; }
+
+        # Accept either format: a bare digest (what easysetup-cli publishes -
+        # `sha256sum f | cut -d' ' -f1`) or coreutils' "<hash>  <name>".
+        #
+        # The previous one-liner was `sed -n '1s/[[:space:]].*//p'`, which only
+        # works for the second: sed's p flag prints only when the substitution
+        # matched, so on a bare digest - no whitespace at all - nothing printed and
+        # `want` was empty. Every install then failed with "published checksum is
+        # empty" on a perfectly good file, and it looked like the release was
+        # broken rather than this line.
+        #
+        # Strip whitespace, then take the first 64 characters. Both formats reduce
+        # to the digest that way: a bare digest is already 64, and
+        # "<hash>  <name>" collapses to hash-plus-name with the cut discarding the
+        # name. `cut` here rather than `head -c` because the input is already a
+        # shell variable, not a file.
+        #
+        # The emptiness test comes AFTER the cut: `printf '%s' "" | cut` still
+        # emits a newline, so testing the raw tr output would call an empty file
+        # non-empty - which is how the first version of this fix passed its own
+        # smoke test on a file with nothing in it.
+        want=$(printf '%s' "$(tr -d '[:space:]' < "$bin.sha256")" | cut -c1-64)
+        case "$want" in
+          "") echo "::error::published checksum is empty"; exit 1 ;;
+          *[!0-9a-fA-F]*) echo "::error::published checksum is not a hex digest: $want"; exit 1 ;;
+        esac
+        [ "${#want}" -eq 64 ] || {
+          echo "::error::published checksum is ${#want} characters, not 64"; exit 1; }
         chmod +x "$bin"
         "$bin" checksum --expect "$want" "$bin"
         "$bin" --help > /dev/null
