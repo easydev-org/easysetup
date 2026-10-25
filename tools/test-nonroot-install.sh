@@ -21,15 +21,21 @@ set -uo pipefail
 BIN=${BIN:-/tmp/easysetup}
 [ -x "$BIN" ] || { echo "need an easysetup binary at $BIN (set BIN=...)" >&2; exit 1; }
 
-# Which cases to run. The default pair is the regression this test exists for;
-# `. github/workflows/action-test.yml` runs that. `FULL=1` adds the rest, which is
-# worth doing by hand but takes long enough on a runner (the downloads are from
-# GitHub releases over the runner's own link, minutes per closure) that it does not
-# belong on every push.
+# Which cases to run.
+#
+# Default is jq + openssl: together 20 MB and a handful of seconds, and between
+# them they cover both bugs this test exists for. jq exercises a plain delta
+# install; openssl pulls in base, so its second install writes into a store the
+# first one already created - which is the collision.
+#
+# FULL=1 adds java+maven, node, python+pip, elixir+erlang and micromamba+pixi.
+# Worth running by hand, not on every push: java alone is 549 MB and maven 424 MB,
+# so the full set is ~1 GB over the runner's own link - which took 25+ minutes and
+# told us nothing the cheap pair does not.
 if [ "${FULL:-0}" = "1" ]; then
-  CASES=(jq "java maven" node "python pip" "elixir erlang" "micromamba pixi")
+  CASES=(jq openssl "java maven" node "python pip" "elixir erlang" "micromamba pixi")
 else
-  CASES=(jq "java maven")
+  CASES=(jq openssl)
 fi
 
 pass=0
@@ -46,12 +52,17 @@ bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail+1)); }
 # shell was already root, so `su nobody` worked there and not here - which is the
 # same "only fails where it matters" shape as the bug this test guards.
 #
+# When already root, sudo is not needed and often not installed - as_root covers
+# both so the script runs unchanged in a container and on a runner.
+if [ "$(id -u)" = "0" ]; then as_root() { "$@"; }
+else as_root() { sudo -n "$@"; }; fi
+
 # Each case gets a fresh store so the "already installed" logic does not mask a
 # failure by skipping the write entirely.
 fresh_store() {
-  sudo rm -rf /nix /tmp/nb-home
-  sudo mkdir -p /nix/store
-  sudo chmod 777 /nix /nix/store
+  as_root rm -rf /nix /tmp/nb-home
+  as_root mkdir -p /nix/store
+  as_root chmod 777 /nix /nix/store
   mkdir -p /tmp/nb-home
   chmod 777 /tmp/nb-home
 }
@@ -62,7 +73,12 @@ fresh_store() {
 # `env` a bare `bash` or `timeout` may not resolve. Two runs hung for 30+ minutes
 # on this before the log was ever flushed, which is what a shell waiting for a
 # command it cannot find looks like from outside.
-as_nobody() { sudo -n -u nobody /usr/bin/env HOME=/tmp/nb-home /bin/bash -c "$*"; }
+if [ "$(id -u)" = "0" ]; then
+  # Already root: drop to nobody with su, which needs no password from root.
+  as_nobody() { su -s /bin/bash nobody -c "HOME=/tmp/nb-home $*"; }
+else
+  as_nobody() { sudo -n -u nobody /usr/bin/env HOME=/tmp/nb-home /bin/bash -c "$*"; }
+fi
 
 # Every install is bounded. A hung download would otherwise run until the job's
 # overall timeout, hiding which setup it was and why - and one of these closures is
@@ -86,7 +102,13 @@ for combo in "${CASES[@]}"; do
   echo "  -- $combo"
   log=/tmp/nb-install.log
   : > "$log"
-  as_nobody "/usr/bin/timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1 \
+  # timeout INSIDE sudo, not outside it.
+  #
+  # `timeout N sudo -u nobody easysetup ...` signals sudo, and sudo's child keeps
+  # running as an orphan - so the limit did nothing and a job sat 25 minutes past
+  # what should have been its ceiling. Running `sudo -u nobody timeout N easysetup`
+  # puts the limit around the process that actually blocks.
+  as_nobody "/usr/bin/timeout --kill-after=30 $INSTALL_TIMEOUT $BIN install $combo" 2>&1 \
     | sed 's/^/        /' | tee "$log" >&2
   if grep -q "installed:" "$log"; then
     ok "$combo installs"
@@ -98,11 +120,9 @@ done
 
 echo
 echo "== and the tools actually run =="
-# java+maven is the pair that used to fail; if its jars and scripts resolve, the
-# shared store path really was written correctly.
-# java and maven are already installed by the loop above, into this same store.
+# Whatever was installed above, in this same store.
 as_nobody "$BIN env /tmp/nb-home/e.sh" >/dev/null 2>&1
-for check in "java -version:openjdk" "mvn -version:Apache Maven"; do
+for check in "jq --version:jq-" "openssl version:OpenSSL"; do
   cmd=${check%%:*}; want=${check##*:}
   got=$(as_nobody ". /tmp/nb-home/e.sh && $cmd 2>&1" | head -2 | tr '\n' ' ')
   case "$got" in
