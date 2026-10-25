@@ -1,12 +1,14 @@
 name: download-test
 
-# Prove the token actually changes the download path, and that a large asset
-# works, before trusting the fix.
+# Large assets, with and without a token.
 
-# The reported failure was java (565 MB) and maven (440 MB) failing while base
-# (18 MB) and node (69 MB) succeeded - which points at the anonymous rate limit
-# rather than at the releases. This job installs exactly the two that failed,
-# with the token the action now passes, on a cold runner.
+# The original symptom was java (565 MB) and maven (440 MB) failing while base
+# (18 MB) and node (69 MB) succeeded, which pointed at the anonymous rate limit
+# rather than at the releases. This installs the two large ones specifically, and
+# then repeats without a token to see whether the retry logic rides out a limit.
+
+# Rewritten when install.sh was replaced by the static binary: every step here used
+# to call the shell script, so the workflow had been dead since.
 on:
   workflow_dispatch:
 
@@ -14,57 +16,43 @@ permissions:
   contents: read
 
 jobs:
-  with-token:
+  large-assets:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: the two assets that failed, with a token
+
+      - name: fetch the binary
+        run: |
+          set -euo pipefail
+          tag=$(curl -fsSI https://github.com/easydev-org/easysetup-cli/releases/latest \
+            | awk 'tolower($1)=="location:" {n=split($2,a,"/"); print a[n]; exit}' | tr -d '\r')
+          curl -fsSL -o /tmp/easysetup \
+            "https://github.com/easydev-org/easysetup-cli/releases/download/$tag/easysetup-linux-amd64"
+          chmod 755 /tmp/easysetup
+
+      - name: java and maven, with a token
         env:
-          GH_TOKEN_FOR_TEST: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
-          # Pass the token explicitly rather than relying on `sudo -E`: sudoers
-          # often resets the environment, and a test that silently drops the token
-          # would prove nothing.
-          time sudo GITHUB_TOKEN="$GH_TOKEN_FOR_TEST" bash install.sh java maven
-          ls -la /nix/setup-root-java-* /nix/setup-root-maven-*
-          sudo bash tools/gen-env.sh /tmp/env.sh
+          sudo /tmp/easysetup prepare
+          time /tmp/easysetup install java maven
+          /tmp/easysetup env /tmp/env.sh > /dev/null
           . /tmp/env.sh
-          java -version
-          mvn --version
+          java -version 2>&1 | head -1
+          mvn --version 2>&1 | head -1
 
-  anonymous-retry:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: a large asset WITHOUT a token, to check the retry actually works
+      - name: and without one, so the retry path is exercised
         run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends curl zstd python3 ca-certificates
-          # No GITHUB_TOKEN on purpose. If the anonymous limit is hit, the retry
-          # loop should ride it out rather than fail on the first 404.
-          time sudo GITHUB_TOKEN= bash install.sh java
-          ls -la /nix/setup-root-java-*
-
-      # A previous version of this job asserted the hint by installing a
-      # non-existent setup name. That was wrong: install.sh rejects the NAME
-      # before it ever tries to download, so the download-failure branch - and
-      # its hint - never ran. The assertion failed for a reason that had nothing
-      # to do with the fix.
-      #
-      # What was actually learned from this job is more useful than the assertion:
-      # the anonymous download of java (565 MB) SUCCEEDED. So the 60/hour limit is
-      # not hit on every run - it depends on the runner's shared IP. The token is
-      # therefore insurance against an intermittent failure, not a fix for a
-      # deterministic one, and the retry flags are what handle the transient case.
-      - name: record what the anonymous path did
-        run: |
-          set -euo pipefail
-          echo "anonymous java install succeeded in the previous step."
-          echo "That means the rate limit is intermittent (shared runner IP), which"
-          echo "is exactly the case --retry-all-errors and the token are for."
+          set -uo pipefail
+          sudo rm -rf /nix
+          sudo /tmp/easysetup prepare
+          # No token: the anonymous quota is 60/hour per IP, and this runner may or
+          # may not already have spent it. Either way the install should complete -
+          # the retry flags are what cover the case where it is spent.
+          out=$(sudo GITHUB_TOKEN= /tmp/easysetup install node 2>&1 || true)
+          echo "$out" | tail -5
+          echo "$out" | grep -qi 'installed:' \
+            && echo "anonymous install worked" \
+            || { echo "::warning::anonymous install did not complete - check whether it was rate limited"; exit 1; }

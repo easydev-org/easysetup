@@ -320,98 +320,37 @@ def main(argv):
             cut |= dep_paths(d, c)
         own[name] = sorted(c - cut)
 
-    # Make `own` mutually exclusive.
+    # Overlapping `own` lists are recorded rather than rearranged.
     #
-    # A path shared by exactly two setups was left in both own lists: 3050 pairs
-    # overlapped, 392 distinct paths, 57% of the total payload duplicated. Two
-    # tarballs then contain the same store path, so installing both means writing
-    # it twice - and the second write lands in a directory the first created
-    # read-only. That is the java+maven failure: set-java-classpath-hook is in both
-    # lists, java installs it first, maven cannot overwrite it.
+    # Two setups can legitimately share a store path: java and maven both contain
+    # set-java-classpath-hook, but neither depends on the other, so it stays in both
+    # own lists. 3050 pairs overlapped this way, over 392 distinct paths - 57% of
+    # the payload duplicated.
     #
-    # Rather than pushing all 392 into base - which would make a jq install
-    # download 400 paths to get 3 - each shared path is assigned to exactly ONE
-    # setup, and every other setup that needs it gains a dependency edge on that
-    # owner. The closure arithmetic is unchanged; only the packaging boundary
-    # moves.
+    # Moving each shared path to a single owner was tried and reverted: any
+    # assignment creates cycles (bazel -> diffutils -> coreutils -> box -> bazel),
+    # because sharing is not directional. Pushing all 392 into base was also tried:
+    # it makes `install jq` download 400 paths to get 3.
     #
-    # The owner is chosen deterministically (first alphabetically). Picking "the
-    # setup that needs it most" would produce fewer edges, but it makes the graph
-    # depend on iteration order - and a graph that shifts between runs would make
-    # every setup look changed, defeating the incremental build.
-    owner_of = {}
+    # So the duplication stays, and the INSTALLER is what has to cope with writing a
+    # path that already exists - which is the honest place for it, since that is
+    # what "two tarballs contain the same file" means. The count is printed so the
+    # cost is visible rather than discovered.
     holders = {}
     for name, paths in own.items():
         if name == base_name:
             continue
         for p in paths:
             holders.setdefault(p, []).append(name)
-
-    moved = 0
-    for p, names in holders.items():
-        if len(names) < 2:
-            continue
-        # Deterministic owner: the first alphabetically. Choosing by "most to lose"
-        # sounds better but makes the result depend on iteration order, and a graph
-        # that shifts between runs would make every setup look changed.
-        owner_of[p] = sorted(names)[0]
-        moved += len(names) - 1
-
-    if moved:
-        for name, paths in own.items():
-            if name == base_name:
-                continue
-            keep = []
-            for p in paths:
-                owner = owner_of.get(p)
-                if owner is None or owner == name:
-                    keep.append(p)
-                else:
-                    # Someone else ships it; depend on them and drop it here.
-                    if owner not in deps[name]:
-                        deps[name].append(owner)
-            own[name] = keep
+    shared = {p: ns for p, ns in holders.items() if len(ns) > 1}
+    if shared:
+        dup = sum(len(ns) - 1 for ns in shared.values())
         print()
-        print("packaging boundary: %d duplicate path reference(s) removed, "
-              "%d path(s) given a single owner" % (moved, len(owner_of)))
-
-        # A cycle here would make install order impossible: install.sh walks deps
-        # depth-first and would either loop or install a setup before its
-        # dependency's paths exist. The assignment above can create one - if A owns
-        # a path B needs and B owns a path A needs, they now depend on each other.
-        # Detected and refused rather than shipped.
-        def find_cycle():
-            state = {}          # name -> 1 visiting, 2 done
-            stack = []
-
-            def visit(n):
-                if state.get(n) == 2:
-                    return None
-                if state.get(n) == 1:
-                    return stack[stack.index(n):] + [n]
-                state[n] = 1
-                stack.append(n)
-                for d in deps.get(n, []):
-                    if d == base_name:
-                        continue
-                    c = visit(d)
-                    if c:
-                        return c
-                stack.pop()
-                state[n] = 2
-                return None
-
-            for n in list(deps):
-                c = visit(n)
-                if c:
-                    return c
-            return None
-
-        cyc = find_cycle()
-        if cyc:
-            sys.exit("compute-deps: the packaging boundary introduced a dependency "
-                     "cycle:\n  " + " -> ".join(cyc) +
-                     "\nThis must be resolved before anything is published.")
+        print("%d path(s) are shared by two or more setups (%d duplicate copies);"
+              % (len(shared), dup))
+        print("the installer overwrites them rather than failing")
+        for p, ns in sorted(shared.items(), key=lambda kv: -len(kv[1]))[:5]:
+            print("   %3d setups  %s" % (len(ns), p.split("-", 1)[-1]))
 
     print()
     print("dependency edges (derived, not declared):")

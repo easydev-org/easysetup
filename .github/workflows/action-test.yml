@@ -32,6 +32,32 @@ jobs:
       - name: the .sha256 parser accepts every published shape
         run: tools/test-checksum-parse.sh
 
+  # Install as a normal user and run the tools, because that is the only way two
+  # bugs were reachable - and both looked fixed when exercised as root:
+  #
+  #   * the extractor created 0555 directories and then filled them
+  #   * two setups carry the same store path, so the second found it read-only
+  #
+  # Root ignores permission bits, so `container:` jobs pass both and a plain runner
+  # fails both. This job is the regression test for the runner case.
+  nonroot-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: fetch the published binary
+        run: |
+          set -euo pipefail
+          tag=$(curl -fsSI https://github.com/easydev-org/easysetup-cli/releases/latest \
+            | awk 'tolower($1)=="location:" {n=split($2,a,"/"); print a[n]; exit}' | tr -d '\r')
+          curl -fsSL -o /tmp/easysetup \
+            "https://github.com/easydev-org/easysetup-cli/releases/download/$tag/easysetup-linux-amd64"
+          chmod 755 /tmp/easysetup
+      - name: install as nobody and run the tools
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BIN: /tmp/easysetup
+        run: tools/test-nonroot-install.sh
+
   basic:
     runs-on: ubuntu-latest
     container: debian:trixie-slim

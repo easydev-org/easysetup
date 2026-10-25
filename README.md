@@ -74,36 +74,52 @@ jobs:
     runs-on: ubuntu-latest     # no container needed
 ```
 
-What is required: `bash`, and the four packages `install.sh` uses - `curl` to
-fetch, `zstd` to unpack, `python3` to read the manifest, and a CA bundle. The
-action installs them if they are missing, picking whichever package manager the
-image has (apt, dnf, yum, apk, zypper). On runners that already have them the
-step is a no-op.
+What is required: `bash` and `curl`. The static binary downloads, verifies,
+decompresses and unpacks in-process, so `zstd`, `python3` and `sha256sum` are no
+longer needed - the action installs `curl` if the image lacks it, picking whichever
+package manager is present (apt, dnf, yum, apk, zypper).
 
-Debian-slim and Alpine images ship none of the four, so a `container:` still
-helps there - but for the prerequisites, not for the libc.
+Debian-slim and Alpine ship no curl at all, so a `container:` still helps there -
+but for curl, not for the libc.
+
+**`/nix/store` must be writable, and only creating it needs root.** The action runs
+`easysetup prepare`, which creates the directory as root or via sudo. Everything
+after that - downloading, unpacking, installing - runs as the unprivileged user.
+
+That matters because it is the case a container hides: root ignores permission
+bits, so two installer bugs (creating 0555 directories and then filling them; and
+two setups carrying the same store path, so the second could not replace the
+first's read-only copy) only appeared on a plain runner. `sudo install` is
+therefore neither needed nor wanted - it would paper over exactly those failures.
+`tools/test-nonroot-install.sh` runs the whole install as `nobody` and is part of
+CI.
 
 ## Use without the action
 
-The action is a convenience wrapper; the script stands alone.
+The action is a convenience wrapper; the binary stands alone. It is statically
+linked with no interpreter, so it runs on any Linux userland - including images
+with no shell and no package manager.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/easydev-org/easysetup/main/install.sh | bash -s -- node jq
+# fetch it however you like, then
+sudo ./easysetup prepare        # creates /nix/store; the only step needing root
+./easysetup install node jq     # downloads, verifies, unpacks - as your user
+./easysetup env ~/env.sh        # a PATH script you can source
 ```
 
-Needs `curl`, `zstd`, `python3` and CA certificates. It resolves dependencies
-itself (see below), verifies each tarball's SHA-256 against one published beside
-it, and unpacks at `/`.
+Releases are per architecture (`linux/amd64`, `linux/arm64`); take the one
+matching `uname -m`. It resolves dependencies itself (see below), verifies each
+tarball against the release's `SHA256SUMS`, and unpacks at `/`.
 
 ## What actually gets downloaded
 
 A tarball does not contain its whole closure. Two things are removed first,
 because someone else already supplies them:
 
-* **the shared base** - the ~15 store paths that most setups need, glibc above
-  all. Published once as `base-2.44`, subtracted from everything else.
+* **the shared base** - the 8 store paths shared by most setups, glibc above all.
+  Published once as `base-2.44`, subtracted from everything else.
 * **anything a dependency provides** - `composer`'s closure contains `php`'s
-  entirely, so composer's tarball holds only its own 14 paths and `php` is
+  entirely, so composer's tarball holds only its own 6 paths and `php` is
   fetched separately.
 
 Measured, on the published artifacts:
