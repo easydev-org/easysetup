@@ -27,16 +27,26 @@ fail=0
 ok()   { printf '  ok    %s\n' "$1"; pass=$((pass+1)); }
 bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail+1)); }
 
+# Creating /nix needs root, and that is the ONE thing the test allows itself.
+# Everything after it runs as nobody, which is the point.
+#
+# sudo, not su: a GitHub runner's sudo is passwordless, while su to another user
+# prompts for a password it does not have. In the sandbox this was developed in the
+# shell was already root, so `su nobody` worked there and not here - which is the
+# same "only fails where it matters" shape as the bug this test guards.
+#
 # Each case gets a fresh store so the "already installed" logic does not mask a
 # failure by skipping the write entirely.
 fresh_store() {
-  rm -rf /nix /tmp/nb-home
-  mkdir -p /nix/store /tmp/nb-home
-  chmod 777 /nix /nix/store /tmp/nb-home
+  sudo rm -rf /nix /tmp/nb-home
+  sudo mkdir -p /nix/store
+  sudo chmod 777 /nix /nix/store
+  mkdir -p /tmp/nb-home
+  chmod 777 /tmp/nb-home
 }
 
 # Run as nobody, with HOME somewhere writable - the runner's own home is not.
-as_nobody() { su -s /bin/bash nobody -c "HOME=/tmp/nb-home $*"; }
+as_nobody() { sudo -u nobody env HOME=/tmp/nb-home bash -c "$*"; }
 
 echo "== install as a normal user =="
 for combo in "jq" "java maven" "node" "python pip" "elixir erlang" "micromamba pixi"; do
