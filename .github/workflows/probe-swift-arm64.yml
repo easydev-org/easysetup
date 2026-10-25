@@ -1,0 +1,85 @@
+name: probe-swift-arm64
+
+# Is swift really absent on aarch64, or is the filter in flake.nix hiding it?
+
+# The manifest marks swift, swiftformat and sourcekit-lsp as amd64-only, and
+# flake.nix filters them out of packages.aarch64-linux so the tree evaluates. If
+# that judgement is wrong, arm64 users lose three tools for no reason - so this
+# asks nixpkgs directly, at the pinned revision, without any of our filtering.
+
+# Two separate questions:
+#   * does the attribute exist at all for aarch64-linux
+#   * if it does, is its output substitutable (a compile would be hours)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-platforms = aarch64-linux
+
+      - name: pinned revision
+        id: pin
+        run: |
+          set -euo pipefail
+          rev=$(nix flake metadata --json | \
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["locks"]["nodes"]["nixpkgs"]["locked"]["rev"])')
+          echo "pinned: $rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
+      - name: does the attribute exist for aarch64
+        env:
+          REV: ${{ steps.pin.outputs.rev }}
+        run: |
+          set -uo pipefail
+          set +e
+          # meta.platforms is what nixpkgs declares; evaluating it needs no build.
+          for attr in swift swiftformat sourcekit-lsp swiftlint julia rustc cargo; do
+            printf '%-16s ' "$attr"
+            v=$(nix eval --raw --impure --expr "
+              (import (builtins.fetchGit {
+                url = \"https://github.com/NixOS/nixpkgs\"; rev = \"$REV\";
+              }) { system = \"aarch64-linux\"; config.allowUnfree = true; }).$attr.version" 2>&1)
+            if [ "${v:0:5}" = "error" ]; then echo "NO AARCH64 ATTR"; else echo "version $v"; fi
+          done
+
+      - name: and can the arm64 output actually be fetched
+        env:
+          REV: ${{ steps.pin.outputs.rev }}
+        run: |
+          set -uo pipefail
+          set +e
+          for attr in swift swiftformat sourcekit-lsp rustywind; do
+            printf '%-16s ' "$attr"
+            o=$(nix build --no-link --print-out-paths --system aarch64-linux \
+                  "github:NixOS/nixpkgs/$REV#$attr" 2>/dev/null | head -1)
+            if [ -z "$o" ]; then echo "cannot build/eval"; continue; fi
+            h=$(basename "$o" | cut -d- -f1)
+            c=$(curl -s -o /dev/null -w '%{http_code}' "https://cache.nixos.org/$h.narinfo")
+            echo "cache=$c  $(basename "$o" | cut -c1-40)"
+          done
+
+      - name: what does swift's meta say about platforms
+        env:
+          REV: ${{ steps.pin.outputs.rev }}
+        run: |
+          set -uo pipefail
+          set +e
+          echo "== meta.platforms for x86_64 vs aarch64 =="
+          for sys in x86_64-linux aarch64-linux; do
+            echo "-- $sys"
+            nix eval --json --impure --expr "
+              (import (builtins.fetchGit {
+                url = \"https://github.com/NixOS/nixpkgs\"; rev = \"$REV\";
+              }) { system = \"$sys\"; config.allowUnfree = true; }).swift.meta.platforms" 2>&1 | head -3
+          done
