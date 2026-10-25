@@ -21,6 +21,17 @@ set -uo pipefail
 BIN=${BIN:-/tmp/easysetup}
 [ -x "$BIN" ] || { echo "need an easysetup binary at $BIN (set BIN=...)" >&2; exit 1; }
 
+# Which cases to run. The default pair is the regression this test exists for;
+# `. github/workflows/action-test.yml` runs that. `FULL=1` adds the rest, which is
+# worth doing by hand but takes long enough on a runner (the downloads are from
+# GitHub releases over the runner's own link, minutes per closure) that it does not
+# belong on every push.
+if [ "${FULL:-0}" = "1" ]; then
+  CASES=(jq "java maven" node "python pip" "elixir erlang" "micromamba pixi")
+else
+  CASES=(jq "java maven")
+fi
+
 pass=0
 fail=0
 
@@ -71,7 +82,7 @@ echo "== install as a normal user =="
 # from the previous case, so maven meets a store path java installed - which is
 # exactly the collision that used to fail.
 fresh_store
-for combo in "jq" "java maven" "node" "python pip" "elixir erlang" "micromamba pixi"; do
+for combo in "${CASES[@]}"; do
   echo "  -- $combo"
   log=/tmp/nb-install.log
   : > "$log"
