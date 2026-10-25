@@ -1,0 +1,61 @@
+name: probe-gate
+
+# Does assert-cached.py actually catch an uncached setup?
+
+# A gate nobody has seen fire is not a gate - it is a script that might be
+# returning 0 for the wrong reason. This deliberately puts julia into the arm64
+# set (removing its only_arch) and checks that the gate fails, naming it. Then it
+# runs the gate as configured and checks that it passes.
+
+# If the first part passes instead of failing, the gate is broken and every
+# release since it was added has been unchecked.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-platforms = aarch64-linux
+
+      - name: the gate passes on the manifest as it stands
+        run: |
+          set -euo pipefail
+          python3 tools/assert-cached.py
+
+      - name: the gate FAILS when an uncached setup is added
+        run: |
+          set -uo pipefail
+          # julia on arm64: meta.platforms allows it, cache.nixos.org has 404 for
+          # it. Removing only_arch makes the gate see it.
+          sed -i 's|\(- { tool: julia,.*\)only_arch: "amd64"|\1|' matrix-nix.yml
+          grep 'tool: julia' matrix-nix.yml
+          out=$(python3 tools/assert-cached.py arm64 2>&1 || true)
+          echo "$out" | tail -12
+          echo "$out" | grep -q 'julia' \
+            && echo "GATE WORKS: it named julia" \
+            || { echo "::error::the gate passed an uncached setup - it is not doing its job"; exit 1; }
+          python3 tools/assert-cached.py arm64 >/dev/null 2>&1 && {
+            echo "::error::the gate exited 0 on an uncached setup"; exit 1; }
+          echo "GATE WORKS: exit code was non-zero"
+
+      - name: and rejects with a message that says what to do
+        run: |
+          set -uo pipefail
+          out=$(ARCH=arm64 python3 tools/compute-deps.py 2>&1 || true)
+          echo "$out" | grep -E 'not in cache|SKIP' | head -5 || true
+          # compute-deps must SKIP it rather than compile it. If the old
+          # "building locally" fallback were still there, this step would take an
+          # hour and produce a graph entry.
+          echo "$out" | grep -q 'building locally' \
+            && { echo "::error::compute-deps still compiles missing paths"; exit 1; } \
+            || echo "compute-deps skipped instead of compiling, as intended"

@@ -85,6 +85,22 @@ jobs:
             fi
           done
 
+      # The guarantee, checked as a fact.
+      #
+      # Everything above derives the graph; this proves the graph only contains
+      # things cache.nixos.org has actually built. It is a gate, not a report: if
+      # any path would have to be compiled, the run fails here rather than at a
+      # build job that then quietly spends an hour compiling.
+      #
+      # The build jobs carry their own --option max-jobs 0, so this is the second
+      # of two independent checks - one over the whole graph, one over each
+      # individual build. Either alone would do; both means a mistake has to defeat
+      # two different mechanisms.
+      - name: every published path must already exist in the cache
+        run: |
+          set -euo pipefail
+          python3 tools/assert-cached.py
+
       - name: show the result
         run: |
           set -euo pipefail

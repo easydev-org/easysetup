@@ -126,8 +126,13 @@ def out_path(dir_name):
     # If the flake cannot resolve an attribute, that is a real answer: this setup
     # is not available here.
     for ref in ('.#%s' % _quoted(name),):
+        # max-jobs 0: this must never compile. Resolving a setup's output path is
+        # a lookup, and a lookup that has to build its answer means the setup is
+        # not publishable - which the cache check in closure() then confirms. Any
+        # compile here would also be invisible: it would just make the graph step
+        # take an hour instead of a minute.
         r = run([NIX, "build", "--no-link", "--print-out-paths",
-                 "--system", NIX_SYSTEM, ref],
+                 "--system", NIX_SYSTEM, "--option", "max-jobs", "0", ref],
                 timeout=1800)
         if r.returncode != 0:
             # Print nix's own message. Without it "cannot resolve" tells you
@@ -163,24 +168,20 @@ def closure(path, name=None):
     if r.returncode == 0 and r.stdout.strip():
         return set(x for x in r.stdout.splitlines() if x.strip())
 
-    # Not every path is IN the binary cache. The python package sets in
-    # particular are built per-interpreter and often absent, and a path that is
-    # not there cannot be walked from metadata alone.
+    # Not in the cache, so this setup cannot be published. That is the answer -
+    # there is deliberately no "build it locally" fallback any more.
     #
-    # The fallback must build the ATTRIBUTE, not the store path. `nix build
-    # /nix/store/...` cannot reverse a path into its derivation, so it fails with
-    # "not valid" / "no substituter" - which is exactly how these setups kept
-    # being skipped after the fallback was added.
-    print("      (not in cache, building locally: %s)" % path.split("-", 1)[-1])
-    target = '.#%s' % _quoted(name) if name else path
-    b = run([NIX, "build", "--no-link", "--system", NIX_SYSTEM, target],
-            timeout=1800)
-    if b.returncode != 0:
-        return None
-    r2 = run([NIX, "path-info", "-r", path], timeout=600)
-    if r2.returncode != 0:
-        return None
-    return set(x for x in r2.stdout.splitlines() if x.strip())
+    # There used to be one, and it was the wrong shape of fix: it made the graph
+    # complete by compiling the missing piece on the CI machine, which meant a
+    # published tarball could contain something nothing else had ever built and no
+    # cache could ever re-produce. The project only ships what cache.nixos.org
+    # already has, so a cache miss here is a reason to leave the setup out, not to
+    # work around it.
+    #
+    # The caller prints the name and skips it; `probe-closure-fails.py` reports the
+    # same set so the omission is visible in the run rather than silent.
+    print("      (not in cache: %s)" % path.split("-", 1)[-1])
+    return None
 
 
 def main(argv):

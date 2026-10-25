@@ -82,7 +82,37 @@ case "$NAME" in
      exit 1 ;;
 esac
 
-echo "nixpkg: building"
+# Refuse to compile. This is the guarantee the whole project rests on: a published
+# tarball is always something cache.nixos.org built, never something we built here.
+#
+# The check runs BEFORE the build so the failure is fast and names the paths. It
+# also covers a hand-run of this script, which is the case the workflow-level check
+# cannot protect: `nix build --dry-run` is in the workflow too, but someone running
+# this locally never goes through it.
+#
+# What it cannot do is stop a build that starts compiling mid-flight - a path the
+# dry-run thought was cached but whose download fails. `--option max-jobs 0`
+# closes that: nix then has no builder to fall back to, so such a path errors
+# instead of quietly compiling for forty minutes.
+echo "nixpkg: checking every path is substitutable"
+if ! DRY=$("$NIX" build --dry-run --system "$NIX_SYSTEM" ".#\"$NAME\"" 2>&1); then
+  echo "nixpkg: could not evaluate .#\"$NAME\" for $NIX_SYSTEM" >&2
+  printf '%s\n' "$DRY" | tail -20 >&2
+  exit 1
+fi
+to_build=$(printf '%s\n' "$DRY" | grep -c 'will be built' || true)
+if [ "${to_build:-0}" -gt 0 ]; then
+  echo "nixpkg: REFUSING TO BUILD: $to_build path(s) are not in cache.nixos.org" >&2
+  echo "nixpkg: they would have to be compiled here, for $NIX_SYSTEM:" >&2
+  printf '%s\n' "$DRY" | grep 'will be built' | head -10 >&2
+  echo "nixpkg:" >&2
+  echo "nixpkg: this project only ships closures a binary cache already has." >&2
+  echo "nixpkg: wait for Hydra to cover this platform, or mark the setup" >&2
+  echo "nixpkg: only_arch in matrix-nix.yml so it is not published here." >&2
+  exit 1
+fi
+echo "nixpkg: all paths substitutable"
+
 # Print what the flake can actually see before building. A mismatch between the
 # file on disk and the attribute nix resolves means nix is evaluating a different
 # tree than the checkout - which is what happens when flake evaluation is pinned
@@ -115,7 +145,13 @@ fi
 # can produce it. Only a path that is NOT in the cache would need an emulator,
 # and that is exactly what this fails on rather than silently compiling for
 # hours.
+# --option max-jobs 0 is the hard guarantee, not --dry-run above it. With no
+# builder available, a path that is not in the cache cannot be compiled: nix
+# reports "cannot build ... no substituter" and exits. That covers the case the
+# dry-run cannot - a path the dry-run believed was cached whose download then
+# failed - and turns "would have compiled for an hour" into a named error.
 OUTLIST=$("$NIX" build --no-link --print-out-paths --system "$NIX_SYSTEM" \
+            --option max-jobs 0 \
             ".#\"$NAME\"" 2>/tmp/nixpkg-err.log)
 if [ $? -ne 0 ] || [ -z "$OUTLIST" ]; then
   echo "nixpkg: nix build failed" >&2
@@ -384,9 +420,15 @@ else
       echo "nixpkg: staging $(echo $COMPANION_PATHS | wc -w) companion path(s) for the chroot"
       NIXSTORE_C="$(dirname "$NIX")/nix-store"
       if [ -x "$NIXSTORE_C" ]; then
-        "$NIXSTORE_C" --realise $COMPANION_PATHS >/dev/null 2>&1 || true
+        # --realise fetches; with max-jobs 0 it cannot compile either. Same
+        # guarantee as the build: these are dependencies that install.sh will
+        # fetch, so if one is not cached the tarball would be uninstallable
+        # anyway - better to fail here.
+        "$NIXSTORE_C" --realise $COMPANION_PATHS \
+          --option max-jobs 0 >/dev/null 2>&1 || true
       else
-        "$NIX" build --no-link $COMPANION_PATHS >/dev/null 2>&1 || true
+        "$NIX" build --no-link --option max-jobs 0 \
+          $COMPANION_PATHS >/dev/null 2>&1 || true
       fi
       for extra in $COMPANION_PATHS; do
         [ -e "$extra" ] && cp -a "$extra" "$STAGE/nix/store/" 2>/dev/null
