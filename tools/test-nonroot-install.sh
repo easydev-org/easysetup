@@ -46,7 +46,12 @@ fresh_store() {
 }
 
 # Run as nobody, with HOME somewhere writable - the runner's own home is not.
-as_nobody() { sudo -u nobody env HOME=/tmp/nb-home bash -c "$*"; }
+#
+# `env HOME=... bash -c` with an explicit /bin/bash: sudo resets PATH, and under
+# `env` a bare `bash` or `timeout` may not resolve. Two runs hung for 30+ minutes
+# on this before the log was ever flushed, which is what a shell waiting for a
+# command it cannot find looks like from outside.
+as_nobody() { sudo -n -u nobody /usr/bin/env HOME=/tmp/nb-home /bin/bash -c "$*"; }
 
 # Every install is bounded. A hung download would otherwise run until the job's
 # overall timeout, hiding which setup it was and why - and one of these closures is
@@ -57,12 +62,19 @@ echo "== install as a normal user =="
 for combo in "jq" "java maven" "node" "python pip" "elixir erlang" "micromamba pixi"; do
   fresh_store
   echo "  -- $combo"
-  out=$(as_nobody "timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1)
-  if echo "$out" | grep -q "installed:"; then
+  # Streamed through tee, so the job log shows progress while it runs.
+  #
+  # `out=$(...)` holds everything until the command exits, and a plain `> file`
+  # does the same from the reader's point of view - two runs sat silent for 30
+  # minutes and there was nothing to inspect. tee writes and prints as it goes.
+  log=/tmp/nb-install.log
+  : > "$log"
+  as_nobody "/usr/bin/timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1 | sed 's/^/        /' | tee "$log" >&2
+  if grep -q "installed:" "$log"; then
     ok "$combo installs"
   else
     bad "$combo"
-    echo "$out" | tail -6 | sed 's/^/        /'
+    tail -6 "$log" | sed 's/^/        /'
   fi
 done
 
