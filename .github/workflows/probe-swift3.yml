@@ -1,0 +1,62 @@
+name: probe-swift3
+
+# One attribute at a time, with the whole error printed.
+
+# The previous two probes lost the message: one mixed in git progress, the other
+# sliced it away with `tail -2`. "build failed" without a reason is what made this
+# take three attempts.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-platforms = aarch64-linux
+
+      - name: swift on aarch64, full error
+        run: |
+          set -uo pipefail
+          set +e
+          echo "=== nix eval .#swift-6.3.3 -v ==="
+          nix eval --raw --impure --expr '
+            let
+              f = builtins.getFlake (toString ./.);
+              pkgs = f.inputs.nixpkgs.legacyPackages.aarch64-linux;
+            in (import (./setups + "/swift-6.3.3.nix") { inherit pkgs; }).outPath' 2>&1 | tail -20
+          echo "exit=$?"
+
+      - name: swiftformat and sourcekit-lsp on aarch64
+        run: |
+          set -uo pipefail
+          set +e
+          for n in swiftformat-0.63.1 sourcekit-lsp-6.3.3; do
+            echo "===== $n ====="
+            nix eval --raw --impure --expr "
+              let
+                f = builtins.getFlake (toString ./.);
+                pkgs = f.inputs.nixpkgs.legacyPackages.aarch64-linux;
+              in (import (./setups + \"/$n.nix\") { inherit pkgs; }).outPath" 2>&1 | tail -8
+            echo
+          done
+
+      - name: swift's declared platforms
+        run: |
+          set -uo pipefail
+          set +e
+          nix eval --impure --expr '
+            let
+              f = builtins.getFlake (toString ./.);
+            in {
+              aarch64 = f.inputs.nixpkgs.legacyPackages.aarch64-linux.swift.meta.platforms;
+              x86_64  = f.inputs.nixpkgs.legacyPackages.x86_64-linux.swift.meta.platforms;
+            }.aarch64' 2>&1 | tail -10
