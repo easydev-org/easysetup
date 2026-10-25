@@ -59,17 +59,24 @@ as_nobody() { sudo -n -u nobody /usr/bin/env HOME=/tmp/nb-home /bin/bash -c "$*"
 INSTALL_TIMEOUT=${INSTALL_TIMEOUT:-600}
 
 echo "== install as a normal user =="
+
+# ONE store for all six, not one each.
+#
+# The point of each case is "can a normal user install this", not "can it start from
+# nothing" - and the shared store is also the realistic case, since a job installs
+# several tools into the same store. Recreating it per case meant re-downloading the
+# 15 MB base six times, which is most of the runtime.
+#
+# The java+maven case still exercises the interesting path: base is already there
+# from the previous case, so maven meets a store path java installed - which is
+# exactly the collision that used to fail.
+fresh_store
 for combo in "jq" "java maven" "node" "python pip" "elixir erlang" "micromamba pixi"; do
-  fresh_store
   echo "  -- $combo"
-  # Streamed through tee, so the job log shows progress while it runs.
-  #
-  # `out=$(...)` holds everything until the command exits, and a plain `> file`
-  # does the same from the reader's point of view - two runs sat silent for 30
-  # minutes and there was nothing to inspect. tee writes and prints as it goes.
   log=/tmp/nb-install.log
   : > "$log"
-  as_nobody "/usr/bin/timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1 | sed 's/^/        /' | tee "$log" >&2
+  as_nobody "/usr/bin/timeout $INSTALL_TIMEOUT $BIN install $combo" 2>&1 \
+    | sed 's/^/        /' | tee "$log" >&2
   if grep -q "installed:" "$log"; then
     ok "$combo installs"
   else
@@ -82,8 +89,7 @@ echo
 echo "== and the tools actually run =="
 # java+maven is the pair that used to fail; if its jars and scripts resolve, the
 # shared store path really was written correctly.
-fresh_store
-as_nobody "$BIN install java maven" >/dev/null 2>&1
+# java and maven are already installed by the loop above, into this same store.
 as_nobody "$BIN env /tmp/nb-home/e.sh" >/dev/null 2>&1
 for check in "java -version:openjdk" "mvn -version:Apache Maven"; do
   cmd=${check%%:*}; want=${check##*:}
