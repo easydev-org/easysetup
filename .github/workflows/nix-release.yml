@@ -424,6 +424,22 @@ jobs:
         # and report it instead.
         continue-on-error: true
 
+      # What actually arrived, before anything is published.
+      #
+      # The publish step reported "local 16181164" for a setup whose artifact was
+      # 16074772 bytes - so either the download put something else there, or the
+      # glob matched more than one file and the first was stale. Either way the
+      # next step was reading a different file from the one that was built, and
+      # nothing said so.
+      - name: list the downloaded assets
+        run: |
+          set -euo pipefail
+          echo "== everything under /tmp/assets =="
+          find /tmp/assets -name '*.tar.zst' -printf '%s  %p\n' | sort -k2
+          echo
+          n=$(find /tmp/assets -name '*.tar.zst' | wc -l)
+          echo "$n tarball(s) downloaded"
+
       # One release for every setup, rather than one release per setup.
 
       # Why: 194 releases each holding two assets is a lot of clutter for one
