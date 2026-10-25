@@ -226,15 +226,23 @@ runs:
         OUT: ${{ inputs.env-script }}
       run: |
         set -euo pipefail
-        "${{ steps.cli.outputs.bin }}" env "$OUT" > /dev/null
+        # /opt is root-owned, so a bare runner cannot write there. The env script is
+        # only needed to derive PATH for GITHUB_PATH, so write it somewhere certain
+        # and use that - the input's path is a preference, not a requirement.
+        out="$OUT"
+        if ! "${{ steps.cli.outputs.bin }}" env "$out" > /dev/null 2>&1; then
+          out="$RUNNER_TEMP/easysetup-env.sh"
+          echo "note: $OUT is not writable here; using $out instead"
+          "${{ steps.cli.outputs.bin }}" env "$out" > /dev/null
+        fi
 
         # GITHUB_PATH is how one step passes PATH to the NEXT one. Without this,
         # `uses: easysetup` followed by `run: node -v` in a separate step would
         # not see node at all, whatever env.sh says.
         if [ -n "${GITHUB_PATH:-}" ]; then
-          grep -o 'PATH="[^:]*' "$OUT" | sed 's/PATH="//' >> "$GITHUB_PATH" || true
+          grep -o 'PATH="[^:]*' "$out" | sed 's/PATH="//' >> "$GITHUB_PATH" || true
         fi
         if [ -n "${GITHUB_ENV:-}" ]; then
-          echo "EASYSETUP_ENV=$OUT" >> "$GITHUB_ENV"
+          echo "EASYSETUP_ENV=$out" >> "$GITHUB_ENV"
         fi
-        echo "env-script=$OUT" >> "$GITHUB_OUTPUT"
+        echo "env-script=$out" >> "$GITHUB_OUTPUT"
