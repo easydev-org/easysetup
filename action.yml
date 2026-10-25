@@ -41,6 +41,46 @@ outputs:
 runs:
   using: composite
   steps:
+    # curl, and nothing else.
+    #
+    # The static binary does the downloading, verifying, decompressing and
+    # unpacking in-process, so zstd, python3 and sha256sum are no longer needed -
+    # that was the point of writing it. curl is still needed because something has
+    # to fetch the binary itself, and that is the one thing that cannot be solved
+    # by the binary.
+    #
+    # This step was dropped when install.sh was replaced, on the assumption that a
+    # runner with bash would have curl. debian:trixie-slim has bash and no curl, so
+    # every container job failed with "line 17: curl: command not found" - the
+    # action could not even fetch itself.
+    - name: ensure curl is available
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v curl >/dev/null 2>&1; then
+          echo "curl present: $(curl --version | head -1)"
+          exit 0
+        fi
+        if command -v apt-get >/dev/null; then
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl ca-certificates
+        elif command -v dnf >/dev/null; then
+          dnf install -y -q curl ca-certificates
+        elif command -v yum >/dev/null; then
+          yum install -y -q curl ca-certificates
+        elif command -v apk >/dev/null; then
+          apk add --no-cache curl ca-certificates
+        elif command -v zypper >/dev/null; then
+          zypper -q install -y curl ca-certificates
+        else
+          echo "::error::curl is not installed and no known package manager is present."
+          echo "::error::The action needs curl to fetch its own binary; install it in"
+          echo "::error::the image (e.g. RUN apt-get install -y curl ca-certificates)."
+          exit 1
+        fi
+        echo "installed: $(curl --version | head -1)"
+
     # A single static binary does the whole install.
     #
     # This replaced install.sh, which needed sh, curl, zstd and python3 to
