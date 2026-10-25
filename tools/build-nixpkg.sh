@@ -416,6 +416,16 @@ else
     # this setup, and base comes from a different tarball. Realise them first,
     # or the copy below silently copies nothing and the chroot run fails on a
     # missing interpreter.
+    #
+    # Into a SEPARATE root, never into $STAGE.
+    #
+    # This is the bug that made every delta tarball a full closure: the companion
+    # paths were copied into $STAGE/nix/store - the very tree that gets tarred -
+    # so a setup whose own list was 3 paths shipped 11, base included. The count
+    # printed above said 3 the whole time, because it counted the copy loop rather
+    # than the tree.
+    CHROOT_ROOT=$(mktemp -d)
+    cp -a "$STAGE/nix" "$CHROOT_ROOT/"
     if [ -n "$COMPANION_PATHS" ]; then
       echo "nixpkg: staging $(echo $COMPANION_PATHS | wc -w) companion path(s) for the chroot"
       NIXSTORE_C="$(dirname "$NIX")/nix-store"
@@ -431,23 +441,26 @@ else
           $COMPANION_PATHS >/dev/null 2>&1 || true
       fi
       for extra in $COMPANION_PATHS; do
-        [ -e "$extra" ] && cp -a "$extra" "$STAGE/nix/store/" 2>/dev/null
+        [ -e "$extra" ] && cp -a "$extra" "$CHROOT_ROOT/nix/store/" 2>/dev/null
       done
-      staged=$(ls "$STAGE/nix/store" | wc -l)
+      staged=$(ls "$CHROOT_ROOT/nix/store" | wc -l)
       echo "nixpkg: chroot root holds $staged store path(s)"
     fi
     # Only run the staged file if it is executable. For a data-only setup - cacert
     # is a bundle of certificates - the first entry is not a program, and trying to
     # exec it says nothing useful; the non-empty check above is the real assertion
     # for those.
-    if [ -x "$STAGE$REAL/$check_dir/$first" ]; then
-      chroot "$STAGE" "$REAL/$check_dir/$first" --version >/dev/null 2>&1 \
-        || chroot "$STAGE" "$REAL/$check_dir/$first" >/dev/null 2>&1 \
+    if [ -x "$CHROOT_ROOT$REAL/$check_dir/$first" ]; then
+      chroot "$CHROOT_ROOT" "$REAL/$check_dir/$first" --version >/dev/null 2>&1 \
+        || chroot "$CHROOT_ROOT" "$REAL/$check_dir/$first" >/dev/null 2>&1 \
         || echo "nixpkg: note - $first did not answer; not fatal"
       echo "nixpkg: chroot check done ($first)"
     else
       echo "nixpkg: $first is not executable (data setup); the non-empty check is the assertion"
     fi
+    chmod -R u+w "$CHROOT_ROOT" 2>/dev/null || true
+    rm -rf "$CHROOT_ROOT"
+    unset CHROOT_ROOT
   else
     echo "nixpkg: chroot unavailable; skipping the isolation check"
   fi
@@ -459,17 +472,20 @@ fi
 mkdir -p "$OUT"
 ASSET="$OUT/$DIR-debian-trixie-$ARCH.tar.zst"
 
-# What is about to be packed, named explicitly.
+# What is about to be packed, and an assertion that it is what was intended.
 #
-# The step above prints "3 store path(s) in the tarball" and the artifact then
-# contains eleven. Either the staging tree has more in it than was copied, or the
-# count is counting something else - and on a 16 MB artifact the difference is
-# invisible. Printing the staging tree makes the two numbers checkable against
-# each other.
-echo "nixpkg: staging tree contains:"
+# The count earlier in this script counts the copy loop; this counts the tree. They
+# disagreed for a long time because the chroot check copied companion paths into
+# the staging tree, so every delta tarball silently became a full closure - 3
+# intended paths, 11 in the artifact, and the log claiming 3 throughout.
+packed=$(find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -type d | wc -l)
+echo "nixpkg: staging tree holds $packed store path(s)"
 find "$STAGE/nix/store" -maxdepth 1 -mindepth 1 -printf '  %f\n' | sort
-echo "nixpkg: setup-root files:"
-find "$STAGE/nix" -maxdepth 1 -name 'setup-root-*' -printf '  %f\n' | sort
+if [ "$packed" != "$count" ]; then
+  echo "nixpkg: REFUSING TO PACK: the tree holds $packed paths but $count were intended" >&2
+  echo "nixpkg: something wrote into the staging tree besides the copy loop" >&2
+  exit 1
+fi
 
 # zstd, not xz. Measured on swift (5.8 GB unpacked): `tar -cJf` spent 34m49s in
 # single-threaded xz compression while the download and unpack took 23s and the
