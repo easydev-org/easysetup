@@ -1,0 +1,91 @@
+name: probe-swift-link
+
+# Does the swift override actually make `swiftc main.swift -o app` work?
+
+# The claim under test is specific: nixpkgs builds swift with its runtime .so files
+# in $out/lib but compiles a search path of $out/lib/swift/linux into the driver,
+# and that directory holds only .swiftmodule files. So linking fails with
+# "cannot find -lswiftCore" even though libswiftCore.so exists.
+
+# Measured against the published tarball: 415 .so files present, libswiftCore.so
+# 10 MB, and passing -L by hand makes the link succeed and the program run. This
+# checks that the wrapper in setups/swift-6.3.3.nix reproduces exactly that.
+
+# A test that only runs `swiftc --version` would pass either way - the failure is in
+# the linker, so the program has to be built AND executed.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org
+
+      - name: build the overridden swift
+        run: |
+          set -euo pipefail
+          # --system, not the host default, and max-jobs 0: the swift closure is in
+          # the cache and must not be compiled here.
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
+                  --option max-jobs 0 '.#"swift-6.3.3"' | tail -1)
+          echo "out=$out"
+          echo "out=$out" >> "$GITHUB_ENV"
+
+      - name: the wrapper adds the library path
+        run: |
+          set -euo pipefail
+          head -6 "$out/bin/swiftc"
+          grep -q -- '-L.*/lib' "$out/bin/swiftc" || {
+            echo "::error::the wrapper does not add -L"; exit 1; }
+
+      - name: swiftc still reports a version
+        run: |
+          set -euo pipefail
+          "$out/bin/swiftc" --version
+
+      - name: it links and runs a real program
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/t && cd /tmp/t
+          cat > main.swift <<'EOF'
+          import Foundation
+          let d = ["ok": true]
+          let j = try! JSONSerialization.data(withJSONObject: d)
+          print(String(data: j, encoding: .utf8)!)
+          EOF
+          # No -L here: that is the point. The wrapper has to supply it.
+          "$out/bin/swiftc" main.swift -o app
+          test -x app || { echo "::error::no executable was produced"; exit 1; }
+          got=$(./app)
+          echo "program printed: $got"
+          [ "$got" = '{"ok":true}' ] || { echo "::error::wrong output: $got"; exit 1; }
+          echo "swiftc links and the program runs"
+
+      - name: and `swift build` works too, not just swiftc
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p && cd /tmp/p
+          cat > Package.swift <<'EOF'
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+            name: "probe",
+            targets: [.executableTarget(name: "probe", path: "Sources/probe")]
+          )
+          EOF
+          mkdir -p Sources/probe
+          cat > Sources/probe/main.swift <<'EOF'
+          print("built by swift build")
+          EOF
+          "$out/bin/swift" build 2>&1 | tail -5
+          ./.build/debug/probe

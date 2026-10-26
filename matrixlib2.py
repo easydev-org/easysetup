@@ -241,7 +241,16 @@ def resolve(name, path=MATRIX):
     # after `1.10` as text. `sort_key` handles the shapes in this manifest,
     # including a trailing +N build tag and a -suffix.
     if len(as_tool) > 1 and all(e["tool"] == name for e in as_tool):
-        newest = max(as_tool, key=lambda e: sort_key(e["version"]))
+        # Newest version wins; on a tie the UNSUFFIXED entry wins.
+        #
+        # pip-26.1.2 and pip-26.1.2-py3.13 share a version string - the pip release
+        # is the same for both interpreters - so the version alone does not
+        # identify one. max() happens to return the first of equal keys, which
+        # meant this picked the 3.14 build only because it appears first in the
+        # manifest. That is luck, not a rule, and the Go implementation's unstable
+        # sort picked the other one.
+        newest = max(as_tool, key=lambda e: (sort_key(e["version"]),
+                                             e.get("suffix", "") == ""))
         return newest
 
     hits = as_tool if len(as_tool) > 1 else (as_dir if len(as_dir) > 1 else by_suffix)

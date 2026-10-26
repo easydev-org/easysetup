@@ -111,6 +111,45 @@ Releases are per architecture (`linux/amd64`, `linux/arm64`); take the one
 matching `uname -m`. It resolves dependencies itself (see below), verifies each
 tarball against the release's `SHA256SUMS`, and unpacks at `/`.
 
+## Naming: which version you get
+
+A bare name means the newest version:
+
+| you type | you get |
+|---|---|
+| `node` | `node-26.12.0` |
+| `node-24` | `node-24.21.0` |
+| `python` | `python-3.14.8` |
+| `python-3.13` | `python-3.13.16` |
+| `mypy` | `mypy-2.1.0` (the 3.14 build) |
+| `mypy-py3.13` | `mypy-2.1.0-py3.13` (the 3.13 build) |
+
+The `-py3.13` suffix exists because python's tools share a version number across
+interpreters: `python314Packages.mypy` and `python313Packages.mypy` are both
+2.1.0, so the version cannot tell them apart. The unsuffixed entry is the default
+one, which is also how a bare name resolves when the versions tie.
+
+## pip, and `python3 -m pip`
+
+`pip` is a setup like any other, and it installs as its own store path - so
+`pip` and `pip3` are on `PATH`, and `pip --version` reports which interpreter it
+belongs to:
+
+```
+$ pip --version
+pip 26.1.2 from /nix/store/…-python3.14-pip-26.1.2/lib/python3.14/site-packages/pip (python 3.14)
+```
+
+`python3 -m pip` does **not** work, and that is expected rather than broken: nix
+packages a Python library as a separate derivation, it does not write into an
+existing interpreter's `site-packages`. Adding a package to an interpreter means
+building a new interpreter (`python.withPackages`), which is a different thing
+from installing the package alongside it.
+
+Use `pip install …` rather than `python3 -m pip install …`. If you need the
+module form specifically, that requires a `python.withPackages` setup, which this
+manifest does not publish.
+
 ## What actually gets downloaded
 
 A tarball does not contain its whole closure. Two things are removed first,
