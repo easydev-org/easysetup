@@ -1,0 +1,83 @@
+name: probe-php-ext
+
+# How do you actually install a pecl extension on nixos?
+
+# `pecl install` cannot work: pear's bin_dir/php_dir/ext_dir all point into the
+# read-only store, so even with the network fixed there is nowhere to write. That is
+# the nix model - an extension is a derivation, not a file dropped into an existing
+# interpreter.
+
+# The supported route is php.buildEnv / php.withExtensions, which wraps php and
+# generates an ini that loads each extension from its own store path. This proves it
+# works, and prints the exact shape so the answer can be documented from evidence
+# rather than from the manual.
+
+# It also answers the practical question for this project: can an easysetup setup be
+# built that way? If php.buildEnv evaluates at the pinned revision, yes - the setup
+# would carry its own php plus the extension, self-contained.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org
+
+      - name: what extensions does php85 expose
+        run: |
+          set -uo pipefail
+          set +e
+          nix eval --impure --json --expr '
+            let f = builtins.getFlake (toString ./.);
+                p = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
+            in builtins.attrNames p.php85.extensions' 2>&1 | tail -3
+          echo
+          echo "== the handful that matter =="
+          nix eval --impure --json --expr '
+            let f = builtins.getFlake (toString ./.);
+                p = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
+                want = [ "redis" "imagick" "xdebug" "memcached" "apcu" "yaml" ];
+            in builtins.filter (n: builtins.elem n want) (builtins.attrNames p.php85.extensions)' 2>&1 | tail -2
+
+      - name: build a php with extensions, the supported way
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
+                  --option max-jobs 0 --impure --expr '
+            let f = builtins.getFlake (toString ./.);
+                p = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
+            in p.php85.buildEnv {
+              extensions = { enabled, all }: enabled ++ [ all.redis all.apcu ];
+            }' 2>&1 | tail -1)
+          echo "out=$out"
+          echo "out=$out" >> "$GITHUB_ENV"
+
+      - name: does the wrapped php load them
+        run: |
+          set -uo pipefail
+          set +e
+          echo "== php -m =="
+          "$out/bin/php" -m 2>&1 | grep -iE 'redis|apcu|openssl|curl' || true
+          echo
+          echo "== the generated ini =="
+          "$out/bin/php" --ini 2>&1 | head -6
+          cat "$out/lib/php-extra-init.ini" 2>/dev/null | head -8 || \
+            find "$out" -name '*init*.ini' 2>/dev/null | head -3
+
+      - name: and does it still have pecl, for querying
+        run: |
+          set -uo pipefail
+          set +e
+          ls "$out/bin" | head -12
+          echo "== pecl list =="
+          "$out/bin/pecl" list 2>&1 | head -8
