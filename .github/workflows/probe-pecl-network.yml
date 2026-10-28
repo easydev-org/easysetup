@@ -1,0 +1,88 @@
+name: probe-pecl-network
+
+# Can pecl work at all against a local channel, or is it bound to pecl.php.net?
+
+# The report was: `pecl channel-discover` fails because pear wants a DNS-named host,
+# `pecl remote-info` then goes to the real pecl.php.net:443, and the TLS transport is
+# missing so it cannot even connect. That suggested php has no openssl - but
+# php85's own closure contains php-openssl-8.5.11, so the first thing to establish is
+# whether the extension is actually loaded.
+
+# Then, the question that decides whether this is fixable at all: pear keeps its
+# channel list in a config file and honours PHP_PEAR_SYSCONF_DIR for its location.
+# If a local channel can be registered in a file we control, and `pecl` uses it, then
+# pecl works against a mirror. If it ignores the override and reaches for the real
+# host, it cannot be redirected and the honest answer is no.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: is openssl loaded, and where does pear keep its config
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
+                  --option max-jobs 0 '.#"php-8.5.11"' | tail -1)
+          echo "out=$out"
+          echo "== php -m =="
+          "$out/bin/php" -m 2>&1 | head -40
+          echo
+          echo "== openssl? =="
+          "$out/bin/php" -m 2>&1 | grep -i '^openssl$' || echo "OPENSSL NOT LOADED"
+          echo "== sockets? =="
+          "$out/bin/php" -m 2>&1 | grep -i '^sockets$' || echo "SOCKETS NOT LOADED"
+          echo "== curl? =="
+          "$out/bin/php" -m 2>&1 | grep -i '^curl$' || echo "CURL NOT LOADED"
+          echo
+          echo "== php --ini =="
+          "$out/bin/php" --ini 2>&1 | head -8
+
+      - name: can pear be pointed at a local channel
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
+                  --option max-jobs 0 '.#"php-8.5.11"' | tail -1)
+          W=/tmp/pearhome; rm -rf $W; mkdir -p $W/conf
+          export PHP_PEAR_SYSCONF_DIR=$W/conf
+          export PHP_PEAR_USER_CONFIG=$W/pearrc
+          export HOME=$W
+          echo "== pear config-show (where would it write) =="
+          "$out/bin/pear" config-show 2>&1 | head -12
+          echo
+          echo "== does the docs dir get created where we asked =="
+          ls -la "$W/conf" 2>&1 | head -5
+          echo
+          echo "== channel-discover against a bare localhost name =="
+          "$out/bin/pecl" channel-discover localhost 2>&1 | head -6
+          echo "exit=$?"
+          echo
+          echo "== and against 127.0.0.1 =="
+          "$out/bin/pecl" channel-discover 127.0.0.1 2>&1 | head -6
+
+      - name: does pecl honour the channel list at all
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
+                  --option max-jobs 0 '.#"php-8.5.11"' | tail -1)
+          W=/tmp/pearhome2; rm -rf $W; mkdir -p $W
+          export HOME=$W
+          # The normal way to add a channel, with no network involved.
+          echo "== pecl channel-update from a local file:// channel =="
+          "$out/bin/pecl" channel-add file:///nonexistent/channel.xml 2>&1 | head -4
+          echo
+          echo "== what channels does it know by default =="
+          "$out/bin/pecl" list-channels 2>&1 | head -12
