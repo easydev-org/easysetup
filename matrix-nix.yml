@@ -237,16 +237,19 @@ setups:
   - { tool: awscli2,    attr: "nixpkgs#awscli2", version: "2.36.31" }
   - { tool: uv,         attr: "nixpkgs#uv", version: "0.13.1" }
   - { tool: php,       attr: "nixpkgs#php85", version: "8.5.11" }
-  # pecl and pear ship INSIDE php: PHP's `--with-pear` configure step runs PEAR's
-  # own installer, which writes php, pear and pecl into $out/bin together. nixpkgs
-  # has `pearSupport ? true`, so every php85 build has all three and there is no
-  # `pkgs.pecl` attribute to reference.
+  # No pecl or pear entry on purpose.
   #
-  # These entries therefore point at php85 itself, so that `install pecl` works as
-  # a name and `easysetup list` shows it. They carry php's version deliberately:
-  # that is the version which ships them.
-  - { tool: pecl,      attr: "nixpkgs#php85", version: "8.5.11" }
-  - { tool: pear,      attr: "nixpkgs#php85", version: "8.5.11" }
+  # Both ship inside php: nixpkgs has `pearSupport ? true`, so php's configure runs
+  # with --with-pear and PEAR's own installer writes php, pear and pecl into one
+  # $out/bin. Measured at the pinned revision:
+  #
+  #   bin: pear peardev pecl phar phar.phar php php-cgi php-fpm phpdbg
+  #   $ pecl version  ->  PEAR Version: 1.10.18 / PHP Version: 8.5.11
+  #
+  # So `install php` already provides them. Separate entries would have to point at
+  # php85 - there is no pkgs.pecl - and would publish two more tarballs identical to
+  # php's, 67 MB each, for a name that resolves to something the user already has.
+  # `install pecl` reports an unknown setup, and the README says to install php.
   - { tool: protobuf,  attr: "nixpkgs#protobuf", version: "36.2" }
   - { tool: python,    attr: "nixpkgs#python314", version: "3.14.8" }
   # 3.13 alongside 3.14. Its tools are separate entries below because they are

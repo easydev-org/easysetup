@@ -150,6 +150,30 @@ Use `pip install …` rather than `python3 -m pip install …`. If you need the
 module form specifically, that requires a `python.withPackages` setup, which this
 manifest does not publish.
 
+## pecl and pear come with php
+
+There is no `pecl` or `pear` setup, and that is deliberate - both are inside php's
+own output:
+
+```bash
+easysetup install php
+# then, from the same PATH:
+pecl version      # PEAR Version: 1.10.18 / PHP Version: 8.5.11
+pear version
+php -v
+```
+
+php's `bin/` holds `php`, `php-cgi`, `php-fpm`, `phpdbg`, `phar`, `pear`,
+`peardev` and `pecl`. nixpkgs builds php with `pearSupport ? true`, so its
+configure runs with `--with-pear` and PEAR's own installer writes all of them in
+one step.
+
+Publishing them as separate setups was considered and rejected: there is no
+`pkgs.pecl` to point at, so each entry would have to reference php85 and produce
+a tarball identical to php's - 67 MB apiece - for a name that resolves to
+something `install php` already provides. `install pecl` reports an unknown setup
+rather than downloading php a second time.
+
 ## What actually gets downloaded
 
 A tarball does not contain its whole closure. Two things are removed first,
