@@ -51,16 +51,31 @@ jobs:
 
       - name: build a php with extensions, the supported way
         run: |
-          set -euo pipefail
-          out=$(nix build --no-link --print-out-paths --system x86_64-linux \
-                  --option max-jobs 0 --impure --expr '
-            let f = builtins.getFlake (toString ./.);
-                p = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
-            in p.php85.buildEnv {
-              extensions = { enabled, all }: enabled ++ [ all.redis all.apcu ];
-            }' 2>&1 | tail -1)
-          echo "out=$out"
-          echo "out=$out" >> "$GITHUB_ENV"
+          set -uo pipefail
+          set +e
+          # No `| tail -1` and no `set -e`: the previous version swallowed nix's
+          # message and the job just said "exit code 1", which is no help at all.
+          #
+          # max-jobs 0 means every path must already be in the cache. redis and apcu
+          # are ordinary packages and should be, but if this fails with "would be
+          # built" then that is the answer - an extension that has to be compiled is
+          # not something a release job can ship.
+          nix build --no-link --print-out-paths --system x86_64-linux \
+            --option max-jobs 0 --impure --expr '
+              let f = builtins.getFlake (toString ./.);
+                  p = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
+              in p.php85.buildEnv {
+                extensions = { enabled, all }: enabled ++ [ all.redis all.apcu ];
+              }' > /tmp/out.txt 2>/tmp/err.txt
+          rc=$?
+          echo "exit=$rc"
+          echo "== stderr =="
+          head -30 /tmp/err.txt
+          echo "== stdout =="
+          cat /tmp/out.txt
+          out=$(tail -1 /tmp/out.txt)
+          [ -n "$out" ] && echo "out=$out" >> "$GITHUB_ENV"
+          exit $rc
 
       - name: does the wrapped php load them
         run: |
