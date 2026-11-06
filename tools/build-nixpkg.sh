@@ -90,10 +90,10 @@ esac
 # cannot protect: `nix build --dry-run` is in the workflow too, but someone running
 # this locally never goes through it.
 #
-# What it cannot do is stop a build that starts compiling mid-flight - a path the
-# dry-run thought was cached but whose download fails. `--option max-jobs 0`
-# closes that: nix then has no builder to fall back to, so such a path errors
-# instead of quietly compiling for forty minutes.
+# What a dry-run cannot see is a path it thought was cached whose download then
+# fails. The plan check below is the authority for that: every planned path must
+# be the setup's own derivation, and the build itself runs with no remote builders
+# and a single job, so nothing else can start compiling.
 echo "nixpkg: checking every path is substitutable"
 if ! DRY=$("$NIX" build --dry-run --system "$NIX_SYSTEM" ".#\"$NAME\"" 2>&1); then
   echo "nixpkg: could not evaluate .#\"$NAME\" for $NIX_SYSTEM" >&2
@@ -102,16 +102,36 @@ if ! DRY=$("$NIX" build --dry-run --system "$NIX_SYSTEM" ".#\"$NAME\"" 2>&1); th
 fi
 to_build=$(printf '%s\n' "$DRY" | grep -c 'will be built' || true)
 if [ "${to_build:-0}" -gt 0 ]; then
-  echo "nixpkg: REFUSING TO BUILD: $to_build path(s) are not in cache.nixos.org" >&2
-  echo "nixpkg: they would have to be compiled here, for $NIX_SYSTEM:" >&2
-  printf '%s\n' "$DRY" | grep 'will be built' | head -10 >&2
-  echo "nixpkg:" >&2
-  echo "nixpkg: this project only ships closures a binary cache already has." >&2
-  echo "nixpkg: wait for Hydra to cover this platform, or mark the setup" >&2
-  echo "nixpkg: only_arch in matrix-nix.yml so it is not published here." >&2
-  exit 1
+  # A setup may ASSEMBLE itself locally: symlink a cached derivation and rewrite a
+  # couple of scripts. That is a few cats and chmods, not a compilation, and it is
+  # the only affordable way to fix a toolchain whose wrapper is wrong (setups/
+  # swift-6.3.3.nix has to add -licucore to the link line).
+  #
+  # What must still be refused is COMPILING: an emulated build of a real closure
+  # can run for hours and produces a tarball indistinguishable from a cached one.
+  # So the rule is "every planned path is the setup's own derivation".
+  #
+  # The `.drv` suffix is part of the match: the path is "...-<name>.drv", and a
+  # regex that stopped at the name would reject the package for building itself.
+  #
+  # awk, not a sed range: the "these N paths will be fetched" block that follows is
+  # indented too, so a range would swallow every cached path and count them as
+  # local builds.
+  planned=$(printf '%s\n' "$DRY" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
+  offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-$NAME\.drv$" || true)
+  if [ "${offcompiled:-0}" -gt 0 ]; then
+    echo "nixpkg: REFUSING TO BUILD: $to_build path(s) are not in cache.nixos.org" >&2
+    echo "nixpkg: they would have to be compiled here, for $NIX_SYSTEM:" >&2
+    printf '%s\n' "$planned" | head -10 >&2
+    echo "nixpkg:" >&2
+    echo "nixpkg: this project only ships closures a binary cache already has." >&2
+    echo "nixpkg: wait for Hydra to cover this platform, or mark the setup" >&2
+    echo "nixpkg: only_arch in matrix-nix.yml so it is not published here." >&2
+    exit 1
+  fi
+  echo "nixpkg: only the setup's own derivation is built (assembly, not compilation)"
 fi
-echo "nixpkg: all paths substitutable"
+echo "nixpkg: all paths substitutable except the setup's own assembly"
 
 # Print what the flake can actually see before building. A mismatch between the
 # file on disk and the attribute nix resolves means nix is evaluating a different
@@ -142,16 +162,20 @@ fi
 # exactly one line, so this picks it trivially.
 # --system, not the host default: an arm64 closure is fetched from
 # cache.nixos.org without running a single arm64 instruction, so an amd64 runner
-# can produce it. Only a path that is NOT in the cache would need an emulator,
-# and that is exactly what this fails on rather than silently compiling for
-# hours.
-# --option max-jobs 0 is the hard guarantee, not --dry-run above it. With no
-# builder available, a path that is not in the cache cannot be compiled: nix
-# reports "cannot build ... no substituter" and exits. That covers the case the
-# dry-run cannot - a path the dry-run believed was cached whose download then
-# failed - and turns "would have compiled for an hour" into a named error.
+# can produce it. Only a path that is NOT in the cache would need an emulator, and
+# that is exactly what this fails on rather than silently compiling for hours.
+#
+# `--max-jobs 0` used to be the hard guarantee here: with no builder, an uncached
+# path cannot be compiled. But it also forbids ASSEMBLING the setup itself, which
+# is the one local build a setup may do (a runCommand over a cached derivation).
+#
+# The guarantee moves to the PLAN: `to_build` above rejects any planned path that
+# is not the setup's own derivation, so the only thing this build can do locally
+# is that one assembly. Remote builders are disabled as well, so nothing is
+# silently compiled elsewhere either.
 OUTLIST=$("$NIX" build --no-link --print-out-paths --system "$NIX_SYSTEM" \
-            --option max-jobs 0 \
+            --option max-jobs 1 \
+            --option builders "" \
             ".#\"$NAME\"" 2>/tmp/nixpkg-err.log)
 if [ $? -ne 0 ] || [ -z "$OUTLIST" ]; then
   echo "nixpkg: nix build failed" >&2
