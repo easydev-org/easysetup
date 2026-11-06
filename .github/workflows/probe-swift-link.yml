@@ -142,10 +142,18 @@ jobs:
           # Foundation ICU build), NOT nixpkgs' icu4c; an earlier revision named
           # pkgs.icu by hand and the symbols stayed undefined.
           grep -q -- '-ICU-[0-9]' "$envf" || { echo "::error::swift's own ICU lib dir missing"; exit 1; }
-          if grep 'LD_LIBRARY_PATH' "$envf" | grep -q -- '-glibc-'; then
-            echo "::error::glibc is on LD_LIBRARY_PATH; that breaks unrelated processes"
-            exit 1
-          fi
+          # The loader path must not carry a toolchain or libc: it broke the
+          # compiler itself once ("clang: symbol lookup error" from loading the
+          # 21.0.0 libs under a 21.1.8 binary). LIBRARY_PATH may keep them.
+          for bad in clang llvm binutils glibc; do
+            if grep '^export LD_LIBRARY_PATH' "$envf" | grep -q -- "-$bad-"; then
+              echo "::error::$bad is on LD_LIBRARY_PATH; that is what crashed the compiler"
+              exit 1
+            fi
+          done
+          # ...but gcc's runtime (libgcc_s) is needed at run time, so it stays.
+          grep '^export LD_LIBRARY_PATH' "$envf" | grep -q -- '-gcc-' \
+            || { echo "::error::gcc's runtime lib dir is missing from LD_LIBRARY_PATH"; exit 1; }
 
       # THE assertion: no -L on the command line; the wrapper must supply it.
       - name: it links and runs a Foundation program

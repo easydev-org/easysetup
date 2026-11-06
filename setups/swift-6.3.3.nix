@@ -90,12 +90,6 @@ pkgs.runCommand "swift-${swift.version}" {
   # for exactly `$p/lib` silently dropped ICU, which is the whole bug. find covers
   # any depth.
   #
-  # glibc is skipped: on LD_LIBRARY_PATH it breaks unrelated host processes, and
-  # the compiler already reaches it through the toolchain.
-  #
-  # The list is deduplicated because a closure member can appear more than once,
-  # and a path repeated once per occurrence makes the env file unreadable when it
-  # is printed by a failing job.
   # Collect into a file first. A pipeline inside $( ) would inherit `pipefail`,
   # and a single failing `find` (the graph file ends with a blank line, so the
   # loop sees an empty path and `find` exits non-zero) would then kill the whole
@@ -110,6 +104,26 @@ pkgs.runCommand "swift-${swift.version}" {
   done < swift-runtime
   libdirs="$(sed 's|/[^/]*$||' libdirs.raw | sort -u)"
 
+  # LD_LIBRARY_PATH is a BLUNT instrument: whatever directory is on it gets
+  # preferred over the libraries a binary was built against. It carried the whole
+  # closure once, and the compiler died before linking anything:
+  #
+  #   .../clang-21.1.8/bin/clang: symbol lookup error:
+  #     undefined symbol: _ZN5clang16CompilerInstance17createDiagnosticsE...
+  #
+  # The closure holds both clang-21.0.0-lib and clang-21.1.8; with the older one
+  # first, the 21.1.8 binary loaded it.
+  #
+  # The rule is therefore "no compiler or libc on the LOADER path":
+  #
+  #   LIBRARY_PATH   every directory (the linker only opens what it is asked for,
+  #                  by name, so an extra one is harmless)
+  #   LD_LIBRARY_PATH  only the paths without a toolchain component. libgcc_s and
+  #                  libstdc++ come from a -gcc- path, so "gcc" is NOT excluded --
+  #                  excluding it would break the resulting binary at run time.
+  run_libdirs="$(printf '%s\n' $libdirs \
+    | grep -v -E '(^|[-/])(clang|llvm|binutils|glibc)[-/]' || true)"
+
   # easydev_rpath must exist in THIS shell before it is appended to; assigning it
   # only inside the redirect below would write the assignment into the file and
   # leave the variable unset, which `set -u` turns into an immediate exit with no
@@ -119,8 +133,10 @@ pkgs.runCommand "swift-${swift.version}" {
     echo 'easydev_rpath=""'
     for d in $libdirs; do
       printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
-      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
       easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
+    done
+    for d in $run_libdirs; do
+      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
     done
     printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
     echo 'unset easydev_rpath'
