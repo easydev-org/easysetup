@@ -96,7 +96,15 @@ jobs:
         run: |
           set -euo pipefail
           FLAKE="path:$PWD"
-          out=$(nix build --no-link --print-out-paths "$FLAKE#\"swift-6.3.3\"" | tail -1)
+          # -L prints the builder's own output; without it a failing build shows
+          # only "builder failed with exit code 1" and nothing to act on. The
+          # output path is captured separately so build noise cannot become $OUT.
+          nix build -L --no-link --print-out-paths "$FLAKE#\"swift-6.3.3\"" > /tmp/out.txt 2>/tmp/build.log || {
+            echo "::error::the build failed"
+            tail -40 /tmp/build.log
+            exit 1
+          }
+          out=$(tail -1 /tmp/out.txt)
           echo "OUT=$out" >> "$GITHUB_ENV"
           echo "built: $out"
           echo "--- bin/ ---"
