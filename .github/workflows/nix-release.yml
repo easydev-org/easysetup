@@ -173,11 +173,25 @@ jobs:
           # paths; using it for arm64 subtracts paths the tarball does not ship,
           # and the build then fails at "bin/ is empty in the staged copy" - a
           # correct-sounding error produced by a correct build.
+          # USE THE CHECKED-OUT FILE when the ref has one.
+          #
+          # This used to always overwrite it with the copy from `main`, which made
+          # the release impossible to verify on any branch: the build evaluates the
+          # BRANCH's setup expressions, while the graph came from main, so the
+          # recorded store paths described a different expression and the build
+          # stopped with "the graph is stale" -- correctly, and unfixably, until
+          # the branch was merged.
+          #
+          # The graph belongs to the ref being built. `main` is only a fallback for
+          # a ref that does not carry one at all.
           f="closures-${ARCH}.json"
-          if curl -fsSL --retry 3 -o "$f" \
+          if [ -s "$f" ]; then
+            n=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d['setups']),len(d['base']))" "$f")
+            echo "$f from the checkout: $n"
+          elif curl -fsSL --retry 3 -o "$f" \
                "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/$f"; then
             n=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d['setups']),len(d['base']))" "$f")
-            echo "$f present: $n"
+            echo "$f fetched from main: $n"
           else
             echo "no $f yet; tarballs will carry their full closure"
           fi
@@ -336,11 +350,25 @@ jobs:
           # paths; using it for arm64 subtracts paths the tarball does not ship,
           # and the build then fails at "bin/ is empty in the staged copy" - a
           # correct-sounding error produced by a correct build.
+          # USE THE CHECKED-OUT FILE when the ref has one.
+          #
+          # This used to always overwrite it with the copy from `main`, which made
+          # the release impossible to verify on any branch: the build evaluates the
+          # BRANCH's setup expressions, while the graph came from main, so the
+          # recorded store paths described a different expression and the build
+          # stopped with "the graph is stale" -- correctly, and unfixably, until
+          # the branch was merged.
+          #
+          # The graph belongs to the ref being built. `main` is only a fallback for
+          # a ref that does not carry one at all.
           f="closures-${ARCH}.json"
-          if curl -fsSL --retry 3 -o "$f" \
+          if [ -s "$f" ]; then
+            n=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d['setups']),len(d['base']))" "$f")
+            echo "$f from the checkout: $n"
+          elif curl -fsSL --retry 3 -o "$f" \
                "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/$f"; then
             n=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d['setups']),len(d['base']))" "$f")
-            echo "$f present: $n"
+            echo "$f fetched from main: $n"
           else
             echo "no $f yet; tarballs will carry their full closure"
           fi
