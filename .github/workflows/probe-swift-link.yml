@@ -52,9 +52,13 @@ jobs:
       - name: build swift (as released, no override)
         run: |
           set -euo pipefail
+          # A `git+file://...?shallow=1` flake only sees git's index, and
+          # actions/checkout leaves it shallow, so `.#swift-6.3.3` resolved to
+          # "does not provide attribute". A PATH flake reads the working tree.
+          FLAKE="path:$PWD"
           echo "== will this be a download or a compile? =="
-          nix build --dry-run --system x86_64-linux '.#swift-6.3.3' 2>&1 | tail -5 || true
-          out=$(nix build --no-link --print-out-paths --system x86_64-linux '.#swift-6.3.3' | tail -1)
+          nix build --dry-run --system x86_64-linux "$FLAKE#swift-6.3.3" --extra-experimental-features 'nix-command flakes' 2>&1 | tail -8 || true
+          out=$(nix build --no-link --print-out-paths --system x86_64-linux "$FLAKE#swift-6.3.3" | tail -1)
           echo "swift out = $out"
           echo "OUT=$out" >> "$GITHUB_ENV"
 
