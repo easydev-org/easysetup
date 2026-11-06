@@ -80,6 +80,8 @@ jobs:
             echo
             # Count the real verdicts. EXCLUDED lines are setups deliberately left
             # out via only_arch, which is not a problem to report.
+            # ASSEMBLED is healthy (its inputs are all cached), so it is not
+            # counted; only the four real verdicts are.
             n=$(grep -cE 'BROKEN|PLATFORM|NOT CACHED|ATTRIBUTE GONE' /tmp/missing-$arch.txt || true)
             echo "setups that cannot be published for $arch: $n"
             if [ "$n" -gt 0 ]; then

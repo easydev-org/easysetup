@@ -59,12 +59,32 @@ def diagnose(entry, arch, system):
         return "ATTRIBUTE GONE", (last[-1][:110] if last else "eval failed")
 
     out = r.stdout.strip()
+
+    def narinfo(path):
+        h = os.path.basename(path).split("-", 1)[0]
+        c = run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                 "https://cache.nixos.org/%s.narinfo" % h])
+        return c.stdout.strip()
+
     # Is the output itself in the cache?
-    h = os.path.basename(out).split("-", 1)[0]
-    c = run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
-             "https://cache.nixos.org/%s.narinfo" % h])
-    if c.stdout.strip() != "200":
-        return "NOT CACHED", "cache answers %s for its output" % c.stdout.strip()
+    code = narinfo(out)
+    if code != "200":
+        # A setup that ASSEMBLES itself (a runCommand over cached paths, like
+        # swift) never has a narinfo of its own -- by design. Reporting it as NOT
+        # CACHED would be a false alarm, and a false alarm here hides the real
+        # ones. What matters is that every INPUT is cached, because that is what
+        # makes the tarball installable without compiling anything.
+        local = run([NIX, "path-info", "-r", out])
+        inputs = [x for x in (local.stdout or "").splitlines()
+                  if x.strip() and x.strip() != out]
+        if local.returncode == 0 and inputs:
+            uncached = [p for p in inputs if narinfo(p) != "200"]
+            if not uncached:
+                return "ASSEMBLED", ("its own output is built here; all %d inputs "
+                                     "are cached" % len(inputs))
+            return "NOT CACHED", ("assembled, but %s is not cached"
+                                  % uncached[0].split("-", 1)[-1])
+        return "NOT CACHED", "cache answers %s for its output" % code
 
     # And can the cache describe its whole closure? A cached output sitting on an
     # uncached dependency still means a compile.
@@ -92,7 +112,11 @@ def main(argv):
             if v:
                 reason, detail = v
                 print("%-34s %-15s %s" % (e["dir"], reason, detail))
-                bad += 1
+                # ASSEMBLED is a NORMAL outcome, not a problem: the setup's own
+                # output is produced here and every input it contains is cached.
+                # Counting it would make the workflow warn on a healthy setup.
+                if reason != "ASSEMBLED":
+                    bad += 1
         print()
     if bad:
         print("%d setup(s) cannot be published as-is" % bad)
