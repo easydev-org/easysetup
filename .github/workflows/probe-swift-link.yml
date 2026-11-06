@@ -56,12 +56,11 @@ jobs:
           # actions/checkout leaves it shallow, so `.#swift-6.3.3` resolved to
           # "does not provide attribute". A PATH flake reads the working tree.
           FLAKE="path:$PWD"
-          echo "== what does the flake expose? =="
-          nix eval --raw "$FLAKE#versions.swift-6.3.3" 2>&1 | head -3 || true
-          nix flake show --all-systems "$FLAKE" 2>&1 | head -25 || true
-          echo "== setups/ on disk =="
-          echo "count: $(ls setups/ | wc -l)"
-          ls setups/swift* 2>&1
+          echo "== does x86_64-linux expose swift? =="
+          nix eval "$FLAKE#packages.x86_64-linux" --apply builtins.attrNames 2>&1 | tr ',' '\n' | grep -c swift || echo "no swift in the attr names"
+          nix eval "$FLAKE#packages.x86_64-linux" --apply builtins.attrNames 2>&1 | tr ',' '\n' | grep swift || true
+          echo "== and the per-system attr directly? =="
+          nix eval "$FLAKE#packages.x86_64-linux.swift-6.3.3.name" 2>&1 | head -5 || true
           echo "== will this be a download or a compile? =="
           nix build --dry-run --system x86_64-linux "$FLAKE#swift-6.3.3" --extra-experimental-features 'nix-command flakes' 2>&1 | tail -8 || true
           out=$(nix build --no-link --print-out-paths --system x86_64-linux "$FLAKE#swift-6.3.3" | tail -1)
