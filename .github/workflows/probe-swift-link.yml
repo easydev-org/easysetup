@@ -191,23 +191,37 @@ jobs:
           printf '%s' "$got" | grep -q '1.24' || { echo "::error::Foundation formatting failed"; exit 1; }
           echo "linked and ran"
 
-      - name: swift build works too
+      # `swift build` is NOT asserted here: nixpkgs ships SwiftPM as a separate
+      # attribute (pkgs.swiftpm), so pkgs.swift legitimately has no swift-build.
+      # Adding it would be a second derivation to assemble, which the release gate
+      # refuses -- and every consumer of this setup drives swiftc directly
+      # (easyblobs' e2e does exactly that).
+      #
+      # What IS asserted is that the wrapper behaves like a compiler end to end:
+      # `swift --version` runs (so the runtime loads), and a multi-file build with
+      # an import from the toolchain's own module set works.
+      - name: the driver runs, and a multi-file build works
         run: |
           set -euo pipefail
-          mkdir -p /tmp/p && cd /tmp/p
-          cat > Package.swift <<'EOF'
-          // swift-tools-version:5.9
-          import PackageDescription
-          let package = Package(
-            name: "probe",
-            targets: [.executableTarget(name: "probe", path: "Sources/probe")]
-          )
-          EOF
-          mkdir -p Sources/probe
-          cat > Sources/probe/main.swift <<'EOF'
+          "$OUT/bin/swift" --version
+          mkdir -p /tmp/m && cd /tmp/m
+          cat > lib.swift <<'EOF'
           import Foundation
-          print("swift build ok:", (["a": 1, "b": 2] as NSDictionary).count)
+          public func doubled(_ n: Int) -> Int { n * 2 }
+          public func stamp() -> String {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy"
+            return f.string(from: Date(timeIntervalSince1970: 0))
+          }
           EOF
-          "$OUT/bin/swift" build 2>&1 | tail -10
-          ./.build/debug/probe | tee /tmp/run.log
-          grep -q 'swift build ok: 2' /tmp/run.log
+          cat > main.swift <<'EOF'
+          import Foundation
+          print(doubled(21))
+          print(stamp())
+          EOF
+          "$OUT/bin/swiftc" lib.swift main.swift -o multi
+          got=$(./multi)
+          echo "$got"
+          printf '%s' "$got" | grep -q '^42$' || { echo "::error::wrong arithmetic result"; exit 1; }
+          printf '%s' "$got" | grep -q '^1970$' || { echo "::error::DateFormatter (ICU) wrong"; exit 1; }
+          echo "multi-file build and ICU date formatting ok"
