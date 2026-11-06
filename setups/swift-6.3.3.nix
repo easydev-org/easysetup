@@ -54,8 +54,10 @@
 # target. Keeping the flags out of argv also keeps them out of the way: the
 # linker reads LIBRARY_PATH, the driver ignores it.
 #
-# glibc is NEVER added to LD_LIBRARY_PATH: a nix glibc on the loader path breaks
-# unrelated processes on the host.
+# glibc is NEVER put on a loader path, and LD_LIBRARY_PATH is not set at all: a
+# directory there is inherited by every process the toolchain starts, including its
+# OWN binaries, which then load the wrong copy of a library (this broke clang and
+# swift-build in CI). A built program gets its run path from -rpath in its ELF.
 let
   inherit (pkgs) lib;
   swift = pkgs.swift;
@@ -136,25 +138,24 @@ pkgs.runCommand "swift-${swift.version}" {
     done < "$graph"
   done > "$out/swift-closure-sos.txt" 2>&1 || true
 
-  # LD_LIBRARY_PATH is a BLUNT instrument: whatever directory is on it gets
-  # preferred over the libraries a binary was built against. It carried the whole
-  # closure once, and the compiler died before linking anything:
+  # LD_LIBRARY_PATH IS DELIBERATELY NOT SET. It is inherited by every process the
+  # toolchain starts, including the toolchain's own binaries, and it made them load
+  # the wrong libraries twice:
   #
-  #   .../clang-21.1.8/bin/clang: symbol lookup error:
-  #     undefined symbol: _ZN5clang16CompilerInstance17createDiagnosticsE...
+  #   .../clang-21.1.8/bin/clang: symbol lookup error: undefined symbol:
+  #     _ZN5clang16CompilerInstance17createDiagnosticsE...
+  #   .../swift-build: symbol lookup error: libCommands.so: undefined symbol:
+  #     $s11SwiftParser0B0V0A7VersionOMn
   #
-  # The closure holds both clang-21.0.0-lib and clang-21.1.8; with the older one
-  # first, the 21.1.8 binary loaded it.
+  # Both were a second copy of a library in the closure winning over the one the
+  # binary was built against. Filtering the list only moves the problem: the next
+  # package that ships its own copy breaks the same way.
   #
-  # The rule is therefore "no compiler or libc on the LOADER path":
+  # A built program does not need it either -- `-rpath` (below) records the
+  # directory in its own ELF, which is what a relocatable artifact should do.
   #
-  #   LIBRARY_PATH   every directory (the linker only opens what it is asked for,
-  #                  by name, so an extra one is harmless)
-  #   LD_LIBRARY_PATH  only the paths without a toolchain component. libgcc_s and
-  #                  libstdc++ come from a -gcc- path, so "gcc" is NOT excluded --
-  #                  excluding it would break the resulting binary at run time.
-  run_libdirs="$(printf '%s\n' $libdirs \
-    | grep -v -E '(^|[-/])(clang|llvm|binutils|glibc)[-/]' || true)"
+  # LIBRARY_PATH stays: it is read by the LINKER only, which opens exactly the
+  # names it is asked for and never affects an already-running process.
 
   # ICU has to be on the LINK LINE, not merely on a search path.
   #
@@ -187,9 +188,6 @@ pkgs.runCommand "swift-${swift.version}" {
       printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
       easydev_rpath="$easydev_rpath -rpath $d"
     done
-    for d in $run_libdirs; do
-      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
-    done
 
     # NIX_LDFLAGS is what nixpkgs' swift WRAPPER turns into linker arguments, one
     # `-Xlinker` each. On a native build its name has no suffix (suffixSalt is
@@ -214,7 +212,8 @@ pkgs.runCommand "swift-${swift.version}" {
     {
       printf '%s\n' '#!${pkgs.runtimeShell}'
       printf '%s\n' '# Put swift'"'"'s runtime libraries on the LINK path (LIBRARY_PATH)'
-      printf '%s\n' '# and on the RUN path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.'
+      printf '%s\n' '# and on the built program'"'"'s RUN path (via -rpath in its ELF).'
+      printf '%s\n' '# See setups/swift-6.3.3.nix.'
       # Expanded HERE, at build time: the script needs the real store path.
       printf '%s\n' ". $out/swift-link-env.sh"
       # `swift build` is a swift-DRIVER subcommand: the driver execs `swift-build`

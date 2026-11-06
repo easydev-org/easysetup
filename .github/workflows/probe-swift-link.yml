@@ -142,7 +142,7 @@ jobs:
           echo "--- env file (first 30 lines) ---"
           head -30 "$envf"
           echo "--- $(grep -c 'LIBRARY_PATH=' "$envf") lib dir(s) ---"
-          for v in LIBRARY_PATH LD_LIBRARY_PATH NIX_LDFLAGS; do
+          for v in LIBRARY_PATH NIX_LDFLAGS; do
             grep -q "export $v=" "$envf" || { echo "::error::$v not exported"; exit 1; }
           done
           grep -q -- '-swift-6.3.3/lib' "$envf" || { echo "::error::swift's own lib dir missing"; exit 1; }
@@ -151,18 +151,14 @@ jobs:
           # Foundation ICU build), NOT nixpkgs' icu4c; an earlier revision named
           # pkgs.icu by hand and the symbols stayed undefined.
           grep -q -- '-ICU-[0-9]' "$envf" || { echo "::error::swift's own ICU lib dir missing"; exit 1; }
-          # The loader path must not carry a toolchain or libc: it broke the
-          # compiler itself once ("clang: symbol lookup error" from loading the
-          # 21.0.0 libs under a 21.1.8 binary). LIBRARY_PATH may keep them.
-          for bad in clang llvm binutils glibc; do
-            if grep '^export LD_LIBRARY_PATH' "$envf" | grep -q -- "-$bad-"; then
-              echo "::error::$bad is on LD_LIBRARY_PATH; that is what crashed the compiler"
-              exit 1
-            fi
-          done
-          # ...but gcc's runtime (libgcc_s) is needed at run time, so it stays.
-          grep '^export LD_LIBRARY_PATH' "$envf" | grep -q -- '-gcc-' \
-            || { echo "::error::gcc's runtime lib dir is missing from LD_LIBRARY_PATH"; exit 1; }
+          # LD_LIBRARY_PATH must NOT be set: it is inherited by the toolchain's own
+          # processes and made clang and swift-build load the wrong copy of a
+          # library (both died with "symbol lookup error" in CI). Run paths belong
+          # in the built program's ELF, via -rpath.
+          if grep -q 'export LD_LIBRARY_PATH' "$envf"; then
+            echo "::error::LD_LIBRARY_PATH is exported; it breaks the toolchain's own binaries"
+            exit 1
+          fi
 
       # THE assertion: no -L on the command line; the wrapper must supply it.
       - name: it links and runs a Foundation program
