@@ -217,6 +217,14 @@ pkgs.runCommand "swift-${swift.version}" {
       printf '%s\n' '# and on the RUN path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.'
       # Expanded HERE, at build time: the script needs the real store path.
       printf '%s\n' ". $out/swift-link-env.sh"
+      # `swift build` is a swift-DRIVER subcommand: the driver execs `swift-build`
+      # from PATH. Without this, a consumer that copies the store path and runs
+      # $out/bin/swift directly (a Dockerfile, an editor plugin) gets
+      #
+      #   error: unknown or missing subcommand 'swift-build'
+      #
+      # even though the file is right next to the compiler.
+      printf 'PATH="%s/bin:$PATH"; export PATH\n' "$out"
       # The original entry point is a symlink whose NAME the driver reads, so it
       # is exec'd by path, not by its resolved target.
       printf 'exec %s "$@"\n' '${swift}/bin/'"$prog"

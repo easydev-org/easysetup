@@ -243,7 +243,11 @@ jobs:
       - name: swift build works (swiftpm)
         run: |
           set -euo pipefail
-          "$OUT/bin/swift" build --version 2>/dev/null || "$OUT/bin/swift-build" --version
+          # Run with a MINIMAL PATH: the wrapper must put its own bin/ on PATH,
+          # or the driver cannot find `swift-build` and `swift build` fails with
+          # "unknown or missing subcommand". This catches the "works in our shell,
+          # not in a Dockerfile" case.
+          env -i HOME=/tmp PATH=/usr/bin:/bin "$OUT/bin/swift" --version
           mkdir -p /tmp/p && cd /tmp/p
           cat > Package.swift <<'EOF'
           // swift-tools-version:5.9
@@ -261,7 +265,8 @@ jobs:
           f.dateFormat = "yyyy"
           print("swift build ok:", n, f.string(from: Date(timeIntervalSince1970: 0)))
           EOF
-          "$OUT/bin/swift" build 2>&1 | tail -20
+          env -i HOME=/tmp PATH=/usr/bin:/bin \
+            "$OUT/bin/swift" build 2>&1 | tail -20
           ./.build/debug/probe | tee /tmp/run.log
           grep -q 'swift build ok: 2 1970' /tmp/run.log \
             || { echo "::error::the built product printed the wrong thing"; exit 1; }
