@@ -48,9 +48,13 @@ jobs:
           # indistinguishable from a missing one in that message. Force it through
           # getFlake so the real error surfaces, which is the whole point of this
           # step.
+          # A dotted attribute NAME must be QUOTED in a nix expression:
+          #   f.packages.x86_64-linux.swift-6.3.3   parses as swift-6 -> 3 -> 3
+          # and fails with "attribute 'swift-6' missing". That is also why the
+          # flake-ref spellings behaved inconsistently. Always quote it.
           nix eval --impure --expr "
             let f = builtins.getFlake \"$FLAKE\";
-            in f.packages.x86_64-linux.swift-6.3.3.name
+            in f.packages.x86_64-linux.\"swift-6.3.3\".name
           " 2>&1 | tail -30
 
       # The release rule. A non-zero count means the fix cannot ship.
@@ -58,7 +62,8 @@ jobs:
         run: |
           set -euo pipefail
           FLAKE="path:$PWD"
-          dry=$(nix build --dry-run "$FLAKE#swift-6.3.3" 2>&1 || true)
+          # Quoted in the flake ref too: an unquoted dotted name is an attr PATH.
+          dry=$(nix build --dry-run "$FLAKE#\"swift-6.3.3\"" 2>&1 || true)
           printf '%s\n' "$dry" | tail -15
           built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
           echo "paths built locally: $built"
@@ -72,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           FLAKE="path:$PWD"
-          out=$(nix build --no-link --print-out-paths "$FLAKE#swift-6.3.3" | tail -1)
+          out=$(nix build --no-link --print-out-paths "$FLAKE#\"swift-6.3.3\"" | tail -1)
           echo "OUT=$out" >> "$GITHUB_ENV"
           echo "built: $out"
           echo "--- bin/ ---"
