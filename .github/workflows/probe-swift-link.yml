@@ -56,14 +56,23 @@ jobs:
           # actions/checkout leaves it shallow, so `.#swift-6.3.3` resolved to
           # "does not provide attribute". A PATH flake reads the working tree.
           FLAKE="path:$PWD"
-          # The attr NAMES exist (checked below) but building says "does not
-          # provide attribute". attrNames does NOT force the values, so a value
-          # that throws during evaluation looks absent. Force the derivation and
-          # print the REAL error instead of guessing again.
-          echo "== force the value and show the real error =="
-          nix eval --raw "$FLAKE#packages.x86_64-linux.swift-6.3.3.drvPath" 2>&1 | tail -25 || true
-          echo "== one attribute that does build, as a control =="
-          nix eval --raw "$FLAKE#packages.x86_64-linux.jq-1.8.2.drvPath" 2>&1 | tail -5 || true
+          # The attr NAMES exist but building says "does not provide attribute".
+          # attrNames does not force VALUES, so a package that throws during
+          # evaluation looks absent. Force it through --apply (which bypasses the
+          # flake-ref attribute-path resolution that was doubling the prefix) and
+          # print the REAL error.
+          echo "== force every swift attr and show the real error =="
+          nix eval --impure --expr "
+            let f = builtins.getFlake \"$FLAKE\";
+                ps = f.packages.x86_64-linux;
+                names = builtins.filter (n: builtins.match \".*swift.*\" n != null)
+                          (builtins.attrNames ps);
+                try = n: let r = builtins.tryEval (builtins.seq ps.\${n}.drvPath \"ok\");
+                         in \"\${n}: \${if r.success then \"OK\" else \"THROWS\"}\";
+            in builtins.concatStringsSep \"\\n\" (map try names)
+          " 2>&1 | tail -20 || true
+          echo "== control: a package known to build =="
+          nix eval --raw "$FLAKE#jq-1.8.2.drvPath" 2>&1 | tail -5 || true
           ATTR="swift-6.3.3"
           echo "== will this be a download or a compile? =="
           nix build --dry-run "$FLAKE#$ATTR" 2>&1 | tail -8 || true
