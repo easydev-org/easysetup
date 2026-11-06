@@ -126,13 +126,19 @@ def out_path(dir_name):
     # If the flake cannot resolve an attribute, that is a real answer: this setup
     # is not available here.
     for ref in ('.#%s' % _quoted(name),):
-        # max-jobs 0: this must never compile. Resolving a setup's output path is
-        # a lookup, and a lookup that has to build its answer means the setup is
-        # not publishable - which the cache check in closure() then confirms. Any
-        # compile here would also be invisible: it would just make the graph step
-        # take an hour instead of a minute.
+        # This must never COMPILE a dependency. A setup that ASSEMBLES itself (a
+        # runCommand over cached paths, like swift) is legitimate and has to be
+        # resolvable here -- it is the setup's own output, and refusing it would
+        # drop the setup from the graph entirely.
+        #
+        # `max-jobs 1` with remote builders disabled keeps nix from falling back
+        # to a builder for anything else, so a dependency that is not cached fails
+        # here instead of compiling for an hour. closure() then confirms the same
+        # fact against the cache's metadata.
         r = run([NIX, "build", "--no-link", "--print-out-paths",
-                 "--system", NIX_SYSTEM, "--option", "max-jobs", "0", ref],
+                 "--system", NIX_SYSTEM,
+                 "--option", "max-jobs", "1",
+                 "--option", "builders", "", ref],
                 timeout=1800)
         if r.returncode != 0:
             # Print nix's own message. Without it "cannot resolve" tells you
@@ -162,11 +168,47 @@ def _quoted(name):
     return '"%s"' % name
 
 
+def cached(path):
+    """Whether cache.nixos.org can serve this exact path."""
+    r = run([NIX, "path-info", "--store", CACHE, path], timeout=120)
+    return r.returncode == 0 and bool(r.stdout.strip())
+
+
 def closure(path, name=None):
-    """Every store path `path` needs, read from the binary cache's metadata."""
+    """Every store path `path` needs, read from the binary cache's metadata.
+
+    The setup's OWN output is excluded from the requirement that the cache knows
+    it. A setup may assemble itself (setups/swift-6.3.3.nix is a runCommand over
+    cached paths), and that one path is by definition not in cache.nixos.org --
+    everything it CONTAINS is. Treating that as "not publishable" would drop the
+    setup from the graph, so the walk is done on the cache and the setup's own
+    path is then added from the local store.
+    """
     r = run([NIX, "path-info", "--store", CACHE, "-r", path], timeout=600)
     if r.returncode == 0 and r.stdout.strip():
-        return set(x for x in r.stdout.splitlines() if x.strip())
+        paths = set(x for x in r.stdout.splitlines() if x.strip())
+        paths.add(path)
+        return paths
+
+    # The top path is not in the cache. That is only acceptable when it is the
+    # setup assembling itself: then its INPUTS are all cached, and asking the
+    # local store for the closure is exact. If anything below it is uncached, the
+    # check below still fails, which is the case this function exists to catch.
+    r = run([NIX, "path-info", "-r", path], timeout=600)
+    if r.returncode == 0 and r.stdout.strip():
+        local = set(x for x in r.stdout.splitlines() if x.strip())
+        missing = []
+        for p in local:
+            if p == path:
+                continue
+            codes = run([NIX, "path-info", "--store", CACHE, p], timeout=120)
+            if codes.returncode != 0 or not codes.stdout.strip():
+                missing.append(p)
+        if not missing:
+            return local
+        print("      (not in cache: %s)"
+              % missing[0].split("-", 1)[-1])
+        return None
 
     # Not in the cache, so this setup cannot be published. That is the answer -
     # there is deliberately no "build it locally" fallback any more.
@@ -400,6 +442,12 @@ def main(argv):
                 "deps": deps[name],
                 "own": own[name],
                 "closure_size": len(clos[name]),
+                # True when the setup's OWN output is not in cache.nixos.org
+                # because it assembles itself locally (a runCommand over cached
+                # paths). assert-cached.py treats that one path as expected absent
+                # and checks its inputs instead; without this flag it would report
+                # the setup as un-publishable.
+                "assembled": not cached(outs[name]),
             }
             for name in sorted(clos)
         },

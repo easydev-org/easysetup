@@ -211,14 +211,36 @@ jobs:
           dry=$(nix build --dry-run --system "$sys" ".#\"${{ matrix.name }}\"" 2>&1 || true)
           built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
           echo "paths built locally: $built"
-          # A non-zero count means the arm64 (or amd64) output is not in the cache
-          # and would be compiled here. That is worth failing on: an emulated build
-          # of a toolchain closure can run for hours, and the resulting tarball is
-          # indistinguishable from a fast one.
+          # What this forbids is COMPILING A TOOLCHAIN: an emulated build of a
+          # whole closure can run for hours, and the tarball it produces is
+          # indistinguishable from one that came from the cache.
+          #
+          # What it must NOT forbid is ASSEMBLING A WRAPPER. A setup may be a
+          # symlinkJoin that reuses a cached derivation and only rewrites a
+          # couple of scripts (setups/swift-6.3.3.nix does exactly that: nixpkgs'
+          # swift needs -L for its own runtime libs and for ICU). That "build" is
+          # a few cats and chmods, and every heavy input is still substituted.
+          #
+          # So: allow local builds ONLY when every path to be built is the
+          # setup's own derivation; any dependency that would be built fails.
           if [ "${built:-0}" -gt 0 ]; then
-            echo "::error::${{ matrix.name }} ($ARCH) is not fully substitutable: $built path(s) would be compiled"
-            printf '%s\n' "$dry" | grep 'will be built' | head -10
-            exit 1
+            # The list follows the "this derivation will be built:" line, up to
+            # the next non-indented one. awk, not a sed range: the following
+            # "these N paths will be fetched" block is indented too, so a range
+            # swallows it and counts every cached path as a local build.
+            planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
+            # The setup's own derivation is "...-<name>.drv"; the suffix must be
+            # part of the match or the gate rejects the very package it is
+            # checking (it did: "would compile a DEPENDENCY: 1 path(s)" for its
+            # own drv).
+            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\.drv$" || true)
+            echo "of which NOT the setup itself: $offcompiled"
+            if [ "${offcompiled:-0}" -gt 0 ]; then
+              echo "::error::${{ matrix.name }} ($ARCH) would compile a DEPENDENCY: $built path(s)"
+              printf '%s\n' "$planned" | head -10
+              exit 1
+            fi
+            echo "note: only the setup's own wrapper derivation is built (assembly, not compilation)"
           fi
           printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
           echo "::endgroup::"
@@ -351,14 +373,36 @@ jobs:
           dry=$(nix build --dry-run --system "$sys" ".#\"${{ matrix.name }}\"" 2>&1 || true)
           built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
           echo "paths built locally: $built"
-          # A non-zero count means the arm64 (or amd64) output is not in the cache
-          # and would be compiled here. That is worth failing on: an emulated build
-          # of a toolchain closure can run for hours, and the resulting tarball is
-          # indistinguishable from a fast one.
+          # What this forbids is COMPILING A TOOLCHAIN: an emulated build of a
+          # whole closure can run for hours, and the tarball it produces is
+          # indistinguishable from one that came from the cache.
+          #
+          # What it must NOT forbid is ASSEMBLING A WRAPPER. A setup may be a
+          # symlinkJoin that reuses a cached derivation and only rewrites a
+          # couple of scripts (setups/swift-6.3.3.nix does exactly that: nixpkgs'
+          # swift needs -L for its own runtime libs and for ICU). That "build" is
+          # a few cats and chmods, and every heavy input is still substituted.
+          #
+          # So: allow local builds ONLY when every path to be built is the
+          # setup's own derivation; any dependency that would be built fails.
           if [ "${built:-0}" -gt 0 ]; then
-            echo "::error::${{ matrix.name }} ($ARCH) is not fully substitutable: $built path(s) would be compiled"
-            printf '%s\n' "$dry" | grep 'will be built' | head -10
-            exit 1
+            # The list follows the "this derivation will be built:" line, up to
+            # the next non-indented one. awk, not a sed range: the following
+            # "these N paths will be fetched" block is indented too, so a range
+            # swallows it and counts every cached path as a local build.
+            planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
+            # The setup's own derivation is "...-<name>.drv"; the suffix must be
+            # part of the match or the gate rejects the very package it is
+            # checking (it did: "would compile a DEPENDENCY: 1 path(s)" for its
+            # own drv).
+            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\.drv$" || true)
+            echo "of which NOT the setup itself: $offcompiled"
+            if [ "${offcompiled:-0}" -gt 0 ]; then
+              echo "::error::${{ matrix.name }} ($ARCH) would compile a DEPENDENCY: $built path(s)"
+              printf '%s\n' "$planned" | head -10
+              exit 1
+            fi
+            echo "note: only the setup's own wrapper derivation is built (assembly, not compilation)"
           fi
           printf '%s\n' "$dry" | grep -E 'these .* will be fetched|will be built' | head -3 || true
           echo "::endgroup::"
