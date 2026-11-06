@@ -96,14 +96,18 @@ pkgs.runCommand "swift-${swift.version}" {
   # The list is deduplicated because a closure member can appear more than once,
   # and a path repeated once per occurrence makes the env file unreadable when it
   # is printed by a failing job.
-  libdirs="$(
-    while read -r p _rest; do
-      case "$p" in
-        *glibc*) continue ;;
-      esac
-      find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null
-    done < swift-runtime | sed 's|/[^/]*$||' | sort -u
-  )"
+  # Collect into a file first. A pipeline inside $( ) would inherit `pipefail`,
+  # and a single failing `find` (a blank line in the graph file makes `find ''`
+  # exit non-zero) would then kill the whole assignment with no message.
+  : > libdirs.raw
+  while read -r p _rest; do
+    [ -n "$p" ] || continue
+    case "$p" in
+      *glibc*) continue ;;
+    esac
+    find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null >> libdirs.raw || true
+  done < swift-runtime
+  libdirs="$(sed 's|/[^/]*$||' libdirs.raw | sort -u)"
 
   # easydev_rpath must exist in THIS shell before it is appended to; assigning it
   # only inside the redirect below would write the assignment into the file and
