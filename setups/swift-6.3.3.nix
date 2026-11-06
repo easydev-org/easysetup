@@ -23,9 +23,17 @@
 #
 # WHAT THIS DOES INSTEAD
 # ----------------------
-# A tiny `runCommand` derivation produces the wrapper scripts and the env file
-# they source; `symlinkJoin` then overlays that onto the UNCHANGED swift. Every
-# heavy input is still a cache download.
+# A tiny `runCommand` derivation produces the env file and the wrapper scripts;
+# `symlinkJoin` then overlays them onto the UNCHANGED swift. Every heavy input is
+# still a cache download.
+#
+# WHERE THE DIRECTORY LIST COMES FROM
+# -----------------------------------
+# `pkgs.closureInfo` walks the references nix RECORDED for swift's output. That is
+# the only honest source: `buildInputs` is a build-time list and does not contain
+# the runtime dependencies, and hardcoding `pkgs.icu` is wrong as well -- the ICU
+# swift actually links against is `swift-foundation-icu` (76142.4.7), not
+# nixpkgs' icu4c, and naming the wrong one leaves the undefined symbols in place.
 #
 # WHY THE FLAGS ARE IN AN ENV FILE AND NOT IN argv
 # -----------------------------------------------
@@ -42,60 +50,69 @@
 let
   inherit (pkgs) lib;
 
-  # The library directories the linker must see.
-  #
-  # swift's output holds libswiftCore and libFoundation, but libFoundation's own
-  # dependencies (ICU) are separate store paths. `buildInputs` is a BUILD-time
-  # list, so it does not contain them. ICU is named explicitly: it is the one
-  # runtime dependency the published swift is known to need, and it is already
-  # part of the closure that gets downloaded anyway.
-  #
-  # An extra -L to a directory that holds no needed symbol is harmless; a missing
-  # one is the exact failure being fixed.
-  extraLibs = [ pkgs.icu ];
-  libDirs = map (p: "${lib.getLib p}/lib") ([ pkgs.swift ] ++ extraLibs);
+  # Every store path in swift's runtime closure, computed by nix itself.
+  closure = pkgs.closureInfo { rootPaths = [ pkgs.swift ]; };
 
-  # The env file the wrappers source: one export per directory, plus an rpath set
-  # for any program that is built here and then moved elsewhere.
-  linkEnv = pkgs.writeText "swift-link-env.sh" (
-    lib.concatMapStrings (d: ''
-      export LIBRARY_PATH="${d}:$LIBRARY_PATH"
-      export LD_LIBRARY_PATH="${d}:$LD_LIBRARY_PATH"
-    '') libDirs
-    + ''
-      export NIX_LDFLAGS="${lib.concatMapStrings (d: " -Wl,-rpath,${d}") libDirs} $NIX_LDFLAGS"
-    ''
-  );
+  # Exports the link and run paths. Written at BUILD time because the closure can
+  # only be enumerated then.
+  #
+  # glibc is filtered out: on LD_LIBRARY_PATH it breaks unrelated host processes,
+  # and the linker already reaches it through the toolchain. Every other lib dir in
+  # the closure is listed, because a missing one is exactly the bug being fixed and
+  # an extra one holds no symbol the linker wants.
+  linkEnv = pkgs.runCommand "swift-link-env" { } ''
+    libdirs=""
+    while IFS= read -r p; do
+      case "$p" in
+        *glibc*) continue ;;
+      esac
+      if [ -d "$p/lib" ]; then
+        libdirs="$libdirs $p/lib"
+      fi
+    done < ${closure}/store-paths
+
+    mkdir -p "$out"
+    {
+      echo 'easydev_rpath=""'
+      for d in $libdirs; do
+        printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
+        printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
+        easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
+      done
+      printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
+      echo 'unset easydev_rpath'
+    } > "$out/link-env.sh"
+
+    echo "swift-link-env: $(grep -c LIBRARY_PATH "$out/link-env.sh") lib dir(s)"
+  '';
 
   # `swift` and `swiftc` are front ends that exec the driver; the driver itself is
-  # left untouched (it rejects compiler flags and does not need them -- the LINKER
-  # is what reads LIBRARY_PATH).
+  # left untouched (it rejects compiler flags, and the LINKER is what reads
+  # LIBRARY_PATH).
   #
-  # These are built with writeScript rather than a heredoc inside the runCommand:
-  # a heredoc written from an indented nix string keeps its leading spaces, and a
-  # shebang that is not at column 0 is not a shebang.
+  # writeScript, not a heredoc inside an indented nix string: those keep their
+  # leading spaces, and a shebang that is not at column 0 is not a shebang.
   mkWrapper = prog: pkgs.writeScript "swift-${prog}-wrapper" ''
     #!${pkgs.runtimeShell}
     # Put swift's runtime libraries on the link path (LIBRARY_PATH) and the run
     # path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.
-    . ${linkEnv}
+    . ${linkEnv}/link-env.sh
     exec ${pkgs.swift}/bin/${prog} "$@"
   '';
 
   wrappers = pkgs.runCommand "swift-wrappers" { } (
     lib.concatMapStrings (prog: ''
-      mkdir -p $out/bin
-      cp ${mkWrapper prog} $out/bin/${prog}
-      chmod +x $out/bin/${prog}
+      mkdir -p "$out/bin"
+      cp ${mkWrapper prog} "$out/bin/${prog}"
+      chmod +x "$out/bin/${prog}"
     '') [ "swift" "swiftc" ]
   );
 in
 pkgs.symlinkJoin {
   name = "swift-${pkgs.swift.version}";
   # `wrappers` is FIRST: with ignoreCollisions the first path to provide a name
-  # wins, so listing it last would leave swift's own bin/swift in place (that is
-  # what an earlier revision did, and the probe found an ELF binary where it
-  # expected the script).
-  paths = [ wrappers pkgs.swift ] ++ extraLibs;
+  # wins, so listing it last would leave swift's own bin/swift in place (an earlier
+  # revision did, and the probe found an ELF binary where it expected the script).
+  paths = [ wrappers pkgs.swift ];
   ignoreCollisions = true;
 }
