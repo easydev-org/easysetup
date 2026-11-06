@@ -97,8 +97,9 @@ pkgs.runCommand "swift-${swift.version}" {
   # and a path repeated once per occurrence makes the env file unreadable when it
   # is printed by a failing job.
   # Collect into a file first. A pipeline inside $( ) would inherit `pipefail`,
-  # and a single failing `find` (a blank line in the graph file makes `find ''`
-  # exit non-zero) would then kill the whole assignment with no message.
+  # and a single failing `find` (the graph file ends with a blank line, so the
+  # loop sees an empty path and `find` exits non-zero) would then kill the whole
+  # assignment with no message at all.
   : > libdirs.raw
   while read -r p _rest; do
     [ -n "$p" ] || continue
