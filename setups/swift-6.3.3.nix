@@ -65,6 +65,8 @@ pkgs.runCommand "swift-${swift.version}" {
   # line, formatted as "<path> <nrefs> <ref>...".
   exportReferencesGraph = [ "swift-runtime" swift ];
 } ''
+  set -euxo pipefail
+  echo "=== stage: mirror ==="
   mkdir -p "$out/bin"
 
   # Mirror swift's output: everything as a symlink, bin/ file by file so the two
@@ -103,6 +105,11 @@ pkgs.runCommand "swift-${swift.version}" {
     done < swift-runtime | sed 's|/[^/]*$||' | sort -u
   )"
 
+  # easydev_rpath must exist in THIS shell before it is appended to; assigning it
+  # only inside the redirect below would write the assignment into the file and
+  # leave the variable unset, which `set -u` turns into an immediate exit with no
+  # message at all (that is what made an earlier build fail with an empty log).
+  easydev_rpath=""
   {
     echo 'easydev_rpath=""'
     for d in $libdirs; do
