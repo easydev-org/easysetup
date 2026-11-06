@@ -15,6 +15,7 @@
  "note": "Derived from nix closures. Do not edit by hand.",
  "setups": {
   "actionlint-1.7.12": {
+   "assembled": false,
    "closure_size": 40,
    "deps": [
     "base-2.44",
@@ -28,6 +29,7 @@
    "store": "/nix/store/fs69vmim4iirbvm7897w2ah177d7vlxl-actionlint-1.7.12"
   },
   "ameba-1.7.0": {
+   "assembled": false,
    "closure_size": 11,
    "deps": [
     "base-2.44"
@@ -42,6 +44,7 @@
    "store": "/nix/store/00wjhdp7panvvibnba9m4hkm9qdn6k1n-ameba-1.7.0"
   },
   "autoconf-2.73": {
+   "assembled": false,
    "closure_size": 16,
    "deps": [
     "base-2.44",
@@ -54,6 +57,7 @@
    "store": "/nix/store/f5f2x76r61rkz4fis5n82rcnv670bm7s-autoconf-2.73"
   },
   "automake-1.18.1": {
+   "assembled": false,
    "closure_size": 15,
    "deps": [
     "base-2.44",
@@ -65,6 +69,7 @@
    "store": "/nix/store/vxsb4wclj2223z350hzy9qxvq37fn8vx-automake-1.18.1"
   },
   "awscli2-2.36.31": {
+   "assembled": false,
    "closure_size": 40,
    "deps": [
     "base-2.44",
@@ -92,6 +97,7 @@
    "store": "/nix/store/mmxa82gymjhm5xqj9m5xiv90an485nw7-awscli2-2.36.31"
   },
   "base-2.44": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [],
    "own": [
@@ -107,6 +113,7 @@
    "store": "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin"
   },
   "basedpyright-1.39.8": {
+   "assembled": false,
    "closure_size": 37,
    "deps": [
     "base-2.44",
@@ -118,6 +125,7 @@
    "store": "/nix/store/vqpdipjlna9a2mawpxw83lhq87m5ifq1-basedpyright-1.39.8"
   },
   "bash-5.3p20": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -130,6 +138,7 @@
    "store": "/nix/store/kwyi4bq5s2qgwbhz6cs4gjy57c2zdxws-bash-interactive-5.3p20"
   },
   "bazel-7.6.0": {
+   "assembled": false,
    "closure_size": 52,
    "deps": [
     "base-2.44",
@@ -163,6 +172,7 @@
    "store": "/nix/store/7ylbv76cqdba5qpyrhn9y6skyzksj4vh-bazel-7.6.0"
   },
   "bintools-23.1.3": {
+   "assembled": false,
    "closure_size": 24,
    "deps": [
     "base-2.44",
@@ -181,6 +191,7 @@
    "store": "/nix/store/01m5r726f2p9bsxpkzs70knrdd84kscc-llvm-binutils-wrapper-23.1.3"
   },
   "biome-2.5.15": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -192,6 +203,7 @@
    "store": "/nix/store/23lz92bdgfgs67f3d5phl1np1klwy8c5-biome-2.5.15"
   },
   "box-4.6.6": {
+   "assembled": false,
    "closure_size": 126,
    "deps": [
     "base-2.44",
@@ -319,6 +331,7 @@
    "store": "/nix/store/xla846x3829sh69rry6bgynm5v0y6png-box-4.6.6"
   },
   "buf-1.73.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -332,6 +345,7 @@
    "store": "/nix/store/pmr621j6lqlwwnigynjicxn5pkrxsky1-buf-1.73.0"
   },
   "bun-1.4.2": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -342,6 +356,7 @@
    "store": "/nix/store/2mxhj3nrvxxqm6gf6rwnrvz048zqdclp-bun-1.4.2"
   },
   "busybox-1.37.0": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -352,6 +367,7 @@
    "store": "/nix/store/j9m041gdw923yfikpr9yva8vna6lk6f7-busybox-1.37.0"
   },
   "bzip2-1.0.8": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -363,6 +379,7 @@
    "store": "/nix/store/ai2km55ba8bxrn64xx7p9lgvrrzdzv43-bzip2-1.0.8-bin"
   },
   "cabal-3.16.1.0": {
+   "assembled": false,
    "closure_size": 29,
    "deps": [
     "base-2.44"
@@ -393,6 +410,7 @@
    "store": "/nix/store/yqjmifli5p92icnwsmhs7bb6gn3fg4s0-cabal-install-3.16.1.0"
   },
   "cacert-3.126": {
+   "assembled": false,
    "closure_size": 1,
    "deps": [],
    "own": [
@@ -401,6 +419,7 @@
    "store": "/nix/store/xl2y3kkdjshb2z05y8kfvqj7b628jkgd-nss-cacert-3.126"
   },
   "cargo-1.99.0": {
+   "assembled": false,
    "closure_size": 26,
    "deps": [
     "base-2.44",
@@ -424,6 +443,7 @@
    "store": "/nix/store/1jwkiz96iwqdhm4bh2hvgd86ysb0b67q-cargo-1.99.0"
   },
   "cargo-audit-0.22.2": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -434,6 +454,7 @@
    "store": "/nix/store/q0c3bfsn0raq7s8icvb7k441f9ddwxsi-cargo-audit-0.22.2"
   },
   "cargo-nextest-0.9.146": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -444,6 +465,7 @@
    "store": "/nix/store/mdnmzhhli4p7zkrdy0dj9pvxdikm0fp2-cargo-nextest-0.9.146"
   },
   "cargo-watch-8.5.3": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -454,6 +476,7 @@
    "store": "/nix/store/5x9gkggwyjz2ng7kxjdbn9p3ph9dqlzp-cargo-watch-8.5.3"
   },
   "ccache-4.14.1": {
+   "assembled": false,
    "closure_size": 12,
    "deps": [
     "base-2.44"
@@ -469,6 +492,7 @@
    "store": "/nix/store/zfx4lcv63y31dd27m28qvanipysxq02q-ccache-4.14.1"
   },
   "clang-23.1.3": {
+   "assembled": false,
    "closure_size": 48,
    "deps": [
     "base-2.44",
@@ -500,6 +524,7 @@
    "store": "/nix/store/q5hx5j4n0c1nyxaxfgd1dzca3r3q3c25-clang-wrapper-23.1.3"
   },
   "clang-tools-23.1.3": {
+   "assembled": false,
    "closure_size": 50,
    "deps": [
     "base-2.44",
@@ -512,6 +537,7 @@
    "store": "/nix/store/065b08l7x6wkfl80si3yyjcjk87ivmya-clang-tools-23.1.3"
   },
   "clippy-1.99.0": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44"
@@ -526,6 +552,7 @@
    "store": "/nix/store/q9xqv556sz6pcxqp4bbk5v3mlxnqsg38-clippy-1.99.0"
   },
   "clj-kondo-2026.08.04": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -536,6 +563,7 @@
    "store": "/nix/store/r8vm970cr6ncf94svqd3sbivjpmjpp2i-clj-kondo-2026.08.04"
   },
   "clojure-1.12.6.1673": {
+   "assembled": false,
    "closure_size": 112,
    "deps": [
     "base-2.44",
@@ -646,6 +674,7 @@
    "store": "/nix/store/7wrpva4qbl6v9awx2jc7gl3w8zvmb946-clojure-1.12.6.1673"
   },
   "clojure-lsp-2026.10.15-11.42.38": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -656,6 +685,7 @@
    "store": "/nix/store/zyws0hij7xras6231mx6lfhfgykxmw7f-clojure-lsp-2026.10.15-11.42.38"
   },
   "cmake-4.4.4": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44"
@@ -684,6 +714,7 @@
    "store": "/nix/store/rlpcs1h48m058z811xxkn5672v77p5qj-cmake-4.4.4"
   },
   "composer-2.10.3": {
+   "assembled": false,
    "closure_size": 133,
    "deps": [
     "base-2.44",
@@ -706,6 +737,7 @@
    "store": "/nix/store/8bjgbzmn2zcknwsadv60ngqhzs8031xy-composer-2.10.3"
   },
   "conan-2.32.0": {
+   "assembled": false,
    "closure_size": 52,
    "deps": [
     "base-2.44",
@@ -738,6 +770,7 @@
    "store": "/nix/store/1iamkj24p9vk3md9phv0g5rz56ms7kqk-conan-2.32.0"
   },
   "coreutils-9.12": {
+   "assembled": false,
    "closure_size": 10,
    "deps": [
     "base-2.44"
@@ -751,6 +784,7 @@
    "store": "/nix/store/cb987zkxvsv0490753ilrvn5yk7ylgxi-coreutils-9.12"
   },
   "coverage-7.16.2": {
+   "assembled": false,
    "closure_size": 24,
    "deps": [
     "base-2.44",
@@ -762,6 +796,7 @@
    "store": "/nix/store/yjmr749np0da8zczly0ng1cj4vj4gvwg-python3.14-coverage-7.16.2"
   },
   "coverage-7.16.2-py3.13": {
+   "assembled": false,
    "closure_size": 23,
    "deps": [
     "base-2.44",
@@ -773,6 +808,7 @@
    "store": "/nix/store/504z99fqxwfsmk27whk9in0sfglfwls8-python3.13-coverage-7.16.2"
   },
   "cppcheck-2.22.0": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -787,6 +823,7 @@
    "store": "/nix/store/f374a86km3sgsb1irdjk8kdqvbh7b0z9-cppcheck-2.22.0"
   },
   "crystal-1.21.1": {
+   "assembled": false,
    "closure_size": 70,
    "deps": [
     "base-2.44",
@@ -837,6 +874,7 @@
    "store": "/nix/store/mx4r35mvybarlnjg9gnvwwx66vb0c54p-crystal-1.21.1-bin"
   },
   "crystalline-0.20.0": {
+   "assembled": false,
    "closure_size": 24,
    "deps": [
     "base-2.44"
@@ -862,6 +900,7 @@
    "store": "/nix/store/0s73amknj8zh6q77h3dsspi41jbdrgs5-crystalline-0.20.0"
   },
   "csharp-ls-0.28.0": {
+   "assembled": false,
    "closure_size": 41,
    "deps": [
     "base-2.44",
@@ -874,6 +913,7 @@
    "store": "/nix/store/awc33f6yp6d57ic7yraa7lf7r02p1a2b-csharp-ls-0.28.0"
   },
   "curl-8.22.0": {
+   "assembled": false,
    "closure_size": 21,
    "deps": [
     "base-2.44"
@@ -896,6 +936,7 @@
    "store": "/nix/store/5lpg7j8y8lf8c4zv318yi4rmgyn5yhip-curl-8.22.0-bin"
   },
   "dart-3.13.0": {
+   "assembled": false,
    "closure_size": 17,
    "deps": [
     "base-2.44"
@@ -915,6 +956,7 @@
    "store": "/nix/store/rhlqcgxza31jv19mdjyzp5vnl6kz34dw-dart-3.13.0"
   },
   "dasel-3.11.2": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -926,6 +968,7 @@
    "store": "/nix/store/l4sp8gsbb2nnj77rzp7ba87i3vcnyv6z-dasel-3.11.2"
   },
   "dash-0.5.13.5": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -938,6 +981,7 @@
    "store": "/nix/store/91a26w6xq3mlfr624xv63gprl2408mqp-dash-0.5.13.5"
   },
   "delve-1.27.2": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -951,6 +995,7 @@
    "store": "/nix/store/17dyi8lnpfp3lj9qzyiwwcdj72lm9zr7-delve-1.27.2"
   },
   "deno-2.9.7": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44"
@@ -966,6 +1011,7 @@
    "store": "/nix/store/7fsprs3z127wghc2izay3qwy7qnn4kfi-deno-2.9.7"
   },
   "detekt-1.23.8": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44"
@@ -980,6 +1026,7 @@
    "store": "/nix/store/n74jy7r2r6qzprvvcs2dh6lifix4sz31-detekt-1.23.8"
   },
   "diffutils-3.12": {
+   "assembled": false,
    "closure_size": 11,
    "deps": [
     "base-2.44",
@@ -991,6 +1038,7 @@
    "store": "/nix/store/nzsflqrk0zdljly9jhx82l784hl5rmc4-diffutils-3.12"
   },
   "dotnet-10.0.401": {
+   "assembled": false,
    "closure_size": 39,
    "deps": [
     "base-2.44",
@@ -1025,6 +1073,7 @@
    "store": "/nix/store/pkng7qyg6mxf77lrqlaal9s6igy35n4x-dotnet-sdk-wrapped-10.0.401"
   },
   "elixir-1.18.5": {
+   "assembled": false,
    "closure_size": 215,
    "deps": [
     "base-2.44",
@@ -1038,6 +1087,7 @@
    "store": "/nix/store/s1h2bf9lk5784mry7w3v32nv0g1v00jb-elixir-1.18.5"
   },
   "elixir-ls-0.31.1": {
+   "assembled": false,
    "closure_size": 216,
    "deps": [
     "base-2.44",
@@ -1049,6 +1099,7 @@
    "store": "/nix/store/z1phas9w297q1rad7jbjcw86w02vvcli-elixir-ls-0.31.1"
   },
   "erlang-28.5.0.8": {
+   "assembled": false,
    "closure_size": 212,
    "deps": [
     "base-2.44",
@@ -1243,6 +1294,7 @@
    "store": "/nix/store/0133yq84hvq9473krxvwrx711ici6ik6-erlang-28.5.0.8"
   },
   "erlfmt-1.8.0": {
+   "assembled": false,
    "closure_size": 213,
    "deps": [
     "base-2.44",
@@ -1254,6 +1306,7 @@
    "store": "/nix/store/6r0g6i5pkc8c813ijxw9i3qsjjghzp3c-erlfmt-1.8.0"
   },
   "esbuild-0.27.2": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -1267,6 +1320,7 @@
    "store": "/nix/store/nh024wm7m4lkga640r74yxvp7bgdfbhd-esbuild-0.27.2"
   },
   "fd-10.5.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -1277,6 +1331,7 @@
    "store": "/nix/store/a0in10vqbms8p07zg03jrw8j36gmgv58-fd-10.5.0"
   },
   "findutils-4.11.0": {
+   "assembled": false,
    "closure_size": 11,
    "deps": [
     "base-2.44",
@@ -1288,6 +1343,7 @@
    "store": "/nix/store/99v13ig4382mngi6ggf0csqi7rfa04j5-findutils-4.11.0"
   },
   "flutter-3.47.4": {
+   "assembled": false,
    "closure_size": 430,
    "deps": [
     "base-2.44",
@@ -1679,6 +1735,7 @@
    "store": "/nix/store/zjrgc7zva5nh4w9w2v0n5qyp5j7js3qn-flutter-wrapped-3.47.4-sdk-links"
   },
   "gawk-5.4.1": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -1689,6 +1746,7 @@
    "store": "/nix/store/h96s16mjssibkvk62pvmfm3lwfc3wnwp-gawk-5.4.1"
   },
   "gcc-16.2.0": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -1713,6 +1771,7 @@
    "store": "/nix/store/r5ri78axx1qggkjq3vawywlzglg70b5w-gcc-wrapper-16.2.0"
   },
   "gcovr-8.4": {
+   "assembled": false,
    "closure_size": 31,
    "deps": [
     "base-2.44",
@@ -1731,6 +1790,7 @@
    "store": "/nix/store/5z93jzpblll92gkar3ih63dg4641zp4l-python3.14-gcovr-8.4"
   },
   "gdb-17.2": {
+   "assembled": false,
    "closure_size": 44,
    "deps": [
     "base-2.44",
@@ -1762,6 +1822,7 @@
    "store": "/nix/store/bcadwcq0i3hw6ilvshn5cyr97kfsdayz-gdb-17.2"
   },
   "gh-2.102.0": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -1775,6 +1836,7 @@
    "store": "/nix/store/zf8q69vrdflm3v09wi0ngsgbmj2q1gid-gh-2.102.0"
   },
   "ghc-9.10.3": {
+   "assembled": false,
    "closure_size": 70,
    "deps": [
     "base-2.44",
@@ -1826,6 +1888,7 @@
    "store": "/nix/store/747aj3l9dzkwncryxf6mpzdszh0h2gbc-ghc-9.10.3"
   },
   "git-2.56.0": {
+   "assembled": false,
    "closure_size": 87,
    "deps": [
     "base-2.44",
@@ -1894,6 +1957,7 @@
    "store": "/nix/store/2k05jnr38sryn0fnvlrmjrshxbphj3jp-git-2.56.0"
   },
   "git-lfs-3.8.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -1907,6 +1971,7 @@
    "store": "/nix/store/gglr7jib5zm6nigjlamv5rdbi3cj7a5w-git-lfs-3.8.0"
   },
   "gitleaks-8.30.1": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -1920,6 +1985,7 @@
    "store": "/nix/store/350dhvpsa71wyv8z0ar701nkz79kj5sx-gitleaks-8.30.1"
   },
   "glab-1.114.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -1933,6 +1999,7 @@
    "store": "/nix/store/xj9apaiin9c5x1dim2xrpi36drwrh0vz-glab-1.114.0"
   },
   "gnupg-2.4.9": {
+   "assembled": false,
    "closure_size": 54,
    "deps": [
     "base-2.44"
@@ -1988,6 +2055,7 @@
    "store": "/nix/store/myvdar2xjggnzphi2a0zr701zg0smivn-gnupg-2.4.9"
   },
   "go-1.26.9": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -2001,6 +2069,7 @@
    "store": "/nix/store/bbqjsl8fzayd8c2i63skp7hybysvwr03-go-1.26.9"
   },
   "go-1.27.3": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -2014,6 +2083,7 @@
    "store": "/nix/store/1fng2iqlx5y8rqvhjp9203mymzyny6cz-go-1.27.3"
   },
   "go-tools-2026.2.2": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -2027,6 +2097,7 @@
    "store": "/nix/store/60fai9v3f1gw9rx25zyn11r674iq756i-go-tools-2026.2.2"
   },
   "golangci-lint-2.15.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -2040,6 +2111,7 @@
    "store": "/nix/store/igxlgznd0xbmn0qjdq4jl88ahcbs4bd2-golangci-lint-2.15.0"
   },
   "google-java-format-1.37.0": {
+   "assembled": false,
    "closure_size": 108,
    "deps": [
     "base-2.44",
@@ -2146,6 +2218,7 @@
    "store": "/nix/store/blwa6yr7yw7ljwi57wia54d03jvpq1j2-google-java-format-1.37.0"
   },
   "gopls-0.24.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -2159,6 +2232,7 @@
    "store": "/nix/store/gbd8yrmh8a5isfvkgqhzf7ixbm0cn1ry-gopls-0.24.0"
   },
   "goreleaser-2.17.1": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -2172,6 +2246,7 @@
    "store": "/nix/store/fry0pk1nq4kmcabyhdi7bxxm9z1sgfab-goreleaser-2.17.1"
   },
   "gradle-9.8.0": {
+   "assembled": false,
    "closure_size": 133,
    "deps": [
     "base-2.44",
@@ -2201,6 +2276,7 @@
    "store": "/nix/store/2qkf1l0vzibp62vmyvnij8qmwqb233ng-gradle-9.8.0"
   },
   "grep-3.12": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -2212,6 +2288,7 @@
    "store": "/nix/store/c3f45pxlb81gzz4w1nym7lpznfypva7s-gnugrep-3.12"
   },
   "gzip-1.15": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -2222,6 +2299,7 @@
    "store": "/nix/store/rpswfv0ff4wap9anx7k1224x2m94pfcc-gzip-1.15"
   },
   "hadolint-2.14.0": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44"
@@ -2251,6 +2329,7 @@
    "store": "/nix/store/ry5yqmka9n8v1ira7vfsh57xvmgwg3rz-hadolint-2.14.0"
   },
   "haskell-language-server-2.13.0.0": {
+   "assembled": false,
    "closure_size": 562,
    "deps": [
     "base-2.44",
@@ -2753,6 +2832,7 @@
    "store": "/nix/store/ds1abp8r91b8f10d60mz2mbn5qsh8xdm-haskell-language-server-2.13.0.0"
   },
   "helm-4.3.1": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -2766,6 +2846,7 @@
    "store": "/nix/store/j862fm1yvrap52mf8l7nvfr1y66rj6p5-kubernetes-helm-4.3.1"
   },
   "hlint-3.10": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44"
@@ -2796,6 +2877,7 @@
    "store": "/nix/store/y243rxa3q4fhgfdk49nb96fzj1a5gq02-hlint-3.10"
   },
   "inetutils-2.7": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44",
@@ -2809,6 +2891,7 @@
    "store": "/nix/store/sgjg6zavzzmy7n438w4xd5j8kiqniphp-inetutils-2.7"
   },
   "iproute2-7.2.0": {
+   "assembled": false,
    "closure_size": 30,
    "deps": [
     "base-2.44"
@@ -2841,6 +2924,7 @@
    "store": "/nix/store/1ww3clwns6md3prwdh4knqpwn785fvzy-iproute2-7.2.0"
   },
   "iputils-20250605": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -2852,6 +2936,7 @@
    "store": "/nix/store/1n81sbs00pd7i5j7zjsvhcdcgzq4mnfh-iputils-20250605"
   },
   "ipython-9.16.1": {
+   "assembled": false,
    "closure_size": 41,
    "deps": [
     "base-2.44",
@@ -2880,6 +2965,7 @@
    "store": "/nix/store/03bhml8k6f08hkhkp7l31qvw8zd6b378-python3.14-ipython-9.16.1"
   },
   "ipython-9.16.1-py3.13": {
+   "assembled": false,
    "closure_size": 40,
    "deps": [
     "base-2.44",
@@ -2908,6 +2994,7 @@
    "store": "/nix/store/np4qgyxgs75nakwxa4fdr2zirr1fr6nh-python3.13-ipython-9.16.1"
   },
   "iwyu-0.26": {
+   "assembled": false,
    "closure_size": 49,
    "deps": [
     "base-2.44",
@@ -2940,6 +3027,7 @@
    "store": "/nix/store/6l711bys0whj4dyh3yrg1iam4212vd6d-include-what-you-use-0.26"
   },
   "java-25.0.4.1+1": {
+   "assembled": false,
    "closure_size": 107,
    "deps": [
     "base-2.44",
@@ -3045,6 +3133,7 @@
    "store": "/nix/store/zxwgmss0qc6m0qpvqc6xpyjll762ng1y-openjdk-25.0.4.1+1"
   },
   "jdtls-1.61.0": {
+   "assembled": false,
    "closure_size": 116,
    "deps": [
     "base-2.44",
@@ -3145,6 +3234,7 @@
    "store": "/nix/store/kmgyxxqdhqrg9qpizmg4jd1k0zrvi1lm-jdt-language-server-1.61.0"
   },
   "jenkins-2.580.1": {
+   "assembled": false,
    "closure_size": 108,
    "deps": [
     "base-2.44",
@@ -3156,6 +3246,7 @@
    "store": "/nix/store/m6b2f6hlgcrsvlcr13qiaz7nb2hl9gnd-jenkins-2.580.1"
   },
   "jq-1.8.2": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -3168,6 +3259,7 @@
    "store": "/nix/store/9l0j15jg8634hkb6d4c9y95mpxl0nhrd-jq-1.8.2-bin"
   },
   "jqp-0.8.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -3181,6 +3273,7 @@
    "store": "/nix/store/z8dib7azx7wyrwgwrpcjh06kfsp3lxjn-jqp-0.8.0"
   },
   "julia-1.13.2": {
+   "assembled": false,
    "closure_size": 18,
    "deps": [
     "base-2.44"
@@ -3201,6 +3294,7 @@
    "store": "/nix/store/0sldcfi498nydx7yxfw34vrk6hq12fpa-julia-1.13.2"
   },
   "kind-0.33.0": {
+   "assembled": false,
    "closure_size": 4,
    "deps": [],
    "own": [
@@ -3212,6 +3306,7 @@
    "store": "/nix/store/ww0dvq6517gia80da4csb7c3nanhmdgq-kind-0.33.0"
   },
   "kotlin-2.4.20": {
+   "assembled": false,
    "closure_size": 108,
    "deps": [
     "base-2.44",
@@ -3318,6 +3413,7 @@
    "store": "/nix/store/375q713hr3jl5ai18xvyj42v9fdjjljy-kotlin-2.4.20"
   },
   "kotlin-language-server-1.3.13": {
+   "assembled": false,
    "closure_size": 110,
    "deps": [
     "base-2.44",
@@ -3422,6 +3518,7 @@
    "store": "/nix/store/vmalvkdv4sm9mb5rry3ila8jwj49j2ll-kotlin-language-server-1.3.13"
   },
   "ktlint-1.8.0": {
+   "assembled": false,
    "closure_size": 14,
    "deps": [
     "base-2.44",
@@ -3437,6 +3534,7 @@
    "store": "/nix/store/lym33yp011ach7q11q1gbsrghywq7b89-ktlint-1.8.0"
   },
   "kubectl-1.37.1": {
+   "assembled": false,
    "closure_size": 4,
    "deps": [],
    "own": [
@@ -3448,6 +3546,7 @@
    "store": "/nix/store/li0zhypv61b51rdjcpf7vgdv5hpl0jvq-kubectl-1.37.1"
   },
   "kustomize-5.8.2": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -3461,6 +3560,7 @@
    "store": "/nix/store/0q9pk3bp96ry05dpsxkbgxihjyggiys3-kustomize-5.8.2"
   },
   "lcov-2.4": {
+   "assembled": false,
    "closure_size": 117,
    "deps": [
     "base-2.44",
@@ -3560,6 +3660,7 @@
    "store": "/nix/store/jpbr3z9hmdw8lsd5l36mzdasxz72ax5q-lcov-2.4"
   },
   "libtool-2.6.2": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44",
@@ -3585,6 +3686,7 @@
    "store": "/nix/store/a9ilgwvkq7j51dyqp22caafam792ywdh-libtool-2.6.2"
   },
   "lldb-23.1.3": {
+   "assembled": false,
    "closure_size": 29,
    "deps": [
     "base-2.44",
@@ -3601,6 +3703,7 @@
    "store": "/nix/store/ibb3bfrbz5h3is23gzsdass2rj9gkyfg-lldb-23.1.3"
   },
   "llvm-23.1.3": {
+   "assembled": false,
    "closure_size": 12,
    "deps": [
     "base-2.44"
@@ -3615,6 +3718,7 @@
    "store": "/nix/store/8lg1k2kl3dazk3s0ppqvnqp17y1032cb-llvm-23.1.3"
   },
   "lua-5.5.1": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -3626,6 +3730,7 @@
    "store": "/nix/store/777w57bdbgmiidmrxsk23g5vb8jllwfj-lua-5.5.1"
   },
   "lua-language-server-3.19.2": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -3637,6 +3742,7 @@
    "store": "/nix/store/ismkshy9wk0l7ga6f9373p9x28l3llj5-lua-language-server-3.19.2"
   },
   "luarocks-3.13.0-1": {
+   "assembled": false,
    "closure_size": 43,
    "deps": [
     "base-2.44",
@@ -3661,6 +3767,7 @@
    "store": "/nix/store/lgxm86xpiac13i760c6vbmbi1acxmrkv-lua5.2-luarocks-3.13.0-1"
   },
   "make-4.4.1": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -3671,6 +3778,7 @@
    "store": "/nix/store/vs2sa1msvkjxbb70h47819zq8a9srj21-gnumake-4.4.1"
   },
   "maven-3.9.16": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44"
@@ -3685,6 +3793,7 @@
    "store": "/nix/store/xycjjp2g8bd3ygh3ygm1r37551h4fj6p-maven-3.9.16"
   },
   "meson-1.12.1": {
+   "assembled": false,
    "closure_size": 24,
    "deps": [
     "base-2.44",
@@ -3696,6 +3805,7 @@
    "store": "/nix/store/aznm4kx8p4br84x9zdqb5spww7m4bknp-meson-1.12.1"
   },
   "metals-1.6.9": {
+   "assembled": false,
    "closure_size": 109,
    "deps": [
     "base-2.44",
@@ -3803,6 +3913,7 @@
    "store": "/nix/store/d7cjv262rz56vack60drxi17lbn5y7f8-metals-1.6.9"
   },
   "micromamba-2.9.0": {
+   "assembled": false,
    "closure_size": 126,
    "deps": [
     "base-2.44",
@@ -3866,6 +3977,7 @@
    "store": "/nix/store/3mx4ly5vxj1yqi3zymmkw3s3i5ayp0dz-micromamba-2.9.0"
   },
   "miller-6.22.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -3879,6 +3991,7 @@
    "store": "/nix/store/9dq55h1wk7s013n0nrd98131fl8aidjv-miller-6.22.0"
   },
   "mold-3.0.0": {
+   "assembled": false,
    "closure_size": 17,
    "deps": [
     "base-2.44",
@@ -3895,6 +4008,7 @@
    "store": "/nix/store/nlykwwxppzcffy0gzl3hmfxmhpwx26ms-mold-unwrapped-wrapper-3.0.0"
   },
   "mypy-2.1.0": {
+   "assembled": false,
    "closure_size": 29,
    "deps": [
     "base-2.44",
@@ -3911,6 +4025,7 @@
    "store": "/nix/store/m55smmpw3g0swzyg4j8av0cmvrcwls55-python3.14-mypy-2.1.0"
   },
   "mypy-2.1.0-py3.13": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44",
@@ -3927,6 +4042,7 @@
    "store": "/nix/store/0rcw95wlbl8zcd0qblwhmzifs2k5bbpc-python3.13-mypy-2.1.0"
   },
   "nim-2.2.12": {
+   "assembled": false,
    "closure_size": 66,
    "deps": [
     "base-2.44",
@@ -3941,6 +4057,7 @@
    "store": "/nix/store/v9687zlpxmbvsd24hmk3nhfcq4xw3gfx-x86_64-unknown-linux-gnu-nim-wrapper-2.2.12"
   },
   "nimlangserver-1.14.0": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -3951,6 +4068,7 @@
    "store": "/nix/store/8gjkncl23flfj6kvdv5yrvxblkw5sdr5-nimlangserver-1.14.0"
   },
   "nimlsp-0.4.7": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -3962,6 +4080,7 @@
    "store": "/nix/store/cf1hv2src8d802ic874bxks7jhxmmp58-nimlsp-0.4.7"
   },
   "ninja-1.13.2": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -3972,6 +4091,7 @@
    "store": "/nix/store/nyjr5b3ib747yls4n9jq5ijr6wqg6wdc-ninja-1.13.2"
   },
   "nix-2.34.9": {
+   "assembled": false,
    "closure_size": 63,
    "deps": [
     "base-2.44"
@@ -4037,6 +4157,7 @@
    "store": "/nix/store/q2pppmc6qzsr1fhgxl92v9ckqx9z4yl7-nix-2.34.9"
   },
   "node-24.21.0": {
+   "assembled": false,
    "closure_size": 36,
    "deps": [
     "base-2.44",
@@ -4073,6 +4194,7 @@
    "store": "/nix/store/j1j9b0w3mhpccdli73ycj5w7nf6fkzqz-nodejs-24.21.0"
   },
   "node-26.12.0": {
+   "assembled": false,
    "closure_size": 40,
    "deps": [
     "base-2.44",
@@ -4113,6 +4235,7 @@
    "store": "/nix/store/l57mwn9jgc7vw8ibwjrw8d376jxplly3-nodejs-26.12.0"
   },
   "ocamlformat-0.29.0": {
+   "assembled": false,
    "closure_size": 33,
    "deps": [
     "base-2.44"
@@ -4149,6 +4272,7 @@
    "store": "/nix/store/4mpn0a1bczw3v302v0ip2zb31nm5bavv-ocaml5.5.1-ocamlformat-0.29.0"
   },
   "omnisharp-1.39.14": {
+   "assembled": false,
    "closure_size": 42,
    "deps": [
     "base-2.44",
@@ -4186,6 +4310,7 @@
    "store": "/nix/store/kl4rzaxn4ibhl8y2my2gjy5dryhzfl88-omnisharp-roslyn-1.39.14"
   },
   "opam-2.6.1": {
+   "assembled": false,
    "closure_size": 30,
    "deps": [
     "base-2.44",
@@ -4204,6 +4329,7 @@
    "store": "/nix/store/pypckphcs81bf7q55d0grr4ygcnkyad6-opam-2.6.1"
   },
   "openssh-10.6p1": {
+   "assembled": false,
    "closure_size": 23,
    "deps": [
     "base-2.44"
@@ -4229,6 +4355,7 @@
    "store": "/nix/store/cy1kp9s0vklml5di3hddw0x4k38bixv6-openssh-10.6p1"
   },
   "openssl-3.5.9": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -4240,6 +4367,7 @@
    "store": "/nix/store/gvglnxscmvx4mh9my0cy0xgi0l1z6l9s-openssl-3.5.9-bin"
   },
   "opentofu-1.13.1": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -4253,6 +4381,7 @@
    "store": "/nix/store/r0ln3w5al2fr0s7wqq7g1mx615irqi0d-opentofu-1.13.1"
   },
   "ormolu-0.8.0.2": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44"
@@ -4282,6 +4411,7 @@
    "store": "/nix/store/y8zjcas4al4jx21j81rymaysq2mczggz-ormolu-0.8.0.2-bin"
   },
   "patch-2.8": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -4293,6 +4423,7 @@
    "store": "/nix/store/d5jz315vxbphknfawsrjs192ci9bc6df-patch-2.8"
   },
   "perl-5.42.3": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44",
@@ -4305,6 +4436,7 @@
    "store": "/nix/store/y1gmkixqpkfwayj9iqxn3c8brm6zkn1m-perl-5.42.3"
   },
   "phing-3.1.2": {
+   "assembled": false,
    "closure_size": 122,
    "deps": [
     "base-2.44",
@@ -4428,6 +4560,7 @@
    "store": "/nix/store/dc4hwarykpjyrz67sa8pszs8p77hg6ng-phing-3.1.2"
   },
   "php-8.5.11": {
+   "assembled": false,
    "closure_size": 119,
    "deps": [
     "base-2.44",
@@ -4548,6 +4681,7 @@
    "store": "/nix/store/yaxz3fw0r8v89ai0bbpw2b2vb9w4vb36-php-with-extensions-8.5.11"
   },
   "php-cs-fixer-3.95.1": {
+   "assembled": false,
    "closure_size": 120,
    "deps": [
     "base-2.44",
@@ -4559,6 +4693,7 @@
    "store": "/nix/store/1dhd16vzz1rxdh5kxjsjjkmr47jrrxx8-php-cs-fixer-3.95.1"
   },
   "phpmd-2.15.0": {
+   "assembled": false,
    "closure_size": 120,
    "deps": [
     "base-2.44",
@@ -4570,6 +4705,7 @@
    "store": "/nix/store/gpny9llxymw78c5ardgbj7ysah39xmmv-phpmd-2.15.0"
   },
   "pip-26.1.2": {
+   "assembled": false,
    "closure_size": 24,
    "deps": [
     "base-2.44",
@@ -4581,6 +4717,7 @@
    "store": "/nix/store/4w19syfhcr54sbn8crsswm3ssxq11xsw-python3.14-pip-26.1.2"
   },
   "pip-26.1.2-py3.13": {
+   "assembled": false,
    "closure_size": 23,
    "deps": [
     "base-2.44",
@@ -4592,6 +4729,7 @@
    "store": "/nix/store/1a426yajwpqj3hdnjbiq74k89r6awfja-python3.13-pip-26.1.2"
   },
   "pixi-0.82.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -4602,6 +4740,7 @@
    "store": "/nix/store/az9gic2hkj8zvyqc8y1zks00gywgshfn-pixi-0.82.0"
   },
   "pkg-config-0.29.2": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -4615,6 +4754,7 @@
    "store": "/nix/store/s70gz6bvz74c36xigh5m2ab2cqli08cv-pkg-config-wrapper-0.29.2"
   },
   "pmd-6.55.0": {
+   "assembled": false,
    "closure_size": 66,
    "deps": [
     "base-2.44",
@@ -4679,6 +4819,7 @@
    "store": "/nix/store/p5chfbzfiwcjsym07rrcgy0m539csf4g-pmd-6.55.0"
   },
   "pnpm-12.9.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -4689,6 +4830,7 @@
    "store": "/nix/store/fsf4ff3d6vsnhvhg9n7ai4fvk0c389y7-pnpm-12.9.0"
   },
   "podman-5.8.9": {
+   "assembled": false,
    "closure_size": 115,
    "deps": [
     "base-2.44",
@@ -4746,6 +4888,7 @@
    "store": "/nix/store/a4x9z75ghw7jrd7kv4c4rrv6dz0ayfsp-podman-5.8.9"
   },
   "pre-commit-4.7.0": {
+   "assembled": false,
    "closure_size": 63,
    "deps": [
     "base-2.44",
@@ -4783,6 +4926,7 @@
    "store": "/nix/store/siv4cmnqm1bm2cq8znjkrfvw4m0samyp-pre-commit-4.7.0"
   },
   "procps-4.0.7": {
+   "assembled": false,
    "closure_size": 12,
    "deps": [
     "base-2.44"
@@ -4798,6 +4942,7 @@
    "store": "/nix/store/y733samykhd49crbck70qzsl315zq3hw-procps-4.0.7"
   },
   "protobuf-36.2": {
+   "assembled": false,
    "closure_size": 12,
    "deps": [
     "base-2.44"
@@ -4812,6 +4957,7 @@
    "store": "/nix/store/hjz0cvp9c6vi3mpsnhrnh2qjyhwb1db0-protobuf-36.2"
   },
   "psalm-6.18.0": {
+   "assembled": false,
    "closure_size": 120,
    "deps": [
     "base-2.44",
@@ -4823,6 +4969,7 @@
    "store": "/nix/store/slwzm86qmgf1fhajvil68l35flqyfyw3-psalm-6.18.0"
   },
   "pylint-4.0.7": {
+   "assembled": false,
    "closure_size": 30,
    "deps": [
     "base-2.44",
@@ -4840,6 +4987,7 @@
    "store": "/nix/store/0wrzkg7zrdqzawbxkh3x865n7r5fznlk-python3.14-pylint-4.0.7"
   },
   "pylint-4.0.7-py3.13": {
+   "assembled": false,
    "closure_size": 29,
    "deps": [
     "base-2.44",
@@ -4857,6 +5005,7 @@
    "store": "/nix/store/gadjlrwvgx7i46a2ib2q35spnpai0wal-python3.13-pylint-4.0.7"
   },
   "pytest-9.1.1": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44",
@@ -4872,6 +5021,7 @@
    "store": "/nix/store/1p2fja7y7dy76d7jbkrc51wrlssdz6zf-python3.14-pytest-9.1.1"
   },
   "pytest-9.1.1-py3.13": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -4887,6 +5037,7 @@
    "store": "/nix/store/wgqd388m45gyv06jbf9r6ia2diqc5pzw-python3.13-pytest-9.1.1"
   },
   "python-3.13.16": {
+   "assembled": false,
    "closure_size": 22,
    "deps": [
     "base-2.44"
@@ -4910,6 +5061,7 @@
    "store": "/nix/store/4168xqs4l5jbfc7xyi9zrhdhszx0pnlb-python3-3.13.16"
   },
   "python-3.14.8": {
+   "assembled": false,
    "closure_size": 23,
    "deps": [
     "base-2.44"
@@ -4934,6 +5086,7 @@
    "store": "/nix/store/xahxrjs30p3mw0a42bqg9ikgkikskw8m-python3-3.14.8"
   },
   "r-4.6.1": {
+   "assembled": false,
    "closure_size": 241,
    "deps": [
     "base-2.44",
@@ -5134,6 +5287,7 @@
    "store": "/nix/store/395dn4i9vigswzcqi96qpjx8mpzkiwnb-R-4.6.1"
   },
   "rake-13.3.1": {
+   "assembled": false,
    "closure_size": 12,
    "deps": [
     "base-2.44"
@@ -5148,6 +5302,7 @@
    "store": "/nix/store/m84a35isv1fwxj4gcy5m1ckamcadpkhb-ruby3.4-rake-13.3.1"
   },
   "ripgrep-15.2.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -5159,6 +5314,7 @@
    "store": "/nix/store/dzb4833vd9agd5gc015kmfy3pkzm9bwa-ripgrep-15.2.0"
   },
   "rsync-3.5.0": {
+   "assembled": false,
    "closure_size": 15,
    "deps": [
     "base-2.44"
@@ -5175,6 +5331,7 @@
    "store": "/nix/store/hsv6gv4p5cvlgzqgj0ylszssifr2vh6x-rsync-3.5.0"
   },
   "rubocop-1.80.2": {
+   "assembled": false,
    "closure_size": 26,
    "deps": [
     "base-2.44"
@@ -5203,6 +5360,7 @@
    "store": "/nix/store/mdnxzn6nz5f2w5fmjy5gs4bd565zlrll-ruby3.4-rubocop-1.80.2"
   },
   "ruby-4.0.7": {
+   "assembled": false,
    "closure_size": 11,
    "deps": [
     "base-2.44"
@@ -5216,6 +5374,7 @@
    "store": "/nix/store/xi6y11yd566pf95scr0znh03j68433d8-ruby-4.0.7"
   },
   "ruby-lsp-0.26.3": {
+   "assembled": false,
    "closure_size": 16,
    "deps": [
     "base-2.44"
@@ -5234,6 +5393,7 @@
    "store": "/nix/store/a1xzblx4mlrhrdhvbcgjlcfvmm5qrmnf-ruby3.4-ruby-lsp-0.26.3"
   },
   "ruff-0.17.1": {
+   "assembled": false,
    "closure_size": 26,
    "deps": [
     "base-2.44",
@@ -5247,6 +5407,7 @@
    "store": "/nix/store/kgmdwspfdw0cmdv7ia1i5m61ds1dn2yj-python3.14-ruff-0.17.1"
   },
   "rust-1.99.0": {
+   "assembled": false,
    "closure_size": 13,
    "deps": [
     "base-2.44"
@@ -5261,6 +5422,7 @@
    "store": "/nix/store/6l9kbzxwq9ij2lcmwl2qb1jdpqisjr8l-rustc-wrapper-1.99.0"
   },
   "rust-analyzer-2026-10-12": {
+   "assembled": false,
    "closure_size": 10,
    "deps": [
     "base-2.44"
@@ -5273,6 +5435,7 @@
    "store": "/nix/store/q3qkbbblcqzkbk8wp0qaf8wnmr2hlqq4-rust-analyzer-2026-10-12"
   },
   "rustfmt-1.99.0": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -5284,6 +5447,7 @@
    "store": "/nix/store/zfrqd9ahnccql0zgzgc5swwi4zmm14zl-rustfmt-1.99.0"
   },
   "sbt-2.0.10": {
+   "assembled": false,
    "closure_size": 109,
    "deps": [
     "base-2.44",
@@ -5391,6 +5555,7 @@
    "store": "/nix/store/qvz0z5ijf5yy3lhjl28znqlsyv7q9scz-sbt-2.0.10"
   },
   "scala-3.9.0": {
+   "assembled": false,
    "closure_size": 112,
    "deps": [
     "base-2.44",
@@ -5501,6 +5666,7 @@
    "store": "/nix/store/z9v1cafynqw5v0ml690fj81hgpm30idw-scala-3.9.0"
   },
   "scalafmt-3.11.5": {
+   "assembled": false,
    "closure_size": 109,
    "deps": [
     "base-2.44",
@@ -5608,6 +5774,7 @@
    "store": "/nix/store/i0wwqv3gjr8ph8rr35kca5dnjj5pr0hb-scalafmt-3.11.5"
   },
   "sed-4.10": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -5618,6 +5785,7 @@
    "store": "/nix/store/9wc73n5izv0m7ppjbibi4hbr68rba1lj-gnused-4.10"
   },
   "shellcheck-0.11.0": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44"
@@ -5647,6 +5815,7 @@
    "store": "/nix/store/v5lxnafjb5625mnnaf1gkr2z2zwqd0w3-shellcheck-0.11.0-bin"
   },
   "shfmt-3.14.1": {
+   "assembled": false,
    "closure_size": 2,
    "deps": [],
    "own": [
@@ -5656,6 +5825,7 @@
    "store": "/nix/store/jslrqighfw204sv9x15x9ka5szc3jixd-shfmt-3.14.1"
   },
   "skopeo-1.24.1": {
+   "assembled": false,
    "closure_size": 66,
    "deps": [
     "base-2.44",
@@ -5678,6 +5848,7 @@
    "store": "/nix/store/887dzig0xi09likvpysxg2r1bzcb7406-skopeo-1.24.1"
   },
   "sourcekit-lsp-6.3.3": {
+   "assembled": false,
    "closure_size": 32,
    "deps": [
     "base-2.44"
@@ -5712,6 +5883,7 @@
    "store": "/nix/store/p61vpv0hsrrq9ld9dc825f1zwdxlqpd9-sourcekit-lsp-6.3.3"
   },
   "stylua-2.6.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -5722,81 +5894,124 @@
    "store": "/nix/store/82c2g6jd3gvyxws1yflb7vq3c3bwarzr-stylua-2.6.0"
   },
   "swift-6.3.3": {
-   "closure_size": 92,
+   "assembled": true,
+   "closure_size": 137,
    "deps": [
     "base-2.44",
-    "coreutils-9.12",
+    "diffutils-3.12",
     "grep-3.12",
-    "python-3.14.8"
+    "jq-1.8.2",
+    "perl-5.42.3",
+    "python-3.14.8",
+    "sed-4.10"
    ],
    "own": [
     "/nix/store/0a584d1b9csvk900bdg4pf7vzkx1v7jl-binutils-wrapper-2.46",
     "/nix/store/0kqnvpw0rbkk6jwqlbx59yyq51kr8cyh-swift-corelibs-foundation-6.3.3",
     "/nix/store/0n8ncy1wlkkhnix0m91ly7x6lpwi2bm3-compiler-rt-libc-21.1.8",
+    "/nix/store/0plghz9w9qr3njnbjy6brmnqzsanikic-perl5.42.3-Compress-Raw-Lzma-2.206",
     "/nix/store/0sr3wj0rzrvfi9avyxb28w86rjqbj2i5-swift-driver-6.3.3-dev",
     "/nix/store/17215c0jn632z03h33fbwql4pdjb8bfi-mpfr-4.2.2",
     "/nix/store/19bnwrkj363vlbi4l02i6bs33xyvimql-llvm-21.1.8",
     "/nix/store/1g9gqywc2a4mi8fv9ipfazvp1f5fbpxv-swift-corelibs-libdispatch-6.3.3",
+    "/nix/store/24lparvxyg6xla6ya47z7fvi4nkbj7p3-perl5.42.3-Archive-Zip-1.68",
     "/nix/store/24zmc11ps8yplldzd5lq132cpbxwdqlm-swift-corelibs-libdispatch-6.3.3-dev",
     "/nix/store/2aw3zp99m9jc250ajl42rhaankp2kjav-nghttp2-1.70.0-lib",
     "/nix/store/2b7h6rnav6a0s6npjk8y76f6rjs86lvw-ngtcp2-1.23.0",
     "/nix/store/2l15gqrda27bvdh82bxrzipcsl68dnwk-libmpc-1.4.1",
+    "/nix/store/2l64kj19wii0hhkici8bnfg02dw0b50s-gavin-bc-7.1.0",
+    "/nix/store/30i86qyhshrl0qhxzg0i3pcvrmcy6g8g-swift-crypto-4.5.1",
+    "/nix/store/31v5r1dr6ql560nh3a7cxa4fa09nb99m-perl5.42.3-Test-MockModule-0.177.0",
+    "/nix/store/39nhjpfdlqkfv14fh65ch7a52r76zq0r-libdeflate-1.26",
+    "/nix/store/3dl20ncpnlxr3ls3235smsg5ln849a1d-file-5.48",
     "/nix/store/3zlgjcfm8j3nscrldjv8izxciybg0nh3-glibc-2.44-57-dev",
+    "/nix/store/48jp3zrc8rsgn441kfrk0dfx3n11ph26-libwebp-1.6.0",
     "/nix/store/49r7ql9sypb1f1x3i41dsw9kcl2nax88-compiler-rt-libc-21.1.8-dev",
     "/nix/store/4r0nvlkynh50krsm2sqkjkfvnhh1kfga-lldb-21.0.0",
+    "/nix/store/4rjhmlz7jsql02i05mdzkfhbhzlw13gd-swift-syntax-6.3.3",
+    "/nix/store/53c7ak3cz6ann26k3x34h394adxdjjd8-perl5.42.3-Compress-Raw-Bzip2-2.218",
     "/nix/store/5bnffyj1z6qsnd381wv278bawgpd8kci-swift-corelibs-foundation-6.3.3-dev",
+    "/nix/store/6bagc0f3m01zf99cq44l67f8wyin5n3l-swift-asn1-1.7.1",
     "/nix/store/6vckl9z0k08nadkalhw777i9wwjki4cj-clang-21.1.8-lib",
+    "/nix/store/7cxkm20m01q21lf6cy5pq1ymk0yfkjqz-swift-build-6.3.3-lib",
+    "/nix/store/7nvdryjrnzzn98y9j9nxfbx0l2ammy6x-xcbuild-0.1.1-unstable-2019-11-20-xcrun",
+    "/nix/store/7rks4wrl4567nmwd30pg507hbrp680wv-perl5.42.3-Compress-Raw-Zlib-2.222",
     "/nix/store/8gcqr2873r954ix1dr1vay5pzwikfpdb-swiftc-6.3.3-dev",
     "/nix/store/9a127gjr7lj5b078j2ywdaz10z3nh4wp-clang-21.0.0-lib",
     "/nix/store/9h9kmwgh29ybpmkrdxqggf6gk7ffybk4-lua-5.3.6",
     "/nix/store/9inbrdvnz0fl8jr27dj1amb90i5h5hgc-swift-corelibs-xctest-6.3.3-dev",
+    "/nix/store/aliq9nclm4w66msq9mkjhhv2lg98al2c-libjpeg-turbo-3.2.0",
     "/nix/store/arp80w6f8gvr7d3l6i2p5wrr1b7anj6v-swift-argument-parser-1.8.2",
+    "/nix/store/b640yayld6ls7d4dbmnq3a8mahrzrd2h-graphics_cmds-1",
+    "/nix/store/b7fppcx73vps2cq3x4hgdrcrq5barrig-perl5.42.3-Getopt-Long-2.58",
     "/nix/store/b8g0didzv422qhw67dh67wldkc9wkpdf-brotli-1.2.0-lib",
     "/nix/store/bb6la8k5x4qj2bmakzr0iv3h49ykvrmj-libpfm-4.14.1",
     "/nix/store/bcdwidl756vigwjfpan5916bp790529p-swift-llbuild-6.3.3-lib",
+    "/nix/store/bpbx6kx9dz5f7i6n83klp6va6522caj5-perl5.42.3-Image-ExifTool-13.59",
+    "/nix/store/cafi6rfnvzw4a0q1f17amns60dncfgxz-xcbuild-0.1.1-unstable-2019-11-20",
+    "/nix/store/cbh79d7l2185para702zxnfrrbkcx4c8-swift-tools-protocols-0.0.9",
     "/nix/store/cjaa92jhrm1glg7w24qcn1azyayizppg-swift-foundation-6.3.3",
     "/nix/store/d23dxcjz5pcs4f21adnb4pxrr2vbcc8j-swift-testing-6.3.3",
     "/nix/store/d2pxlphy1s0qcjafl9r23rwr73g8zpyj-linux-headers-7.2",
     "/nix/store/djf269aylbphr1ynvd52nh3dana5jh91-keyutils-1.6.3-lib",
     "/nix/store/dl38pix4jvabi5smb9wywhp6pimmpva6-patchelf-0.19.2",
+    "/nix/store/f0x9fvndvxhjcr6ggbl0di49ba5alfzm-libpng-apng-1.6.59",
     "/nix/store/ffa742vggy0akni7ljw7grc9nda8bzjx-swift-foundation-6.3.3-dev",
     "/nix/store/h38fmykd0h42wpf7m3gjgv9vlzd9syim-stdlib-6.3.3-dev",
+    "/nix/store/hddk44f1m060mvavy5l122yg9v190zk0-perl5.42.3-Sub-Identify-0.14",
     "/nix/store/hy7qsmyk9nbhcylcxbsf2aapsx8c6khb-libssh2-1.11.1",
     "/nix/store/i52d7j6ma8bh4ggg4r2hl4af7bychdpa-clang-wrapper-21.1.8",
     "/nix/store/iw9cib9q7a44mzvphi7z038agifb86xf-swift-tools-support-core-6.3.3",
     "/nix/store/j64r0mf0yy7pvcbavlqidfnpsdnrldj2-glibc-2.44-57-bin",
+    "/nix/store/k5yiv40lnsg71i893v6h2h0p9n8xy6mf-oxipng-10.2.1",
     "/nix/store/ka6nj2ppyjyn7s1xs9ibd1jpzdklx12y-libedit-20260508-3.1",
+    "/nix/store/ljcav5kfyiy93hrl84jf8xky282vqi8q-perl5.42.3-SUPER-1.20190531",
     "/nix/store/m27950v147ga4008dr5xwnjq22ysr49q-publicsuffix-list-0-unstable-2026-09-02",
     "/nix/store/m5s1ak7s1swmhmy64yqvya342g0603s7-libxml2-2.15.4",
     "/nix/store/m7q7lb6jwjf8g040g2jwiykyqb7hy2n4-swift-testing-6.3.3-dev",
     "/nix/store/mfqi43pwak804fn1m07gp2k11yibzgp2-ICU-76142.4.7",
     "/nix/store/mr6cbi3rdy6w5y4cd6875gf4y0pqn0jf-llvm-21.1.8-lib",
+    "/nix/store/nadp66r87d9s60xmrfzgckrkv3n1s39m-libtiff-4.7.2-bin",
     "/nix/store/niz7k7xbqr7ys08w5w4r1l2qrgmgqlxj-swift-corelibs-libdispatch-swift-overlay-6.3.3",
     "/nix/store/njx84z0ra0xj8498l67y4yczhkg7wca7-libpsl-0.21.5",
     "/nix/store/nrlcj9nncvchvk481zb3pg6df8gsj0pn-binutils-2.46-lib",
     "/nix/store/p40lblcsw1qwzqja83rfdpq0l15w4xv7-nghttp3-1.18.0",
     "/nix/store/p9i1b7jgfj4fl5bx557jnwbdsafl434i-curl-8.22.0",
     "/nix/store/qbvmi6qgfw0ipjvfndy9f6k69rnip42m-krb5-1.22.2-lib",
+    "/nix/store/qkxg4xlpal8rxrsp71qbrbmhdx76cqn5-perl5.42.3-IO-Compress-Brotli-0.019",
     "/nix/store/rf22h58g8n4sida3zlq7s4x2knjfpl0z-swift-foundation-icu-76142.4.7",
+    "/nix/store/s1871l3bsqa9xhyr7h4fhpi6qnava4rx-swift-certificates-1.19.4",
+    "/nix/store/s2g25w9d2mndzwjhfrlzbyqsalp3zx9l-perl5.42.3-File-Slurper-0.014",
     "/nix/store/s4k9hrrx8gby4ya1hq7hrajvlvj3yc9h-swift-driver-6.3.3",
     "/nix/store/s6bwh1rp0arx0842cdpxp2fpcfpsz0hx-compiler-rt-libc-21.0.0",
     "/nix/store/s9p26iqyxqfsz01x8w9nziay7118a6y8-swiftc-6.3.3",
     "/nix/store/v730lk2kw7kwbvlvq60zjbznd462mgrq-gmp-6.3.0",
     "/nix/store/vl4bvv35nbwmmsd7xlkdw0zixpl7yq29-expand-response-params",
+    "/nix/store/vvzksgijng232d5zrs7qhqp6i1jipzy9-swift-6.3.3",
+    "/nix/store/w31zgyvxajp9sxi12h57cyyqwk473w08-giflib-6.1.3",
+    "/nix/store/waf2iyc2hh66xb2gkc8l81pkdcw4760h-swiftpm-6.3.3",
     "/nix/store/wbxh0870cc6lml9mbk2n1jvnj13v6v06-swift-corelibs-libdispatch-swift-overlay-6.3.3-dev",
+    "/nix/store/wmv9gyj99rjlr5zd4mcf51f14c3wkf94-llvm-21.0.0",
     "/nix/store/wra7pnc8v3vk7xl597kq79bbmvncxz8j-clang-21.1.8",
+    "/nix/store/wsi5axa7b2jqw1i6b6si6fg2g294jyba-swift-collections-1.6.0",
+    "/nix/store/xj39gifjxb531dk7rfkld0sg4wfz6w3q-lerc-4.2.0",
     "/nix/store/xpaz3fi6ibqxb9sla4gjlp0c82v566y8-gcc-16.2.0",
+    "/nix/store/y3q0hfq2n0jj0nkr6qpxap3dpkvla3j3-perl5.42.3-IO-Compress-2.221",
+    "/nix/store/y568jp7pwf3vsxgqangazvhka6zg1gaj-sigtool-0.1.3",
     "/nix/store/y6ri2r743ckh5kk160r461czl9n2f2wf-binutils-2.46",
     "/nix/store/y89i31a95bqvig4bml9bfd5rrjg6wl1s-llvm-21.0.0-lib",
+    "/nix/store/y8rhfx36m0pmwn11k4hlx75myn6w99xq-what-329",
+    "/nix/store/ygpmh9fxjkc5mgxcj88vj4vf3jqnvlda-libtiff-4.7.2",
     "/nix/store/yi5d8g9kma5bhskfjllrjypd5d2xhvl1-isl-0.20",
     "/nix/store/yr1xzx9yhmivdk9xv6v21ki6pjpgzm34-swift-corelibs-xctest-6.3.3",
     "/nix/store/yrki212n9q76sv6dian46wka8v165fda-stdlib-6.3.3",
     "/nix/store/ywscvzclvr4bvd47wjbp23xy2hrhgzna-swift-6.3.3",
     "/nix/store/z3rqb8vjpfzlrnqrd85fk10m1m5xyxhg-swift-driver-6.3.3-lib"
    ],
-   "store": "/nix/store/ywscvzclvr4bvd47wjbp23xy2hrhgzna-swift-6.3.3"
+   "store": "/nix/store/vvzksgijng232d5zrs7qhqp6i1jipzy9-swift-6.3.3"
   },
   "swiftformat-0.63.1": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44"
@@ -5827,6 +6042,7 @@
    "store": "/nix/store/f07vaklaqpv9naw3vryb7qsqdm9p8ssx-swiftformat-0.63.1"
   },
   "swiftlint-0.65.1": {
+   "assembled": false,
    "closure_size": 1,
    "deps": [],
    "own": [
@@ -5835,6 +6051,7 @@
    "store": "/nix/store/p35rxy6ff1b7z8jwn7i504frca8vy8sb-swiftlint-0.65.1"
   },
   "taplo-0.10.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -5845,6 +6062,7 @@
    "store": "/nix/store/0sx2hsld6aywwwym521a4ymbmpaadzrh-taplo-0.10.0"
   },
   "tar-1.35": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -5856,6 +6074,7 @@
    "store": "/nix/store/f9shc46n2300jbm0h60f6s4m69j0smyp-gnutar-1.35"
   },
   "toybox-0.8.15": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -5867,6 +6086,7 @@
    "store": "/nix/store/1gnjb4psr9i88w4icq8wwgqh8686d58x-toybox-0.8.15"
   },
   "trivy-0.76.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -5880,6 +6100,7 @@
    "store": "/nix/store/qrb591wmjrhlxpaf44ywq1wxc2l530xi-trivy-0.76.0"
   },
   "typescript-7.0.2": {
+   "assembled": false,
    "closure_size": 3,
    "deps": [],
    "own": [
@@ -5890,6 +6111,7 @@
    "store": "/nix/store/ss8mnj4npn66idb7gm7di7lk7yvg25n1-typescript-7.0.2"
   },
   "typescript-language-server-6.0.2": {
+   "assembled": false,
    "closure_size": 38,
    "deps": [
     "base-2.44",
@@ -5902,6 +6124,7 @@
    "store": "/nix/store/cjx28plxsy361fqm49acax74lfqriicn-typescript-language-server-6.0.2"
   },
   "unzip-6.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -5913,6 +6136,7 @@
    "store": "/nix/store/9ika5s969fh9ayh4js9kd3j1n4lq8knq-unzip-6.0"
   },
   "util-linux-2.42.4": {
+   "assembled": false,
    "closure_size": 33,
    "deps": [
     "base-2.44",
@@ -5945,6 +6169,7 @@
    "store": "/nix/store/2lgg8jqyzjp60svh7kmp39kqwnig31p2-util-linux-2.42.4-bin"
   },
   "uv-0.13.1": {
+   "assembled": false,
    "closure_size": 9,
    "deps": [
     "base-2.44"
@@ -5956,6 +6181,7 @@
    "store": "/nix/store/07gw2d21ivy19hgjj8wmyqhf338gqzdj-uv-0.13.1"
   },
   "valgrind-3.27.1": {
+   "assembled": false,
    "closure_size": 15,
    "deps": [
     "base-2.44",
@@ -5967,6 +6193,7 @@
    "store": "/nix/store/4298593522xgrr28874w20cvvs742r51-valgrind-3.27.1"
   },
   "virtualenv-21.6.1": {
+   "assembled": false,
    "closure_size": 28,
    "deps": [
     "base-2.44",
@@ -5982,6 +6209,7 @@
    "store": "/nix/store/ahrv1mcv2gg39pj4m782jl460clq9d0j-python3.14-virtualenv-21.6.1"
   },
   "virtualenv-21.6.1-py3.13": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -5997,6 +6225,7 @@
    "store": "/nix/store/w3srdcp4wwhwcknjsgly5cqcskdvlcgm-python3.13-virtualenv-21.6.1"
   },
   "vscode-langservers-1.140.06880": {
+   "assembled": false,
    "closure_size": 33,
    "deps": [
     "base-2.44",
@@ -6031,6 +6260,7 @@
    "store": "/nix/store/a26m25pakl90d21w96chkp1xjg1fbnvj-vscode-langservers-extracted-1.140.06880"
   },
   "wget-1.25.0": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -6044,6 +6274,7 @@
    "store": "/nix/store/ajixkliv0pkhzlzc7m8p0z8rmxnyfvyc-wget-1.25.0"
   },
   "which-2.25": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -6054,6 +6285,7 @@
    "store": "/nix/store/bxaddvz98rw7pn24gcrjix69q6np2gq8-which-2.25"
   },
   "xz-5.8.4": {
+   "assembled": false,
    "closure_size": 6,
    "deps": [
     "base-2.44"
@@ -6065,6 +6297,7 @@
    "store": "/nix/store/nflpm51il93hxh2rba6dvz59kaff0i7v-xz-5.8.4-bin"
   },
   "yamlfmt-0.21.0": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -6077,6 +6310,7 @@
    "store": "/nix/store/p3sd4yjmfvz1wzbycm6q5jbzxq5a5sgq-yamlfmt-0.21.0"
   },
   "yamllint-1.37.1": {
+   "assembled": false,
    "closure_size": 27,
    "deps": [
     "base-2.44",
@@ -6091,6 +6325,7 @@
    "store": "/nix/store/x36cq2nnr7rr48pfm7w1sw1y5adc533y-python3.14-yamllint-1.37.1"
   },
   "yarn-1.22.22": {
+   "assembled": false,
    "closure_size": 38,
    "deps": [
     "base-2.44",
@@ -6103,6 +6338,7 @@
    "store": "/nix/store/956bk5xr4ins0havkzr1dh9l846pll7c-yarn-1.22.22"
   },
   "yq-4.54.1": {
+   "assembled": false,
    "closure_size": 8,
    "deps": [
     "base-2.44"
@@ -6116,6 +6352,7 @@
    "store": "/nix/store/lgr9ij9bq6dgjrq4bwh00qjxb164x5si-yq-go-4.54.1"
   },
   "zig-0.17.0": {
+   "assembled": false,
    "closure_size": 16,
    "deps": [
     "base-2.44",
@@ -6131,6 +6368,7 @@
    "store": "/nix/store/34wy21hkax0k707757pbgd77fjxdv6v5-zig-0.17.0"
   },
   "zip-3.0": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -6141,6 +6379,7 @@
    "store": "/nix/store/2562wqrkss8xv8z2blaa4cvgg2yknlkq-zip-3.0"
   },
   "zls-0.17.0": {
+   "assembled": false,
    "closure_size": 5,
    "deps": [
     "base-2.44"
@@ -6151,6 +6390,7 @@
    "store": "/nix/store/vj4w8j37m2lncvqkac3yz2bb6lya2drz-zls-0.17.0"
   },
   "zsh-5.9.2": {
+   "assembled": false,
    "closure_size": 7,
    "deps": [
     "base-2.44"
@@ -6163,6 +6403,7 @@
    "store": "/nix/store/d0a35flb05pwl8rkmvh6kcgvs7wpgh6b-zsh-5.9.2"
   },
   "zstd-1.5.7": {
+   "assembled": false,
    "closure_size": 11,
    "deps": [
     "base-2.44",
