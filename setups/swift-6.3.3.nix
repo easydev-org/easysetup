@@ -96,7 +96,10 @@ pkgs.runCommand "swift-${swift.version}" {
       case "$p" in
         *glibc*) continue ;;
       esac
-      for d in $(find "$p" -maxdepth 4 \\( -name '*.so' -o -name '*.so.*' \\) -print 2>/dev/null | sed 's|/[^/]*$||' | sort -u); do
+      # '*.so*' covers both libfoo.so and libfoo.so.1 without needing find's
+      # parentheses, whose escaping through a nix indented string is one more
+      # thing to get wrong (an earlier attempt emitted \\( and bash choked).
+      for d in $(find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null | sed 's|/[^/]*$||' | sort -u); do
         printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
         printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
         easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
