@@ -102,19 +102,32 @@ jobs:
           echo "--- bin/ ---"
           ls "$out/bin"
 
-      - name: the wrappers carry the link flags
+      - name: the wrapper sources the link env, and it carries the paths
         run: |
           set -euo pipefail
-          # swift-driver is NOT wrapped: it is the driver itself and rejects
-          # compiler flags, so only the front ends carry -L/rpath.
           for p in swift swiftc; do
             f="$OUT/bin/$p"
             [ -e "$f" ] || { echo "::error::missing $f"; exit 1; }
             echo "--- $p ---"
-            head -14 "$f"
-            grep -q -- '-L' "$f" || { echo "::error::$p has no -L"; exit 1; }
-            grep -q -- 'rpath' "$f" || { echo "::error::$p has no rpath"; exit 1; }
+            head -16 "$f"
+            grep -q 'swift-link-env.sh' "$f" || { echo "::error::$p does not source the env"; exit 1; }
           done
+          envf="$OUT/nix-support/swift-link-env.sh"
+          [ -e "$envf" ] || { echo "::error::no $envf"; exit 1; }
+          echo "--- env file (head) ---"
+          head -12 "$envf"
+          for v in LIBRARY_PATH LD_LIBRARY_PATH NIX_LDFLAGS; do
+            grep -q "export $v=" "$envf" || { echo "::error::$v not exported"; exit 1; }
+          done
+          # The runtime lib and ICU must both be on the path: those are the two
+          # failures being fixed.
+          grep -q -- '-swift-6.3.3/lib' "$envf" || { echo "::error::swift's own lib dir missing"; exit 1; }
+          grep -q -- 'ICU-' "$envf" || { echo "::error::ICU's lib dir missing"; exit 1; }
+          # ...and glibc must NOT be, or the host loader breaks.
+          if grep -q -- '-glibc-' "$envf"; then
+            echo "::error::glibc is on LD_LIBRARY_PATH; that breaks unrelated processes"
+            exit 1
+          fi
 
       # THE assertion: no -L on the command line; the wrapper must supply it.
       - name: it links and runs a Foundation program
