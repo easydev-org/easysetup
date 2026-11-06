@@ -1,33 +1,25 @@
 name: probe-swift-link
 
-# Does a LIBRARY_PATH of the closure's lib dirs make `swiftc a.swift` link?
+# Does the swift SETUP produce a compiler that can link, without compiling swift?
 #
-# The claim under test, and why it matters
-# ----------------------------------------
-# nixpkgs builds swift with its runtime .so files in `$out/lib`, but the driver
-# searches `$out/lib/swift/linux`, which holds only .swiftmodule files. So a
-# plain `swiftc main.swift -o app` fails:
+# Two properties, neither of which was ever checked, and whose absence let a
+# broken swift ship:
 #
-#   ld.bfd: cannot find -lswiftCore
+#  1. SUBSTITUTABLE -- `nix build --dry-run` must report "0 paths will be built".
+#     The release pipeline refuses a setup that would be compiled ("is not fully
+#     substitutable: N path(s) would be compiled"), because compiling swift can
+#     run for hours. An `overrideAttrs` therefore CANNOT ship: it changes the
+#     derivation, so the store path is not in cache.nixos.org. That is exactly
+#     what happened -- the override sat in setups/swift-6.3.3.nix, the tarball was
+#     built two days earlier, and every published swift was the unpatched one.
 #
-# and even after adding -L for swiftCore, libFoundation.so's OWN dependencies are
-# in SIBLING store paths (ICU), so the link then fails with:
+#  2. it LINKS -- a program importing Foundation (which pulls in ICU) must compile
+#     and RUN with no -L on the command line. The published swift fails with:
+#         ld.bfd: cannot find -lswiftCore
+#         ld.bfd: libFoundation.so: undefined reference to `uloc_toLegacyKey'
 #
-#   ld.bfd: libFoundation.so: undefined reference to `uloc_toLegacyKey'
-#
-# setups/swift-6.3.3.nix used to "fix" this by rewriting the swiftc binary with a
-# wrapper. That fix never shipped: the release is built from a nix derivation, the
-# override changes the derivation, and the overridden path is NOT in
-# cache.nixos.org, so it can only be produced by COMPILING swift (hours). The
-# previous version of this workflow passed `--option max-jobs 0`, i.e. it forbade
-# that compile, so it could never build the override and never ran the test:
-#
-#   error: Cannot build '/nix/store/zbnwc...-swift-6.3.3.drv'.
-#          Reason: local builds are disabled (max-jobs = 0)
-#
-# This workflow tests the alternative that needs NO rebuild: export the library
-# search path. It is a property of the ENVIRONMENT, not of the binary, so any
-# published tarball works.
+# The fix under test is a symlinkJoin wrapper: it reuses the unchanged swift
+# derivation (still a download) and only adds scripts that append -L/-rpath.
 on:
   workflow_dispatch:
 
@@ -35,9 +27,9 @@ permissions:
   contents: read
 
 jobs:
-  link:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -46,68 +38,56 @@ jobs:
             experimental-features = nix-command flakes
             substituters = https://cache.nixos.org
 
-      # Build the UNMODIFIED package: this is what the released tarball contains,
-      # and what a user actually gets. Local builds stay allowed, so nix can
-      # produce the derivation if the cache misses; the step reports which it did.
-      - name: build swift (as released, no override)
+      # Fail before downloading gigabytes if the expression is wrong.
+      - name: the expression evaluates
         run: |
           set -euo pipefail
-          # A `git+file://...?shallow=1` flake only sees git's index, and
-          # actions/checkout leaves it shallow, so `.#swift-6.3.3` resolved to
-          # "does not provide attribute". A PATH flake reads the working tree.
           FLAKE="path:$PWD"
-          # The attr NAMES exist but building says "does not provide attribute".
-          # attrNames does not force VALUES, so a package that throws during
-          # evaluation looks absent. Force it through --apply (which bypasses the
-          # flake-ref attribute-path resolution that was doubling the prefix) and
-          # print the REAL error.
-          echo "== force every swift attr and show the real error =="
-          nix eval --impure --expr "
-            let f = builtins.getFlake \"$FLAKE\";
-                ps = f.packages.x86_64-linux;
-                names = builtins.filter (n: builtins.match \".*swift.*\" n != null)
-                          (builtins.attrNames ps);
-                try = n: let r = builtins.tryEval (builtins.seq ps.\${n}.drvPath \"ok\");
-                         in \"\${n}: \${if r.success then \"OK\" else \"THROWS\"}\";
-            in builtins.concatStringsSep \"\\n\" (map try names)
-          " 2>&1 | tail -20 || true
-          echo "== control: a package known to build =="
-          nix eval --raw "$FLAKE#jq-1.8.2.drvPath" 2>&1 | tail -5 || true
-          ATTR="swift-6.3.3"
-          echo "== will this be a download or a compile? =="
-          nix build --dry-run "$FLAKE#$ATTR" 2>&1 | tail -8 || true
-          out=$(nix build --no-link --print-out-paths "$FLAKE#$ATTR" | tail -1)
-          echo "swift out = $out"
+          # The attribute path after # is relative to the flake root; nix prepends
+          # packages.<current-system> when it does not resolve. Writing the full
+          # prefix HERE doubles it, so name the package only.
+          nix eval --raw "$FLAKE#swift-6.3.3.name"
+          echo
+
+      # The release rule. A non-zero count means the fix cannot ship.
+      - name: it is substitutable (0 paths would be built)
+        run: |
+          set -euo pipefail
+          FLAKE="path:$PWD"
+          dry=$(nix build --dry-run "$FLAKE#swift-6.3.3" 2>&1 || true)
+          printf '%s\n' "$dry" | tail -15
+          built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
+          echo "paths built locally: $built"
+          if [ "${built:-0}" -gt 0 ]; then
+            echo "::error::the swift setup needs a local build ($built path(s)); the release pipeline rejects that"
+            printf '%s\n' "$dry" | grep 'will be built' | head -10
+            exit 1
+          fi
+
+      - name: build it
+        run: |
+          set -euo pipefail
+          FLAKE="path:$PWD"
+          out=$(nix build --no-link --print-out-paths "$FLAKE#swift-6.3.3" | tail -1)
           echo "OUT=$out" >> "$GITHUB_ENV"
-
-      - name: record what the published layout actually is
-        run: |
-          set -euo pipefail
-          echo "--- $OUT ---"
-          ls "$OUT"
+          echo "built: $out"
           echo "--- bin/ ---"
-          ls "$OUT/bin" 2>/dev/null || echo "(no bin/ in this store path)"
-          echo "--- lib/ count: $(ls "$OUT/lib" 2>/dev/null | wc -l) ---"
-          # The driver and the runtime live in DIFFERENT store paths (swiftc,
-          # swift-driver, swift-corelibs-foundation). Say so rather than assume.
-          echo "--- which store path has swiftc? ---"
-          readlink -f "$(nix path-info -r "$OUT" 2>/dev/null | xargs -I{} sh -c 'test -e {}/bin/swiftc && echo {}/bin/swiftc' | head -1)" || true
+          ls "$out/bin"
 
-      # The fix under test: LIBRARY_PATH covering every lib/ in the closure.
-      - name: derive the library search path from the closure
+      - name: the wrappers carry the link flags
         run: |
           set -euo pipefail
-          libs=$(nix path-info -r "$OUT" | while read -r p; do
-                   [ -d "$p/lib" ] && printf '%s:' "$p/lib"
-                 done | sed 's/:$//')
-          echo "lib dirs: $(echo "$libs" | tr ':' '\n' | wc -l)"
-          echo "ICU on the path: $(echo "$libs" | tr ':' '\n' | grep -c ICU || true)"
-          echo "LIBRARY_PATH=$libs" >> "$GITHUB_ENV"
-          echo "NIX_LDFLAGS=$(echo "$libs" | tr ':' '\n' | sed 's/^/-L/' | tr '\n' ' ')" >> "$GITHUB_ENV"
+          for p in swift swiftc swift-driver; do
+            f="$OUT/bin/$p"
+            [ -e "$f" ] || { echo "::error::missing $f"; exit 1; }
+            echo "--- $p ---"
+            head -14 "$f"
+            grep -q -- '-L' "$f" || { echo "::error::$p has no -L"; exit 1; }
+            grep -q -- 'rpath' "$f" || { echo "::error::$p has no rpath"; exit 1; }
+          done
 
-      # THE assertion: with LIBRARY_PATH set (and NO -L on the command line), a
-      # program that pulls in Foundation -- and therefore ICU -- must link and run.
-      - name: it links and runs WITHOUT any -L on the command line
+      # THE assertion: no -L on the command line; the wrapper must supply it.
+      - name: it links and runs a Foundation program
         run: |
           set -euo pipefail
           mkdir -p /tmp/t && cd /tmp/t
@@ -116,18 +96,21 @@ jobs:
           let d = ["ok": true]
           let j = try! JSONSerialization.data(withJSONObject: d)
           print(String(data: j, encoding: .utf8)!)
+          print(String(format: "%.2f", 1.239))
           EOF
-          swiftc main.swift -o app 2>&1 | tee /tmp/link.log || {
-            echo "::error::swiftc failed with LIBRARY_PATH set"
-            grep -c "undefined reference" /tmp/link.log || true
+          "$OUT/bin/swiftc" main.swift -o app 2>&1 | tee /tmp/link.log || {
+            echo "::error::swiftc failed; undefined references:"
+            grep -c 'undefined reference' /tmp/link.log || true
             exit 1
           }
           got=$(./app)
-          echo "program printed: $got"
-          [ "$got" = '{"ok":true}' ] || { echo "::error::wrong output: $got"; exit 1; }
-          echo "swiftc links ICU-dependent Foundation with no explicit -L"
+          echo "program printed:"
+          echo "$got"
+          printf '%s' "$got" | grep -q '{"ok":true}' || { echo "::error::wrong JSON output"; exit 1; }
+          printf '%s' "$got" | grep -q '1.24' || { echo "::error::Foundation formatting failed"; exit 1; }
+          echo "linked and ran"
 
-      - name: and `swift build` works too
+      - name: swift build works too
         run: |
           set -euo pipefail
           mkdir -p /tmp/p && cd /tmp/p
@@ -142,29 +125,8 @@ jobs:
           mkdir -p Sources/probe
           cat > Sources/probe/main.swift <<'EOF'
           import Foundation
-          print("built by swift build:", (["a": 1] as NSDictionary).count)
+          print("swift build ok:", (["a": 1, "b": 2] as NSDictionary).count)
           EOF
-          swift build 2>&1 | tail -8
-          ./.build/debug/probe
-
-      # A CONTROL: without LIBRARY_PATH the same program must FAIL. Without this
-      # the test above proves nothing -- it could be passing for another reason
-      # (an -L baked into the driver, a cached artifact).
-      - name: control - the same build fails without LIBRARY_PATH
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/c && cd /tmp/c
-          cat > main.swift <<'EOF'
-          import Foundation
-          print("x")
-          EOF
-          # Unset ONLY the variable under test, keeping PATH so swiftc is found.
-          if env -u LIBRARY_PATH -u NIX_LDFLAGS swiftc main.swift -o app2 2>/tmp/control.log; then
-            echo "::warning::the build SUCCEEDED without LIBRARY_PATH; the wrapper-free claim is untested (the driver may now carry -L itself)"
-          else
-            echo "the control failed as expected; tail:"
-            tail -5 /tmp/control.log
-            if grep -q "undefined reference" /tmp/control.log; then
-              echo "confirmed: the failure is an unresolved symbol (ICU), which LIBRARY_PATH resolves"
-            fi
-          fi
+          "$OUT/bin/swift" build 2>&1 | tail -10
+          ./.build/debug/probe | tee /tmp/run.log
+          grep -q 'swift build ok: 2' /tmp/run.log
