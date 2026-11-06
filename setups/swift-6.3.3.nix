@@ -80,7 +80,14 @@ pkgs.runCommand "swift-${swift.version}" {
     fi
   done
 
-  # The link/run paths, one export per lib directory in the runtime closure.
+  # The link/run paths, one export per directory in the runtime closure that
+  # actually holds shared objects.
+  #
+  # `$p/lib` is not assumed: swift-foundation-icu and several other closure
+  # members do not use the plain lib/ layout, and an earlier revision that tested
+  # for exactly `$p/lib` silently dropped ICU, which is the whole bug. find covers
+  # any depth.
+  #
   # glibc is skipped: on LD_LIBRARY_PATH it breaks unrelated host processes, and
   # the compiler already reaches it through the toolchain.
   {
@@ -89,10 +96,11 @@ pkgs.runCommand "swift-${swift.version}" {
       case "$p" in
         *glibc*) continue ;;
       esac
-      [ -d "$p/lib" ] || continue
-      printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$p/lib"
-      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$p/lib"
-      easydev_rpath="$easydev_rpath -Wl,-rpath,$p/lib"
+      for d in $(find "$p" -maxdepth 4 \\( -name '*.so' -o -name '*.so.*' \\) -print 2>/dev/null | sed 's|/[^/]*$||' | sort -u); do
+        printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
+        printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
+        easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
+      done
     done < swift-runtime
     printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
     echo 'unset easydev_rpath'
