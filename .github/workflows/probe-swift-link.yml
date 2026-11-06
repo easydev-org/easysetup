@@ -57,13 +57,16 @@ jobs:
           # "does not provide attribute". A PATH flake reads the working tree.
           FLAKE="path:$PWD"
           echo "== does x86_64-linux expose swift? =="
-          nix eval "$FLAKE#packages.x86_64-linux" --apply builtins.attrNames 2>&1 | tr ',' '\n' | grep -c swift || echo "no swift in the attr names"
           nix eval "$FLAKE#packages.x86_64-linux" --apply builtins.attrNames 2>&1 | tr ',' '\n' | grep swift || true
-          echo "== and the per-system attr directly? =="
-          nix eval "$FLAKE#packages.x86_64-linux.swift-6.3.3.name" 2>&1 | head -5 || true
+          # NOTE: `nix build --system` does NOT mean "read packages.<system>";
+          # it overrides the SYSTEM of the derivation and makes nix look for the
+          # attribute under the CURRENT platform, which is how the earlier runs
+          # reported "does not provide attribute". The system belongs in the
+          # attribute path instead.
+          ATTR="packages.x86_64-linux.swift-6.3.3"
           echo "== will this be a download or a compile? =="
-          nix build --dry-run --system x86_64-linux "$FLAKE#swift-6.3.3" --extra-experimental-features 'nix-command flakes' 2>&1 | tail -8 || true
-          out=$(nix build --no-link --print-out-paths --system x86_64-linux "$FLAKE#swift-6.3.3" | tail -1)
+          nix build --dry-run "$FLAKE#$ATTR" 2>&1 | tail -8 || true
+          out=$(nix build --no-link --print-out-paths "$FLAKE#$ATTR" | tail -1)
           echo "swift out = $out"
           echo "OUT=$out" >> "$GITHUB_ENV"
 
