@@ -90,21 +90,26 @@ pkgs.runCommand "swift-${swift.version}" {
   #
   # glibc is skipped: on LD_LIBRARY_PATH it breaks unrelated host processes, and
   # the compiler already reaches it through the toolchain.
-  {
-    echo 'easydev_rpath=""'
+  #
+  # The list is deduplicated because a closure member can appear more than once,
+  # and a path repeated once per occurrence makes the env file unreadable when it
+  # is printed by a failing job.
+  libdirs="$(
     while read -r p _rest; do
       case "$p" in
         *glibc*) continue ;;
       esac
-      # '*.so*' covers both libfoo.so and libfoo.so.1 without needing find's
-      # parentheses, whose escaping through a nix indented string is one more
-      # thing to get wrong (an earlier attempt emitted \\( and bash choked).
-      for d in $(find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null | sed 's|/[^/]*$||' | sort -u); do
-        printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
-        printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
-        easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
-      done
-    done < swift-runtime
+      find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null
+    done < swift-runtime | sed 's|/[^/]*$||' | sort -u
+  )"
+
+  {
+    echo 'easydev_rpath=""'
+    for d in $libdirs; do
+      printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
+      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
+      easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
+    done
     printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
     echo 'unset easydev_rpath'
   } > "$out/swift-link-env.sh"

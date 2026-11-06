@@ -119,15 +119,18 @@ jobs:
           done
           envf="$OUT/swift-link-env.sh"
           [ -e "$envf" ] || { echo "::error::no $envf"; exit 1; }
-          echo "--- env file ---"
-          cat "$envf"
+          echo "--- env file (first 30 lines) ---"
+          head -30 "$envf"
+          echo "--- $(grep -c 'LIBRARY_PATH=' "$envf") lib dir(s) ---"
           for v in LIBRARY_PATH LD_LIBRARY_PATH NIX_LDFLAGS; do
             grep -q "export $v=" "$envf" || { echo "::error::$v not exported"; exit 1; }
           done
           grep -q -- '-swift-6.3.3/lib' "$envf" || { echo "::error::swift's own lib dir missing"; exit 1; }
           # THIS is the one that was missing and caused the uloc_toLegacyKey link
-          # error: swift links against swift-foundation-icu, NOT nixpkgs' icu4c.
-          grep -q -- 'foundation-icu' "$envf" || { echo "::error::swift-foundation-icu's lib dir missing"; exit 1; }
+          # error. The closure path is spelled "-ICU-76142.4.7" (swift's own
+          # Foundation ICU build), NOT nixpkgs' icu4c; an earlier revision named
+          # pkgs.icu by hand and the symbols stayed undefined.
+          grep -q -- '-ICU-[0-9]' "$envf" || { echo "::error::swift's own ICU lib dir missing"; exit 1; }
           if grep 'LD_LIBRARY_PATH' "$envf" | grep -q -- '-glibc-'; then
             echo "::error::glibc is on LD_LIBRARY_PATH; that breaks unrelated processes"
             exit 1
