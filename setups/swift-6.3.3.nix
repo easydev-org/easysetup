@@ -23,96 +23,100 @@
 #
 # WHAT THIS DOES INSTEAD
 # ----------------------
-# A tiny `runCommand` derivation produces the env file and the wrapper scripts;
-# `symlinkJoin` then overlays them onto the UNCHANGED swift. Every heavy input is
-# still a cache download.
+# ONE small derivation that symlinks the UNCHANGED swift output into place and
+# overrides two entry points with scripts. Every heavy input is still a cache
+# download; the local work is a loop of `ln` and two `printf`s.
 #
-# WHERE THE DIRECTORY LIST COMES FROM
-# -----------------------------------
-# `pkgs.closureInfo` walks the references nix RECORDED for swift's output. That is
-# the only honest source: `buildInputs` is a build-time list and does not contain
-# the runtime dependencies, and hardcoding `pkgs.icu` is wrong as well -- the ICU
-# swift actually links against is `swift-foundation-icu` (76142.4.7), not
-# nixpkgs' icu4c, and naming the wrong one leaves the undefined symbols in place.
+# WHY ONE DERIVATION AND NOT A symlinkJoin OF SEVERAL
+# --------------------------------------------------
+# The release gate allows a setup to be assembled locally ONLY when the sole path
+# to build is the setup's own derivation. Extra helper derivations (a writeText
+# for the env file, a runCommand for the wrappers) would be separate paths, and
+# the gate would - correctly - refuse them as unexplained local builds.
 #
-# WHY THE FLAGS ARE IN AN ENV FILE AND NOT IN argv
-# -----------------------------------------------
-# `swiftc` forwards its argv to `swift-driver`, and the driver rejects compiler
-# flags:
+# WHERE THE LIBRARY LIST COMES FROM
+# ---------------------------------
+# `exportReferencesGraph` makes nix write swift's real RUNTIME closure into the
+# build directory. That is the only honest source: `buildInputs` is a build-time
+# list and does not contain the runtime dependencies, and naming `pkgs.icu` by
+# hand is wrong too -- the ICU swift links against is `swift-foundation-icu`
+# (76142.4.7), not nixpkgs' icu4c. Naming the wrong one leaves the undefined
+# symbols in place.
+#
+# WHY THE FLAGS ARE ENV AND NOT argv
+# ---------------------------------
+# `bin/swiftc` is a symlink to `bin/swift-driver`, which picks its mode from
+# argv[0]. Exec'ing the resolved `swift-driver` path makes it fail with
 #
 #   error: invalid driver name: swift-driver
 #
-# LIBRARY_PATH is read by the LINKER (the component that needs the search path)
-# and ignored by the driver, which is exactly the split we want.
+# so the wrappers must exec the ORIGINAL symlink (`.../bin/swiftc`), not its
+# target. Keeping the flags out of argv also keeps them out of the way: the
+# linker reads LIBRARY_PATH, the driver ignores it.
 #
 # glibc is NEVER added to LD_LIBRARY_PATH: a nix glibc on the loader path breaks
 # unrelated processes on the host.
 let
   inherit (pkgs) lib;
+  swift = pkgs.swift;
+in
+pkgs.runCommand "swift-${swift.version}" {
+  # Nix writes every path in swift's runtime closure to ./swift-runtime, one per
+  # line, formatted as "<path> <nrefs> <ref>...".
+  exportReferencesGraph = [ "swift-runtime" swift ];
+} ''
+  mkdir -p "$out/bin"
 
-  # Every store path in swift's runtime closure, computed by nix itself.
-  closure = pkgs.closureInfo { rootPaths = [ pkgs.swift ]; };
+  # Mirror swift's output: everything as a symlink, bin/ file by file so the two
+  # entry points can be replaced below.
+  for entry in ${swift}/*; do
+    name="$(basename "$entry")"
+    if [ "$name" = bin ]; then
+      for f in "$entry"/*; do
+        ln -s "$f" "$out/bin/$(basename "$f")"
+      done
+    else
+      ln -s "$entry" "$out/$name"
+    fi
+  done
 
-  # Exports the link and run paths. Written at BUILD time because the closure can
-  # only be enumerated then.
-  #
-  # glibc is filtered out: on LD_LIBRARY_PATH it breaks unrelated host processes,
-  # and the linker already reaches it through the toolchain. Every other lib dir in
-  # the closure is listed, because a missing one is exactly the bug being fixed and
-  # an extra one holds no symbol the linker wants.
-  linkEnv = pkgs.runCommand "swift-link-env" { } ''
-    libdirs=""
-    while IFS= read -r p; do
+  # The link/run paths, one export per lib directory in the runtime closure.
+  # glibc is skipped: on LD_LIBRARY_PATH it breaks unrelated host processes, and
+  # the compiler already reaches it through the toolchain.
+  {
+    echo 'easydev_rpath=""'
+    while read -r p _rest; do
       case "$p" in
         *glibc*) continue ;;
       esac
-      if [ -d "$p/lib" ]; then
-        libdirs="$libdirs $p/lib"
-      fi
-    done < ${closure}/store-paths
+      [ -d "$p/lib" ] || continue
+      printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$p/lib"
+      printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$p/lib"
+      easydev_rpath="$easydev_rpath -Wl,-rpath,$p/lib"
+    done < swift-runtime
+    printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
+    echo 'unset easydev_rpath'
+  } > "$out/swift-link-env.sh"
 
-    mkdir -p "$out"
+  echo "swift-link-env: $(grep -c LIBRARY_PATH "$out/swift-link-env.sh") lib dir(s)"
+
+  # The wrappers. The body is emitted with printf rather than a heredoc inside
+  # this indented nix string: those keep their leading spaces, and a shebang that
+  # is not at column 0 is not a shebang.
+  for prog in swift swiftc; do
+    # -f matters: bin/$prog is a symlink into the store, and a redirection would
+    # follow it and try to write into the read-only store path.
+    rm -f "$out/bin/$prog"
     {
-      echo 'easydev_rpath=""'
-      for d in $libdirs; do
-        printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
-        printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
-        easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
-      done
-      printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
-      echo 'unset easydev_rpath'
-    } > "$out/link-env.sh"
-
-    echo "swift-link-env: $(grep -c LIBRARY_PATH "$out/link-env.sh") lib dir(s)"
-  '';
-
-  # `swift` and `swiftc` are front ends that exec the driver; the driver itself is
-  # left untouched (it rejects compiler flags, and the LINKER is what reads
-  # LIBRARY_PATH).
-  #
-  # writeScript, not a heredoc inside an indented nix string: those keep their
-  # leading spaces, and a shebang that is not at column 0 is not a shebang.
-  mkWrapper = prog: pkgs.writeScript "swift-${prog}-wrapper" ''
-    #!${pkgs.runtimeShell}
-    # Put swift's runtime libraries on the link path (LIBRARY_PATH) and the run
-    # path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.
-    . ${linkEnv}/link-env.sh
-    exec ${pkgs.swift}/bin/${prog} "$@"
-  '';
-
-  wrappers = pkgs.runCommand "swift-wrappers" { } (
-    lib.concatMapStrings (prog: ''
-      mkdir -p "$out/bin"
-      cp ${mkWrapper prog} "$out/bin/${prog}"
-      chmod +x "$out/bin/${prog}"
-    '') [ "swift" "swiftc" ]
-  );
-in
-pkgs.symlinkJoin {
-  name = "swift-${pkgs.swift.version}";
-  # `wrappers` is FIRST: with ignoreCollisions the first path to provide a name
-  # wins, so listing it last would leave swift's own bin/swift in place (an earlier
-  # revision did, and the probe found an ELF binary where it expected the script).
-  paths = [ wrappers pkgs.swift ];
-  ignoreCollisions = true;
-}
+      printf '%s\n' '#!${pkgs.runtimeShell}'
+      printf '%s\n' '# Put swift'"'"'s runtime libraries on the LINK path (LIBRARY_PATH)'
+      printf '%s\n' '# and on the RUN path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.'
+      # Expanded HERE, at build time: the script needs the real store path.
+      printf '%s\n' ". $out/swift-link-env.sh"
+      # The original entry point is a symlink whose NAME the driver reads, so it
+      # is exec'd by path, not by its resolved target.
+      printf 'exec %s "$@"\n' '${swift}/bin/'"$prog"
+    } > "$out/bin/$prog"
+    chmod +x "$out/bin/$prog"
+  done
+''
