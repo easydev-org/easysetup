@@ -67,28 +67,35 @@ let
     ''
   );
 
-  # The wrappers. `swift` and `swiftc` are front ends that exec the driver; the
-  # driver itself is left untouched (it rejects compiler flags and does not need
-  # them -- the LINKER is what reads LIBRARY_PATH).
+  # `swift` and `swiftc` are front ends that exec the driver; the driver itself is
+  # left untouched (it rejects compiler flags and does not need them -- the LINKER
+  # is what reads LIBRARY_PATH).
+  #
+  # These are built with writeScript rather than a heredoc inside the runCommand:
+  # a heredoc written from an indented nix string keeps its leading spaces, and a
+  # shebang that is not at column 0 is not a shebang.
+  mkWrapper = prog: pkgs.writeScript "swift-${prog}-wrapper" ''
+    #!${pkgs.runtimeShell}
+    # Put swift's runtime libraries on the link path (LIBRARY_PATH) and the run
+    # path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.
+    . ${linkEnv}
+    exec ${pkgs.swift}/bin/${prog} "$@"
+  '';
+
   wrappers = pkgs.runCommand "swift-wrappers" { } (
     lib.concatMapStrings (prog: ''
       mkdir -p $out/bin
-      cat > $out/bin/${prog} <<'EASYDEV_EOF'
-      #!${pkgs.runtimeShell}
-      # Put swift's runtime libraries on the link path (LIBRARY_PATH) and the run
-      # path (LD_LIBRARY_PATH). See setups/swift-6.3.3.nix.
-      . ${linkEnv}
-      exec ${pkgs.swift}/bin/${prog} "$@"
-      EASYDEV_EOF
+      cp ${mkWrapper prog} $out/bin/${prog}
       chmod +x $out/bin/${prog}
     '') [ "swift" "swiftc" ]
   );
 in
 pkgs.symlinkJoin {
   name = "swift-${pkgs.swift.version}";
-  # `wrappers` LAST so its bin/ wins over swift's own symlinks. ignoreCollisions
-  # is what lets the later path replace the earlier file instead of failing the
-  # build with "collision between .../bin/swift".
-  paths = [ pkgs.swift ] ++ extraLibs ++ [ wrappers ];
+  # `wrappers` is FIRST: with ignoreCollisions the first path to provide a name
+  # wins, so listing it last would leave swift's own bin/swift in place (that is
+  # what an earlier revision did, and the probe found an ELF binary where it
+  # expected the script).
+  paths = [ wrappers pkgs.swift ] ++ extraLibs;
   ignoreCollisions = true;
 }
