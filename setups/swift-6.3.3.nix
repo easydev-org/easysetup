@@ -134,62 +134,50 @@ pkgs.runCommand "swift-${swift.version}" {
   run_libdirs="$(printf '%s\n' $libdirs \
     | grep -v -E '(^|[-/])(clang|llvm|binutils|glibc)[-/]' || true)"
 
+  # ICU has to be on the LINK LINE, not merely on a search path.
+  #
+  # libFoundation.so records its ICU dependency as an absolute DT_NEEDED path, but
+  # GNU ld does not inherit a shared library's DT_NEEDED entries
+  # (--no-copy-dt-needed-entries), so a program importing Foundation fails with
+  # 240 undefined `ucal_*`/`ucnv_*`/`utrans_*` symbols unless ICU is named.
+  #
+  # The library name is read out of libFoundation.so rather than hardcoded, so a
+  # nixpkgs bump that renames it still links. `|| true` throughout: grep/sed exit
+  # non-zero on no match, and under `set -o pipefail` that would abort the build
+  # (which is exactly how two earlier rounds failed, with an empty log).
+  icu_args=""
+  if [ -e "${swift}/lib/libFoundation.so" ]; then
+    icu_sos=$(${pkgs.binutils}/bin/readelf -d "${swift}/lib/libFoundation.so" 2>/dev/null \
+      | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | grep -i icu || true)
+    for so in $icu_sos; do
+      icu_args="$icu_args -L$(dirname "$so") -l$(basename "$so" | sed 's/^lib//; s/\.so.*//')"
+    done
+  fi
+
   # easydev_rpath must exist in THIS shell before it is appended to; assigning it
   # only inside the redirect below would write the assignment into the file and
   # leave the variable unset, which `set -u` turns into an immediate exit with no
   # message at all (that is what made an earlier build fail with an empty log).
   easydev_rpath=""
   {
-    echo 'easydev_rpath=""'
+    echo "easydev_icu_args='$icu_args'"
     for d in $libdirs; do
       printf 'export LIBRARY_PATH="%s:$LIBRARY_PATH"\n' "$d"
-      easydev_rpath="$easydev_rpath -Wl,-rpath,$d"
+      easydev_rpath="$easydev_rpath -rpath $d"
     done
     for d in $run_libdirs; do
       printf 'export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"\n' "$d"
     done
-    printf 'export NIX_LDFLAGS="%s $NIX_LDFLAGS"\n' "$easydev_rpath"
-    echo 'unset easydev_rpath'
 
-    # `pkgs.swift` is a WRAPPER over swift-unwrapped, and that wrapper reads
-    # NIX_LDFLAGS_<suffix>, where <suffix> is fixed when nixpkgs is built. Our own
-    # NIX_LDFLAGS above is NOT read by it, so these flags were silently ignored.
-    # Take every suffixed name the wrapper actually mentions instead of guessing.
-    ldflags_vars="$(sed -n 's/.*\(NIX_LDFLAGS_[A-Za-z0-9_]*\).*/\1/p' "${swift}/bin/swiftc" \
-      | grep -v BEFORE | sort -u | tr '\n' ' ')"
-
-    # ICU has to be on the LINK LINE, not merely on a search path.
-    #
-    # libFoundation.so records its ICU dependency as an absolute DT_NEEDED path,
-    # but GNU ld does not inherit a shared library's DT_NEEDED entries
-    # (--no-copy-dt-needed-entries) and, by default, refuses to leave undefined
-    # symbols in a shared input. So importing Foundation fails with 240 undefined
-    # `ucal_*`/`ucnv_*`/`utrans_*` symbols unless ICU is named explicitly.
-    #
-    # The names come from libFoundation.so itself rather than a hardcoded
-    # "-licucore", so a nixpkgs bump that renames the library still links.
-    icu_libs=""
-    icu_ldirs=""
-    if [ -e "${swift}/lib/libFoundation.so" ]; then
-      for so in $(${pkgs.binutils}/bin/readelf -d "${swift}/lib/libFoundation.so" 2>/dev/null \
-          | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | grep -i icu); do
-        icu_ldirs="$icu_ldirs -L$(dirname "$so")"
-        icu_libs="$icu_libs -l$(basename "$so" | sed 's/^lib//; s/\.so.*//')"
-      done
-    fi
-
-    if [ -n "$ldflags_vars" ]; then
-      easydev_ld=""
-      for d in $run_libdirs; do
-        easydev_ld="$easydev_ld -rpath $d"
-      done
-      easydev_ld="$easydev_ld $icu_ldirs $icu_libs"
-      for v in $ldflags_vars; do
-        eval "printf 'export %s=\"%s \$%s\"\n' \"\$v\" \"\$easydev_ld\" \"\$v\""
-      done
-      unset easydev_ld
-    fi
-    echo "swift-link-env: ldflags vars: [$ldflags_vars]; ICU libs: [$icu_libs]"
+    # NIX_LDFLAGS is what nixpkgs' swift WRAPPER turns into linker arguments, one
+    # `-Xlinker` each. On a native build its name has no suffix (suffixSalt is
+    # only set when cross-compiling), so a suffixed name is silently ignored --
+    # verified by grepping the wrapper, which contains no NIX_LDFLAGS_<suffix> at
+    # all on this platform. Emit both spellings; unused exports are harmless.
+    for v in NIX_LDFLAGS NIX_LDFLAGS_x86_64_unknown_linux_gnu; do
+      printf 'export %s="%s $easydev_icu_args $%s"\n' "$v" "$easydev_rpath" "$v"
+    done
+    echo 'unset easydev_rpath easydev_icu_args'
   } > "$out/swift-link-env.sh"
 
   echo "swift-link-env: $(grep -c LIBRARY_PATH "$out/swift-link-env.sh") lib dir(s)"
