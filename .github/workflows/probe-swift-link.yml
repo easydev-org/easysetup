@@ -72,13 +72,19 @@ jobs:
           # hours, and it is what the release pipeline really forbids. Assert the
           # rule the pipeline now uses, so this probe cannot drift from it.
           if [ "${built:-0}" -gt 0 ]; then
-            planned=$(printf '%s\n' "$dry" | sed -n '/this derivation will be built:/,/^$/p' | grep -v 'this derivation')
+            # The list follows the "this derivation will be built:" header up to
+            # the next non-indented line. awk is used rather than a sed range
+            # because the following "these N paths will be fetched" block is also
+            # indented and a range would swallow it.
+            planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
             echo "planned:"
             printf '%s\n' "$planned"
             if printf '%s\n' "$planned" | grep -qv 'swift-6\.3\.3\.drv'; then
               echo "::error::a swift DEPENDENCY would be compiled"
               exit 1
             fi
+            echo "note: only the setup's own derivation is built (wrapper assembly)"
+          fi
             echo "note: only the setup's own derivation is built (wrapper assembly)"
           fi
 
