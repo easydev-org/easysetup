@@ -96,14 +96,17 @@ jobs:
         run: |
           set -euo pipefail
           FLAKE="path:$PWD"
-          # -L prints the builder's own output; without it a failing build shows
-          # only "builder failed with exit code 1" and nothing to act on. The
-          # output path is captured separately so build noise cannot become $OUT.
-          nix build -L --no-link --print-out-paths "$FLAKE#\"swift-6.3.3\"" > /tmp/out.txt 2>/tmp/build.log || {
+          # On failure, ask nix for the BUILDER's log. `nix build` alone reports
+          # only "builder failed with exit code 1", and -L interleaves the log with
+          # substitution progress, which buries the real error.
+          if ! nix build --no-link --print-out-paths "$FLAKE#\"swift-6.3.3\"" > /tmp/out.txt 2>/tmp/build.log; then
             echo "::error::the build failed"
-            tail -40 /tmp/build.log
+            drv=$(grep -o '/nix/store/[a-z0-9]*-swift-6\.3\.3\.drv' /tmp/build.log | head -1)
+            echo "derivation: ${drv:-unknown}"
+            [ -n "${drv:-}" ] && nix log "$drv" 2>&1 | tail -60
+            tail -20 /tmp/build.log
             exit 1
-          }
+          fi
           out=$(tail -1 /tmp/out.txt)
           echo "OUT=$out" >> "$GITHUB_ENV"
           echo "built: $out"
