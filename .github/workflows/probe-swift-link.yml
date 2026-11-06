@@ -58,12 +58,13 @@ jobs:
           FLAKE="path:$PWD"
           echo "== does x86_64-linux expose swift? =="
           nix eval "$FLAKE#packages.x86_64-linux" --apply builtins.attrNames 2>&1 | tr ',' '\n' | grep swift || true
-          # NOTE: `nix build --system` does NOT mean "read packages.<system>";
-          # it overrides the SYSTEM of the derivation and makes nix look for the
-          # attribute under the CURRENT platform, which is how the earlier runs
-          # reported "does not provide attribute". The system belongs in the
-          # attribute path instead.
-          ATTR="packages.x86_64-linux.swift-6.3.3"
+          # NOTE: the attribute path after `#` is RELATIVE to the flake root, and
+          # nix prepends `packages.<current-system>.` when the relative path does
+          # not resolve. Writing `packages.x86_64-linux.swift-6.3.3` therefore
+          # becomes `packages.<sys>.packages.x86_64-linux.swift-6.3.3`. Use the
+          # bare attribute name and let nix pick the current system (the runner
+          # IS x86_64-linux, so no override is needed at all).
+          ATTR="swift-6.3.3"
           echo "== will this be a download or a compile? =="
           nix build --dry-run "$FLAKE#$ATTR" 2>&1 | tail -8 || true
           out=$(nix build --no-link --print-out-paths "$FLAKE#$ATTR" | tail -1)
