@@ -541,8 +541,32 @@ echo "nixpkg: packing $packed store path(s), nothing extra in the tree"
 #
 # tar piped into zstd rather than `tar --zstd`: the pipe avoids staging a second
 # multi-GB file on disk, which on the swift closure would be 5.8 GB written twice.
+#
+# THE 2 GiB CEILING. A GitHub release asset must be under 2^31 bytes, and swift
+# with SwiftPM came out at 2.155 GB -- 8 MB over, so the upload was rejected with
+# "size must be less than 2147483648" AFTER the whole build and verification had
+# passed. Rather than pay for -19 on every setup, keep -3 (fast) and re-compress
+# only the rare tarball that lands over the limit. A failure here is cheap: the
+# tree is already staged.
+ASSET_LIMIT=2147483647
 tar -cf - -C "$STAGE" . \
   | zstd -3 -T0 --quiet --force -o "$ASSET"
+size=$(stat -c %s "$ASSET")
+if [ "$size" -gt "$ASSET_LIMIT" ]; then
+  echo "nixpkg: $((size / 1048576)) MiB is over GitHub's 2 GiB asset limit; recompressing at -19"
+  # -19 with all cores. Slow (minutes on a multi-GB tree) but this only runs for
+  # the handful of setups that need it, and it must produce a shippable file
+  # rather than a broken release.
+  tar -cf - -C "$STAGE" . \
+    | zstd -19 -T0 --quiet --force -o "$ASSET"
+  size=$(stat -c %s "$ASSET")
+  echo "nixpkg: after -19: $size bytes"
+  if [ "$size" -gt "$ASSET_LIMIT" ]; then
+    echo "nixpkg: still over GitHub's 2 GiB asset limit ($size bytes); this setup cannot be published as one asset" >&2
+    exit 1
+  fi
+fi
+echo "nixpkg: tarball $size bytes"
 # Nix store paths are read-only (mode 0555 on directories), so a plain `rm -rf`
 # fails on the copy with "Permission denied". The copy kept those modes, which is
 # correct for the artifact - a consumer unpacking it gets the same protections -
