@@ -65,6 +65,18 @@ def narinfo_codes(paths):
     return out
 
 
+def closure_of_inputs(path):
+    """Closure of a locally ASSEMBLED setup, read from the local store.
+
+    The assembly itself is not in the cache; its inputs are, and so is everything
+    a consumer needs. Reading the local store is exact for that.
+    """
+    r = run([NIX, "path-info", "-r", path], timeout=600)
+    if r.returncode != 0 or not r.stdout.strip():
+        return []
+    return [x for x in r.stdout.splitlines() if x.strip() and x != path]
+
+
 def closure_of(path):
     """Every path in the closure, from the cache's own metadata.
 
@@ -122,8 +134,17 @@ def main(argv):
                 continue
             c = closure_of(entry["store"])
             if c is None:
-                unreadable.append((e["dir"], "cache cannot describe its closure"))
-                continue
+                # A setup that ASSEMBLES itself (a runCommand over cached paths,
+                # like swift) has no narinfo of its own by definition; everything
+                # it CONTAINS is cached, which is the property that matters. Those
+                # entries record `assembled: true` in the graph, and compute-deps.py
+                # verified their inputs are all cached.
+                if entry.get("assembled"):
+                    c = entry.get("own", []) + closure_of_inputs(entry["store"])
+                    c = [x for x in c if x]
+                else:
+                    unreadable.append((e["dir"], "cache cannot describe its closure"))
+                    continue
             all_paths.update(c)
 
         print("   store paths to check: %d" % len(all_paths))
