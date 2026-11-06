@@ -110,12 +110,14 @@ jobs:
             [ -e "$f" ] || { echo "::error::missing $f"; exit 1; }
             echo "--- $p ---"
             head -16 "$f"
-            grep -q 'swift-link-env.sh' "$f" || { echo "::error::$p does not source the env"; exit 1; }
+            grep -q 'LIBRARY_PATH' "$f" || { echo "::error::$p does not set LIBRARY_PATH"; exit 1; }
           done
-          envf="$OUT/nix-support/swift-link-env.sh"
-          [ -e "$envf" ] || { echo "::error::no $envf"; exit 1; }
-          echo "--- env file (head) ---"
-          head -12 "$envf"
+          # The env the wrapper sources is a separate store path; resolve it from
+          # the wrapper itself rather than assuming a location.
+          envf=$(sed -n 's/^\. \(.*\)$/\1/p' "$OUT/bin/swiftc" | head -1)
+          [ -n "$envf" ] || { echo "::error::could not find the sourced env file"; exit 1; }
+          echo "env file: $envf"
+          cat "$envf"
           for v in LIBRARY_PATH LD_LIBRARY_PATH NIX_LDFLAGS; do
             grep -q "export $v=" "$envf" || { echo "::error::$v not exported"; exit 1; }
           done
@@ -123,8 +125,8 @@ jobs:
           # failures being fixed.
           grep -q -- '-swift-6.3.3/lib' "$envf" || { echo "::error::swift's own lib dir missing"; exit 1; }
           grep -q -- 'ICU-' "$envf" || { echo "::error::ICU's lib dir missing"; exit 1; }
-          # ...and glibc must NOT be, or the host loader breaks.
-          if grep -q -- '-glibc-' "$envf"; then
+          # ...and glibc must NOT be on the LOADER path.
+          if grep 'LD_LIBRARY_PATH' "$envf" | grep -q -- '-glibc-'; then
             echo "::error::glibc is on LD_LIBRARY_PATH; that breaks unrelated processes"
             exit 1
           fi
