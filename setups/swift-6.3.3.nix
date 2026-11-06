@@ -189,7 +189,7 @@ pkgs.runCommand "swift-${swift.version}" {
       done
       unset easydev_ld
     fi
-    echo "swift-link-env: ldflags vars: ${ldflags_vars:-none}; ICU libs: ${icu_libs:-none}"
+    echo "swift-link-env: ldflags vars: [$ldflags_vars]; ICU libs: [$icu_libs]"
   } > "$out/swift-link-env.sh"
 
   echo "swift-link-env: $(grep -c LIBRARY_PATH "$out/swift-link-env.sh") lib dir(s)"
