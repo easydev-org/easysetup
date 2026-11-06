@@ -1,4 +1,3 @@
-{ pkgs }:
 # swift, with wrapper scripts that put its runtime libraries on the link path.
 #
 # THE PROBLEM
