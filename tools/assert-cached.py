@@ -26,6 +26,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -47,22 +48,47 @@ def narinfo_codes(paths):
 
     Asking one at a time is thousands of round trips - a full closure set is a few
     thousand paths - so this batches through xargs.
+
+    Non-200 answers are RETRIED. A single 404 from sixteen concurrent curls is not
+    a verdict about the cache: it happened on a path that answers 200 when asked
+    directly, and it failed a whole release run ("1 path(s) are not in the cache")
+    for a tarball whose every path is cached. A gate that cries wolf gets ignored,
+    so a 404 is only believed after it survives retries.
     """
     if not paths:
         return {}
     hashes = sorted({os.path.basename(p).split("-", 1)[0] for p in paths})
-    listing = "\n".join(hashes)
-    r = subprocess.run(
-        ["xargs", "-P", "16", "-I", "{}",
-         "sh", "-c", 'printf "%s " "{}"; curl -s -o /dev/null -w "%{http_code}\\n" '
-                     + CACHE + '/{}.narinfo'],
-        input=listing, capture_output=True, text=True, timeout=1800)
-    out = {}
-    for line in r.stdout.splitlines():
-        f = line.split()
-        if len(f) == 2:
-            out[f[0]] = f[1]
-    return out
+
+    def sweep(codes):
+        # Only the ones not yet confirmed 200.
+        todo = [x for x in hashes if codes.get(x) != "200"]
+        if not todo:
+            return codes
+        listing = "\n".join(todo)
+        r = subprocess.run(
+            ["xargs", "-P", "8", "-I", "{}",
+             "sh", "-c",
+             'printf "%s " "{}"; '
+             'curl -sS --retry 2 --retry-delay 1 --max-time 60 '
+             '-o /dev/null -w "%{http_code}\\n" ' + CACHE + '/{}.narinfo'],
+            input=listing, capture_output=True, text=True, timeout=1800)
+        for line in r.stdout.splitlines():
+            f = line.split()
+            if len(f) == 2:
+                codes[f[0]] = f[1]
+        return codes
+
+    codes = {}
+    for attempt in range(4):
+        codes = sweep(codes)
+        missing = [x for x in hashes if codes.get(x) != "200"]
+        if not missing:
+            break
+        if attempt < 3:
+            print("   retrying %d path(s) the cache did not answer for"
+                  % len(missing))
+            time.sleep(2 * (attempt + 1))
+    return codes
 
 
 def closure_of_inputs(path):
