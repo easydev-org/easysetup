@@ -30,8 +30,8 @@
 # WHAT THIS DOES INSTEAD
 # ----------------------
 # `symlinkJoin` reuses the UNCHANGED swift derivation (so the expensive part is
-# still a cache download) and only adds three tiny wrapper scripts. The wrappers
-# append `-L`/`-rpath` for every lib directory of swift's runtime closure.
+# still a cache download) and replaces the three driver symlinks with wrappers
+# that append `-L` and an rpath for every lib directory of the runtime closure.
 #
 # The flags are baked in rather than left to LIBRARY_PATH, so the published
 # tarball also works for a consumer that never sources env.sh (a Dockerfile that
@@ -42,38 +42,42 @@ let
 
   # Every store path in swift's runtime closure that has a lib/ directory.
   #
-  # `pkgs.lib.getLib` would collapse to one output per package, which is not what
-  # a linker needs: ICU's .so files are in ICU's own store path, not in swift's.
-  # The full closure is the honest list, and it is computed at build time from
-  # the same derivation the cache supplies.
-  runtimePaths = pkgs.lib.closePropagation ([ swift ] ++ swift.buildInputs ++ swift.propagatedBuildInputs);
+  # `pkgs.lib.getLib` collapses a package to ONE output, which is not what a
+  # linker needs: ICU's .so files are in ICU's own store path, not swift's. The
+  # full closure is the honest list, and it is computed at build time from the
+  # same derivation the binary cache supplies.
+  runtimePaths = pkgs.lib.closePropagation
+    ([ swift ] ++ swift.buildInputs ++ swift.propagatedBuildInputs);
   libDirs = map (p: "${pkgs.lib.getLib p}/lib") runtimePaths;
+
+  # One guarded line per directory. `\$extra` is escaped so the SHELL that writes
+  # the wrapper does not expand it; the wrapper does, at run time.
+  flagLines = pkgs.lib.concatMapStrings
+    (d: ''[ -d "${d}" ] && extra="\$extra -L${d} -Wl,-rpath,${d}"'' + "\n")
+    libDirs;
 in
 pkgs.symlinkJoin {
   name = "swift-${swift.version}";
   paths = [ swift ];
-  # One wrapper per driver entry point: `swift build` calls swiftc, and tools
-  # call swift, so all three need the flags.
   postBuild = ''
     for prog in swift swiftc swift-driver; do
       target="$out/bin/$prog"
       if [ ! -e "$target" ]; then continue; fi
+      # -f follows the symlink the join created, so this works whatever layout
+      # nixpkgs uses; the wrapper then execs that absolute path.
       real="$(readlink -f "$target")"
       rm -f "$target"
-      {
-        echo '#!'"${pkgs.runtimeShell}"
-        echo '# Put swift'"'"'s runtime libraries on the link path.'
-        echo '#'
-        echo '# nixpkgs installs them in $out/lib but the driver searches'
-        echo '# $out/lib/swift/linux, which has only .swiftmodule files. libFoundation.so'
-        echo '# in turn needs ICU, in a SIBLING store path. See setups/swift-6.3.3.nix.'
-        echo 'extra=""'
-        echo 'for d in '"$(printf '%s ' "${libDirs[@]}")"'; do'
-        echo '  [ -d "$d" ] || continue'
-        echo '  extra="$extra -L$d -Wl,-rpath,$d"'
-        echo 'done'
-        echo 'exec '"$real"' $extra "$@"'
-      } > "$target"
+      cat > "$target" <<EASYDEV_WRAPPER_EOF
+    #!${pkgs.runtimeShell}
+    # Put swift's runtime libraries on the link path AND the run path, so a
+    # program built here also FINDS them when it runs.
+    # nixpkgs keeps them in \$out/lib but the driver searches
+    # \$out/lib/swift/linux (only .swiftmodule files there), and libFoundation.so
+    # needs ICU from a SIBLING store path. See setups/swift-6.3.3.nix.
+    extra=""
+    ${flagLines}
+    exec "$real" \$extra "\$@"
+    EASYDEV_WRAPPER_EOF
       chmod +x "$target"
     done
   '';
