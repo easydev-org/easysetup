@@ -79,8 +79,14 @@ jobs:
             planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
             echo "planned:"
             printf '%s\n' "$planned"
-            if printf '%s\n' "$planned" | grep -qv 'swift-6\.3\.3\.drv'; then
+            # `grep -q` under `set -o pipefail` can return 1 when the writer is
+            # killed by SIGPIPE, which looked like a hard failure (exit 2) with no
+            # message. Count the non-matching lines instead.
+            others=$(printf '%s\n' "$planned" | grep -v 'swift-6\.3\.3\.drv' | grep -c . || true)
+            echo "non-setup paths to build: $others"
+            if [ "${others:-0}" -gt 0 ]; then
               echo "::error::a swift DEPENDENCY would be compiled"
+              printf '%s\n' "$planned" | grep -v 'swift-6\.3\.3\.drv'
               exit 1
             fi
             echo "note: only the setup's own derivation is built (wrapper assembly)"
