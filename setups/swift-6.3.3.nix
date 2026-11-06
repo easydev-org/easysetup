@@ -59,27 +59,52 @@ pkgs.symlinkJoin {
   name = "swift-${swift.version}";
   paths = [ swift ];
   postBuild = ''
-    # `swift` and `swiftc` are front ends that forward to the driver, so the link
-    # flags are right for them. `swift-driver` IS the driver: it parses its own
-    # argv and rejects compiler flags ("error: invalid driver name: swift-driver"
-    # is what a -L passed to it produces), so it is left as the plain symlink.
+    # The link flags go in a small env file that the wrapper SOURCES, rather than
+    # on the command line.
+    #
+    # Reason: `swiftc` forwards its argv to `swift-driver`, and the driver rejects
+    # compiler flags ("error: invalid driver name: swift-driver"). A -L on the
+    # command line therefore breaks the driver instead of helping the linker.
+    # LIBRARY_PATH is read by the LINKER, which is the component that actually
+    # needs the search path, and the driver ignores it.
+    #
+    # A built program also has to FIND them when it runs. LD_LIBRARY_PATH covers
+    # that, and it is limited to swift's runtime and ICU on purpose: putting
+    # nix's GLIBC on the loader path breaks unrelated processes.
+    mkdir -p "$out/nix-support"
+    {
+      echo 'easydev_extra=""'
+      ${pkgs.lib.concatMapStrings (d: ''
+      if [ -d "${d}" ]; then
+        echo "export LIBRARY_PATH=\"${d}:\$LIBRARY_PATH\""
+        # LD_LIBRARY_PATH for these directories ONLY. It is normally wrong to
+        # set (nix's glibc on the loader path breaks unrelated processes), but
+        # these are swift's runtime and ICU, and a binary built here carries no
+        # rpath of its own. glibc is deliberately NOT in this list.
+        echo "export LD_LIBRARY_PATH=\"${d}:\$LD_LIBRARY_PATH\""
+        easydev_extra="$easydev_extra -Wl,-rpath,${d}"
+      fi
+      '') libDirs}
+      echo "export NIX_LDFLAGS=\"\$easydev_extra \$NIX_LDFLAGS\""
+      echo 'unset easydev_extra'
+    } > "$out/nix-support/swift-link-env.sh"
+
     for prog in swift swiftc; do
       target="$out/bin/$prog"
       if [ ! -e "$target" ]; then continue; fi
-      # -f follows the symlink the join created, so this works whatever layout
-      # nixpkgs uses; the wrapper then execs that absolute path.
       real="$(readlink -f "$target")"
       rm -f "$target"
       cat > "$target" <<EASYDEV_WRAPPER_EOF
     #!${pkgs.runtimeShell}
-    # Put swift's runtime libraries on the link path AND the run path, so a
-    # program built here also FINDS them when it runs.
-    # nixpkgs keeps them in \$out/lib but the driver searches
-    # \$out/lib/swift/linux (only .swiftmodule files there), and libFoundation.so
-    # needs ICU from a SIBLING store path. See setups/swift-6.3.3.nix.
-    extra=""
-    ${flagLines}
-    exec "$real" \$extra "\$@"
+    # Put swift's runtime libraries on the LINK path (LIBRARY_PATH) and the RUN
+    # path (NIX_LDFLAGS -> -rpath). See setups/swift-6.3.3.nix.
+    #
+    # The flags are NOT passed as arguments: swiftc forwards argv to
+    # swift-driver, which rejects compiler flags.
+    if [ -r "$out/nix-support/swift-link-env.sh" ]; then
+      . "$out/nix-support/swift-link-env.sh"
+    fi
+    exec "$real" "\$@"
     EASYDEV_WRAPPER_EOF
       chmod +x "$target"
     done
