@@ -43,11 +43,15 @@ jobs:
         run: |
           set -euo pipefail
           FLAKE="path:$PWD"
-          # The attribute path after # is relative to the flake root; nix prepends
-          # packages.<current-system> when it does not resolve. Writing the full
-          # prefix HERE doubles it, so name the package only.
-          nix eval --raw "$FLAKE#swift-6.3.3.name"
-          echo
+          # `nix eval .#swift-6.3.3.name` reports "does not provide attribute" even
+          # though attrNames lists it: a value that THROWS during evaluation is
+          # indistinguishable from a missing one in that message. Force it through
+          # getFlake so the real error surfaces, which is the whole point of this
+          # step.
+          nix eval --impure --expr "
+            let f = builtins.getFlake \"$FLAKE\";
+            in f.packages.x86_64-linux.swift-6.3.3.name
+          " 2>&1 | tail -30
 
       # The release rule. A non-zero count means the fix cannot ship.
       - name: it is substitutable (0 paths would be built)
