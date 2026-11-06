@@ -1,0 +1,124 @@
+name: verify-swift-setup
+
+# Verify the swift setup expression WITHOUT compiling swift.
+#
+# Two things must be true, and neither was ever checked:
+#
+#  1. the derivation is fully SUBSTITUTABLE -- `nix build --dry-run` reports
+#     "0 paths will be built". The release pipeline refuses a setup that would be
+#     compiled (it can run for hours), so a fix that needs a swift recompile can
+#     never ship. This is the check that would have caught the override that sat
+#     in the repo unshipped for two days.
+#
+#  2. the RESULT actually links -- `swiftc main.swift` must build a program that
+#     imports Foundation (which pulls in ICU) and RUN it, with no -L on the
+#     command line. The wrappers have to supply the flags.
+#
+# Run this before touching setups/swift-*.nix or the release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org
+
+      # Fail BEFORE downloading gigabytes if the expression evaluates wrongly.
+      - name: the expression evaluates
+        run: |
+          set -euo pipefail
+          nix eval --raw "path:$PWD#packages.x86_64-linux.swift-6.3.3.name"
+          echo
+
+      # The rule the release pipeline enforces. A count above zero means the
+      # fix would require compiling swift, which cannot ship.
+      - name: it is substitutable (0 paths would be built)
+        run: |
+          set -euo pipefail
+          dry=$(nix build --dry-run "path:$PWD#packages.x86_64-linux.swift-6.3.3" 2>&1 || true)
+          echo "$dry" | tail -15
+          built=$(printf '%s\n' "$dry" | grep -c 'will be built' || true)
+          echo "paths built locally: $built"
+          if [ "${built:-0}" -gt 0 ]; then
+            echo "::error::the swift setup needs a local build ($built path(s)); the release pipeline rejects that"
+            printf '%s\n' "$dry" | grep 'will be built' | head -10
+            exit 1
+          fi
+
+      - name: build it
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths "path:$PWD#packages.x86_64-linux.swift-6.3.3" | tail -1)
+          echo "OUT=$out" >> "$GITHUB_ENV"
+          echo "built: $out"
+          echo "--- bin/ ---"
+          ls "$out/bin"
+
+      - name: the wrappers carry the link flags
+        run: |
+          set -euo pipefail
+          for p in swift swiftc swift-driver; do
+            f="$OUT/bin/$p"
+            [ -e "$f" ] || { echo "missing $f"; continue; }
+            echo "--- $p ---"
+            head -12 "$f"
+            grep -q -- '-L' "$f" || { echo "::error::$p has no -L"; exit 1; }
+            grep -q -- 'rpath' "$f" || { echo "::error::$p has no rpath"; exit 1; }
+          done
+
+      # THE assertion. No -L on the command line: the wrapper must supply it.
+      # Foundation is what drags in ICU, which is where the published tarball
+      # fails with "undefined reference to uloc_toLegacyKey".
+      - name: it links and runs a Foundation program with no explicit -L
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/t && cd /tmp/t
+          cat > main.swift <<'EOF'
+          import Foundation
+          let d = ["ok": true]
+          let j = try! JSONSerialization.data(withJSONObject: d)
+          print(String(data: j, encoding: .utf8)!)
+          let s = String(format: "%.2f", 1.239)   // Foundation formatting, ICU-backed
+          print(s)
+          EOF
+          "$OUT/bin/swiftc" main.swift -o app 2>&1 | tee /tmp/link.log || {
+            echo "::error::swiftc failed; unresolved symbols:"
+            grep -c 'undefined reference' /tmp/link.log || true
+            exit 1
+          }
+          got=$(./app)
+          echo "program printed: $got"
+          echo "$got" | grep -q '{"ok":true}' || { echo "::error::wrong output"; exit 1; }
+          echo "$got" | grep -q '1.24' || { echo "::error::Foundation formatting wrong"; exit 1; }
+          echo "linked and ran"
+
+      - name: swift build works too
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p && cd /tmp/p
+          cat > Package.swift <<'EOF'
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+            name: "probe",
+            targets: [.executableTarget(name: "probe", path: "Sources/probe")]
+          )
+          EOF
+          mkdir -p Sources/probe
+          cat > Sources/probe/main.swift <<'EOF'
+          import Foundation
+          print("swift build ok:", (["a": 1, "b": 2] as NSDictionary).count)
+          EOF
+          "$OUT/bin/swift" build 2>&1 | tail -10
+          ./.build/debug/probe | tee /tmp/run.log
+          grep -q 'swift build ok: 2' /tmp/run.log
