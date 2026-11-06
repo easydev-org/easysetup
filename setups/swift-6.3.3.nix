@@ -83,24 +83,53 @@ pkgs.runCommand "swift-${swift.version}" {
   echo "=== stage: mirror ==="
   mkdir -p "$out/bin"
 
-  # Mirror swift's output: everything as a symlink, bin/ file by file so the two
-  # entry points can be replaced below.
+  # Mirror swift's output: everything as a symlink, bin/ and lib/ as REAL
+  # directories because both need extra entries merged in below.
+  #
+  # They must be real: `ln -s` for lib and then `mkdir -p $out/lib/swift` would
+  # follow the symlink into swift's read-only store path.
+  mkdir -p "$out/bin" "$out/lib/swift"
   for entry in ${swift}/*; do
     name="$(basename "$entry")"
-    if [ "$name" = bin ]; then
-      for f in "$entry"/*; do
-        ln -s "$f" "$out/bin/$(basename "$f")"
-      done
-    else
-      ln -s "$entry" "$out/$name"
-    fi
+    case "$name" in
+      bin)
+        for f in "$entry"/*; do
+          ln -s "$f" "$out/bin/$(basename "$f")"
+        done
+        ;;
+      lib)
+        for f in "$entry"/*; do
+          case "$(basename "$f")" in
+            swift) ;;   # merged below
+            *) ln -s "$f" "$out/lib/$(basename "$f")" ;;
+          esac
+        done
+        for f in "$entry"/swift/*; do
+          ln -s "$f" "$out/lib/swift/$(basename "$f")"
+        done
+        ;;
+      *)
+        ln -s "$entry" "$out/$name"
+        ;;
+    esac
   done
 
-  # SwiftPM's commands (swift-build, swift-test, swift-run, ...). The package
-  # manager finds the toolchain by asking `swiftc` on PATH, which is our wrapper,
-  # so it inherits the same link environment.
+  # SwiftPM. Two things have to come across, not just bin/:
+  #
+  #   bin/                      swift-build, swift-test, swift-run, ...
+  #   lib/swift/pm/ManifestAPI  the PackageDescription module, plus PackagePlugin
+  #
+  # swiftpm patches its own "where are my API modules" lookup to
+  # `applicationPath.parentDirectory` (see nixpkgs' UserToolchain.swift patch), so
+  # when it runs as $out/bin/swift-build it looks in $out/lib/swift/pm/ManifestAPI.
+  # Linking only bin/ makes every package fail to parse with
+  #
+  #   Package.swift:2:8: error: no such module 'PackageDescription'
   for f in ${swiftpm}/bin/*; do
     ln -sf "$f" "$out/bin/$(basename "$f")"
+  done
+  for entry in ${swiftpm}/lib/swift/*; do
+    ln -sfn "$entry" "$out/lib/swift/$(basename "$entry")"
   done
 
   # The link/run paths, one export per directory in the runtime closure that
