@@ -71,6 +71,11 @@ let
   swiftpm = pkgs.swiftpm;
 in
 pkgs.runCommand "swift-${swift.version}" {
+  # flake.nix's `versions` tree reads `.version` off every setup, and
+  # tools/build-nixpkg.sh compares it against the name to refuse a mislabelled
+  # tag. `pkgs.<attr>` has one; a runCommand does not unless it is passed here.
+  inherit (swift) version;
+
   # Nix writes each runtime closure to its own file, one path per line,
   # formatted as "<path> <nrefs> <ref>...". Two files: swift's closure and
   # swiftpm's (which is separate and does not imply swift's).
