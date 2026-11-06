@@ -159,6 +159,18 @@ jobs:
       - name: it links and runs a Foundation program
         run: |
           set -euo pipefail
+          # Diagnostics first: if the link fails again, these two files say WHY.
+          # libFoundation.so's own DT_NEEDED names the ICU soname it expects, and
+          # the closure listing shows which store paths nix actually recorded.
+          echo "--- libFoundation.so NEEDED ---"
+          readelf -d "$OUT/lib/libFoundation.so" 2>/dev/null | grep NEEDED || \
+            echo "(libFoundation.so is not a regular file at \$OUT/lib)"
+          echo "--- ICU in the env ---"
+          grep -i 'icu' "$OUT/swift-link-env.sh" || echo "(no ICU on any path)"
+          echo "--- closure, first 40 ---"
+          head -40 "$OUT/swift-closure-sos.txt" 2>/dev/null || echo "(no closure dump)"
+          echo "--- END diagnostics ---"
+
           mkdir -p /tmp/t && cd /tmp/t
           cat > main.swift <<'EOF'
           import Foundation

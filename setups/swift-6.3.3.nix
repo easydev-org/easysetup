@@ -104,6 +104,16 @@ pkgs.runCommand "swift-${swift.version}" {
   done < swift-runtime
   libdirs="$(sed 's|/[^/]*$||' libdirs.raw | sort -u)"
 
+  # Keep the raw graph in the output so a failing job can see WHICH store paths nix
+  # actually recorded, and where their shared objects are. Guessing at this from
+  # the outside cost several CI rounds.
+  cp swift-runtime "$out/swift-runtime.txt"
+  while read -r p _rest; do
+    [ -n "$p" ] || continue
+    echo "=== $p"
+    find "$p" -maxdepth 5 -name '*.so*' -print 2>/dev/null | sed 's/^/    /' || true
+  done < swift-runtime > "$out/swift-closure-sos.txt" 2>&1 || true
+
   # LD_LIBRARY_PATH is a BLUNT instrument: whatever directory is on it gets
   # preferred over the libraries a binary was built against. It carried the whole
   # closure once, and the compiler died before linking anything:
