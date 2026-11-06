@@ -59,7 +59,11 @@ pkgs.symlinkJoin {
   name = "swift-${swift.version}";
   paths = [ swift ];
   postBuild = ''
-    for prog in swift swiftc swift-driver; do
+    # `swift` and `swiftc` are front ends that forward to the driver, so the link
+    # flags are right for them. `swift-driver` IS the driver: it parses its own
+    # argv and rejects compiler flags ("error: invalid driver name: swift-driver"
+    # is what a -L passed to it produces), so it is left as the plain symlink.
+    for prog in swift swiftc; do
       target="$out/bin/$prog"
       if [ ! -e "$target" ]; then continue; fi
       # -f follows the symlink the join created, so this works whatever layout

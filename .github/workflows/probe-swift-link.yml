@@ -105,7 +105,9 @@ jobs:
       - name: the wrappers carry the link flags
         run: |
           set -euo pipefail
-          for p in swift swiftc swift-driver; do
+          # swift-driver is NOT wrapped: it is the driver itself and rejects
+          # compiler flags, so only the front ends carry -L/rpath.
+          for p in swift swiftc; do
             f="$OUT/bin/$p"
             [ -e "$f" ] || { echo "::error::missing $f"; exit 1; }
             echo "--- $p ---"
