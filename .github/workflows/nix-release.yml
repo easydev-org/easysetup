@@ -224,9 +224,16 @@ jobs:
           # So: allow local builds ONLY when every path to be built is the
           # setup's own derivation; any dependency that would be built fails.
           if [ "${built:-0}" -gt 0 ]; then
-            # The list follows the "this derivation will be built:" line.
-            planned=$(printf '%s\n' "$dry" | sed -n '/this derivation will be built:/,/^$/p' | grep -v 'this derivation')
-            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\(-\|$\)" || true)
+            # The list follows the "this derivation will be built:" line, up to
+            # the next non-indented one. awk, not a sed range: the following
+            # "these N paths will be fetched" block is indented too, so a range
+            # swallows it and counts every cached path as a local build.
+            planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
+            # The setup's own derivation is "...-<name>.drv"; the suffix must be
+            # part of the match or the gate rejects the very package it is
+            # checking (it did: "would compile a DEPENDENCY: 1 path(s)" for its
+            # own drv).
+            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\.drv$" || true)
             echo "of which NOT the setup itself: $offcompiled"
             if [ "${offcompiled:-0}" -gt 0 ]; then
               echo "::error::${{ matrix.name }} ($ARCH) would compile a DEPENDENCY: $built path(s)"
@@ -379,9 +386,16 @@ jobs:
           # So: allow local builds ONLY when every path to be built is the
           # setup's own derivation; any dependency that would be built fails.
           if [ "${built:-0}" -gt 0 ]; then
-            # The list follows the "this derivation will be built:" line.
-            planned=$(printf '%s\n' "$dry" | sed -n '/this derivation will be built:/,/^$/p' | grep -v 'this derivation')
-            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\(-\|$\)" || true)
+            # The list follows the "this derivation will be built:" line, up to
+            # the next non-indented one. awk, not a sed range: the following
+            # "these N paths will be fetched" block is indented too, so a range
+            # swallows it and counts every cached path as a local build.
+            planned=$(printf '%s\n' "$dry" | awk '/this derivation will be built:/{f=1;next} f&&/^[^ ]/{exit} f&&NF{print}')
+            # The setup's own derivation is "...-<name>.drv"; the suffix must be
+            # part of the match or the gate rejects the very package it is
+            # checking (it did: "would compile a DEPENDENCY: 1 path(s)" for its
+            # own drv).
+            offcompiled=$(printf '%s\n' "$planned" | grep -vc -- "-${{ matrix.name }}\.drv$" || true)
             echo "of which NOT the setup itself: $offcompiled"
             if [ "${offcompiled:-0}" -gt 0 ]; then
               echo "::error::${{ matrix.name }} ($ARCH) would compile a DEPENDENCY: $built path(s)"
