@@ -1,3 +1,4 @@
+{ pkgs }:
 # swift, with wrapper scripts that put its runtime libraries on the link path.
 #
 # THE PROBLEM
@@ -17,77 +18,63 @@
 # -----------------------
 # An override changes swift's derivation, so its store path is no longer the one
 # cache.nixos.org has, and producing it means COMPILING swift from source. The
-# release pipeline refuses that on purpose:
-#
-#   if [ "$built" -gt 0 ]; then
-#     echo "::error::... is not fully substitutable: N path(s) would be compiled"
-#
-# That is also why the override this file used to carry never shipped: the
-# tarball published on 2026-10-24 predates the override (2026-10-26), so every
-# installed swift was the unpatched one.
+# release pipeline refuses that on purpose (a compiled toolchain can take hours
+# and is indistinguishable from a cached one in the tarball).
 #
 # WHAT THIS DOES INSTEAD
 # ----------------------
-# `symlinkJoin` reuses the UNCHANGED swift derivation (so the expensive part is
-# still a cache download) and replaces the three driver symlinks with wrappers
-# that append `-L` and an rpath for every lib directory of the runtime closure.
+# `symlinkJoin` reuses the UNCHANGED swift derivation -- every heavy input is a
+# cache download -- and adds a small env file plus two wrapper scripts.
 #
-# The flags are baked in rather than left to LIBRARY_PATH, so the published
-# tarball also works for a consumer that never sources env.sh (a Dockerfile that
-# copies the store path, an editor plugin that shells out to swiftc).
+# WHY THE FLAGS ARE IN AN ENV FILE AND NOT IN argv
+# -----------------------------------------------
+# `swiftc` forwards its argv to `swift-driver`, and the driver rejects compiler
+# flags:
+#
+#   error: invalid driver name: swift-driver
+#
+# So `-L` on the command line breaks the driver instead of helping the linker.
+# LIBRARY_PATH is read by the LINKER (the component that needs the search path)
+# and ignored by the driver, which is exactly the split we want.
+#
+# glibc is NEVER added to LD_LIBRARY_PATH: a nix glibc on the loader path breaks
+# unrelated processes on the host.
 { pkgs }:
 let
   swift = pkgs.swift;
-
-  # Every store path in swift's runtime closure that has a lib/ directory.
-  #
-  # `pkgs.lib.getLib` collapses a package to ONE output, which is not what a
-  # linker needs: ICU's .so files are in ICU's own store path, not swift's. The
-  # full closure is the honest list, and it is computed at build time from the
-  # same derivation the binary cache supplies.
-  runtimePaths = pkgs.lib.closePropagation
-    ([ swift ] ++ swift.buildInputs ++ swift.propagatedBuildInputs);
-  libDirs = map (p: "${pkgs.lib.getLib p}/lib") runtimePaths;
-
-  # One guarded line per directory. `\$extra` is escaped so the SHELL that writes
-  # the wrapper does not expand it; the wrapper does, at run time.
-  flagLines = pkgs.lib.concatMapStrings
-    (d: ''[ -d "${d}" ] && extra="\$extra -L${d} -Wl,-rpath,${d}"'' + "\n")
-    libDirs;
 in
 pkgs.symlinkJoin {
   name = "swift-${swift.version}";
   paths = [ swift ];
   postBuild = ''
-    # The link flags go in a small env file that the wrapper SOURCES, rather than
-    # on the command line.
-    #
-    # Reason: `swiftc` forwards its argv to `swift-driver`, and the driver rejects
-    # compiler flags ("error: invalid driver name: swift-driver"). A -L on the
-    # command line therefore breaks the driver instead of helping the linker.
-    # LIBRARY_PATH is read by the LINKER, which is the component that actually
-    # needs the search path, and the driver ignores it.
-    #
-    # A built program also has to FIND them when it runs. LD_LIBRARY_PATH covers
-    # that, and it is limited to swift's runtime and ICU on purpose: putting
-    # nix's GLIBC on the loader path breaks unrelated processes.
+    # Collect the lib directories from the JOINED TREE, not from a nix-level
+    # dependency list: `buildInputs` is a build-time list and does not contain
+    # ICU, and `closePropagation` only follows propagated inputs. What actually
+    # matters is which .so files are reachable once everything is linked into
+    # this one tree, so `find` over the output is the honest source.
+    libdirs=$(cd "$out" && find -L . -name '*.so' -o -name '*.so.*' 2>/dev/null \
+      | sed 's|^\./||; s|/[^/]*$||' | sort -u)
+
     mkdir -p "$out/nix-support"
     {
       echo 'easydev_extra=""'
-      ${pkgs.lib.concatMapStrings (d: ''
-      if [ -d "${d}" ]; then
-        echo "export LIBRARY_PATH=\"${d}:\$LIBRARY_PATH\""
-        # LD_LIBRARY_PATH for these directories ONLY. It is normally wrong to
-        # set (nix's glibc on the loader path breaks unrelated processes), but
-        # these are swift's runtime and ICU, and a binary built here carries no
-        # rpath of its own. glibc is deliberately NOT in this list.
-        echo "export LD_LIBRARY_PATH=\"${d}:\$LD_LIBRARY_PATH\""
-        easydev_extra="$easydev_extra -Wl,-rpath,${d}"
-      fi
-      '') libDirs}
+      for d in $libdirs; do
+        abs="$out/$d"
+        echo "export LIBRARY_PATH=\"$abs:\$LIBRARY_PATH\""
+        # NOTE: no glibc. A nix glibc on the loader path breaks the host's own
+        # programs; the linker does not need it and a built binary gets glibc from
+        # the program that runs it.
+        case "$abs" in
+          *-glibc-*|*/glibc-*) : ;;
+          *) echo "export LD_LIBRARY_PATH=\"$abs:\$LD_LIBRARY_PATH\"" ;;
+        esac
+        easydev_extra="$easydev_extra -Wl,-rpath,$abs"
+      done
       echo "export NIX_LDFLAGS=\"\$easydev_extra \$NIX_LDFLAGS\""
       echo 'unset easydev_extra'
     } > "$out/nix-support/swift-link-env.sh"
+
+    echo "swift-link-env.sh exports $(grep -c 'LIBRARY_PATH=' "$out/nix-support/swift-link-env.sh") lib dir(s)"
 
     for prog in swift swiftc; do
       target="$out/bin/$prog"
@@ -97,10 +84,10 @@ pkgs.symlinkJoin {
       cat > "$target" <<EASYDEV_WRAPPER_EOF
     #!${pkgs.runtimeShell}
     # Put swift's runtime libraries on the LINK path (LIBRARY_PATH) and the RUN
-    # path (NIX_LDFLAGS -> -rpath). See setups/swift-6.3.3.nix.
+    # path (LD_LIBRARY_PATH), then exec the real binary with argv untouched.
     #
-    # The flags are NOT passed as arguments: swiftc forwards argv to
-    # swift-driver, which rejects compiler flags.
+    # The flags are NOT arguments: swiftc forwards argv to swift-driver, and the
+    # driver rejects compiler flags. See setups/swift-6.3.3.nix.
     if [ -r "$out/nix-support/swift-link-env.sh" ]; then
       . "$out/nix-support/swift-link-env.sh"
     fi
