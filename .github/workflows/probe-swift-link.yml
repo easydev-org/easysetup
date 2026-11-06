@@ -116,6 +116,9 @@ jobs:
       - name: the wrapper sources the link env, and it carries the paths
         run: |
           set -euo pipefail
+          # Only the two compiler entry points are WRAPPED by this setup; the
+          # swiftpm commands are symlinked through (swiftpm finds the toolchain by
+          # asking swiftc on PATH, so they inherit the same env).
           for p in swift swiftc; do
             f="$OUT/bin/$p"
             [ -e "$f" ] || { echo "::error::missing $f"; exit 1; }
@@ -128,6 +131,12 @@ jobs:
             grep -q 'exec .*-swift-6\.3\.3/bin/'"$p" "$f" \
               || { echo "::error::$p does not exec the $p entry point"; exit 1; }
           done
+          # swiftpm is a separate nixpkgs attribute; its commands must be present
+          # or `swift build` fails with "unknown or missing subcommand".
+          for p in swift-build swift-test swift-run; do
+            [ -e "$OUT/bin/$p" ] || { echo "::error::swiftpm's $p is missing from bin/"; exit 1; }
+          done
+          echo "swiftpm commands present"
           envf="$OUT/swift-link-env.sh"
           [ -e "$envf" ] || { echo "::error::no $envf"; exit 1; }
           echo "--- env file (first 30 lines) ---"
@@ -225,3 +234,35 @@ jobs:
           printf '%s' "$got" | grep -q '^42$' || { echo "::error::wrong arithmetic result"; exit 1; }
           printf '%s' "$got" | grep -q '^1970$' || { echo "::error::DateFormatter (ICU) wrong"; exit 1; }
           echo "multi-file build and ICU date formatting ok"
+
+      # swiftpm is a SEPARATE nixpkgs attribute from swift; `swift build` is a
+      # subcommand provided by its `swift-build`, so the setup links swiftpm's
+      # binaries too. This asserts the whole package workflow, not just swiftc:
+      # the package manager has to find the toolchain (by asking swiftc on PATH),
+      # compile, link against Foundation/ICU, and run the product.
+      - name: swift build works (swiftpm)
+        run: |
+          set -euo pipefail
+          "$OUT/bin/swift" build --version 2>/dev/null || "$OUT/bin/swift-build" --version
+          mkdir -p /tmp/p && cd /tmp/p
+          cat > Package.swift <<'EOF'
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+            name: "probe",
+            targets: [.executableTarget(name: "probe", path: "Sources/probe")]
+          )
+          EOF
+          mkdir -p Sources/probe
+          cat > Sources/probe/main.swift <<'EOF'
+          import Foundation
+          let n = (["a": 1, "b": 2] as NSDictionary).count
+          let f = DateFormatter()
+          f.dateFormat = "yyyy"
+          print("swift build ok:", n, f.string(from: Date(timeIntervalSince1970: 0)))
+          EOF
+          "$OUT/bin/swift" build 2>&1 | tail -20
+          ./.build/debug/probe | tee /tmp/run.log
+          grep -q 'swift build ok: 2 1970' /tmp/run.log \
+            || { echo "::error::the built product printed the wrong thing"; exit 1; }
+          echo "swiftpm built and ran the product"

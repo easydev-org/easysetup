@@ -59,11 +59,23 @@
 let
   inherit (pkgs) lib;
   swift = pkgs.swift;
+
+  # SwiftPM, which nixpkgs ships SEPARATELY from swift (`swift build` is a
+  # subcommand provided by swiftpm's `swift-build`, not by pkgs.swift). Both are
+  # cached derivations, so including it is still a pure assembly.
+  #
+  # The `only_arch = amd64` in matrix-nix.yml already keeps this setup off aarch64,
+  # where nixpkgs marks swift broken.
+  swiftpm = pkgs.swiftpm;
 in
 pkgs.runCommand "swift-${swift.version}" {
-  # Nix writes every path in swift's runtime closure to ./swift-runtime, one per
-  # line, formatted as "<path> <nrefs> <ref>...".
-  exportReferencesGraph = [ "swift-runtime" swift ];
+  # Nix writes each runtime closure to its own file, one path per line,
+  # formatted as "<path> <nrefs> <ref>...". Two files: swift's closure and
+  # swiftpm's (which is separate and does not imply swift's).
+  exportReferencesGraph = [
+    "swift-runtime" swift
+    "swiftpm-runtime" swiftpm
+  ];
 } ''
   set -euxo pipefail
   echo "=== stage: mirror ==="
@@ -82,6 +94,13 @@ pkgs.runCommand "swift-${swift.version}" {
     fi
   done
 
+  # SwiftPM's commands (swift-build, swift-test, swift-run, ...). The package
+  # manager finds the toolchain by asking `swiftc` on PATH, which is our wrapper,
+  # so it inherits the same link environment.
+  for f in ${swiftpm}/bin/*; do
+    ln -sf "$f" "$out/bin/$(basename "$f")"
+  done
+
   # The link/run paths, one export per directory in the runtime closure that
   # actually holds shared objects.
   #
@@ -95,24 +114,27 @@ pkgs.runCommand "swift-${swift.version}" {
   # loop sees an empty path and `find` exits non-zero) would then kill the whole
   # assignment with no message at all.
   : > libdirs.raw
-  while read -r p _rest; do
-    [ -n "$p" ] || continue
-    case "$p" in
-      *glibc*) continue ;;
-    esac
-    find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null >> libdirs.raw || true
-  done < swift-runtime
+  for graph in swift-runtime swiftpm-runtime; do
+    while read -r p _rest; do
+      [ -n "$p" ] || continue
+      case "$p" in
+        *glibc*) continue ;;
+      esac
+      find "$p" -maxdepth 4 -name '*.so*' -print 2>/dev/null >> libdirs.raw || true
+    done < "$graph"
+  done
   libdirs="$(sed 's|/[^/]*$||' libdirs.raw | sort -u)"
 
-  # Keep the raw graph in the output so a failing job can see WHICH store paths nix
-  # actually recorded, and where their shared objects are. Guessing at this from
-  # the outside cost several CI rounds.
-  cp swift-runtime "$out/swift-runtime.txt"
-  while read -r p _rest; do
-    [ -n "$p" ] || continue
-    echo "=== $p"
-    find "$p" -maxdepth 5 -name '*.so*' -print 2>/dev/null | sed 's/^/    /' || true
-  done < swift-runtime > "$out/swift-closure-sos.txt" 2>&1 || true
+  # Keep the raw graphs in the output so a failing job can see WHICH store paths
+  # nix actually recorded. Guessing at this from the outside cost several CI rounds.
+  cat swift-runtime swiftpm-runtime > "$out/swift-runtime.txt"
+  for graph in swift-runtime swiftpm-runtime; do
+    while read -r p _rest; do
+      [ -n "$p" ] || continue
+      echo "=== $p"
+      find "$p" -maxdepth 5 -name '*.so*' -print 2>/dev/null | sed 's/^/    /' || true
+    done < "$graph"
+  done > "$out/swift-closure-sos.txt" 2>&1 || true
 
   # LD_LIBRARY_PATH is a BLUNT instrument: whatever directory is on it gets
   # preferred over the libraries a binary was built against. It carried the whole
